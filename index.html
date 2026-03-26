@@ -1,1 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimplifyCare</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a18;min-height:100vh;font-size:14px}
+.topbar{height:48px;background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.12);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:20}
+.topbar-logo{font-size:14px;font-weight:600;color:#1a1a18;letter-spacing:-0.02em}
+.topbar-logo span{color:#4f8ef7}
+.topbar-nav{display:flex;gap:2px;margin-left:auto}
+.nav-btn{background:none;border:none;cursor:pointer;padding:6px 14px;border-radius:8px;font-size:13px;color:#666;font-family:inherit;transition:all .15s}
+.nav-btn:hover{background:#f0f0ee;color:#1a1a18}
+.nav-btn.active{background:#f0f0ee;color:#1a1a18;font-weight:500}
+.main{padding:24px;max-width:1200px;margin:0 auto;width:100%}
+.screen{display:none}.screen.active{display:block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:16px 20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:0.5px solid rgba(0,0,0,0.08)}
+.card-title{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em}
+.divider{height:1px;background:rgba(0,0,0,0.07);margin:16px 0}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:500}
+.badge-success{background:#EAF3DE;color:#3B6D11}.badge-danger{background:#FCEBEB;color:#A32D2D}
+.badge-warning{background:#FAEEDA;color:#854F0B}.badge-info{background:#E6F1FB;color:#185FA5}
+.badge-neutral{background:#f0f0ee;color:#555}
+.risk-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.risk-high{background:#FCEBEB;color:#A32D2D}.risk-med{background:#FAEEDA;color:#854F0B}.risk-low{background:#EAF3DE;color:#3B6D11}
+.row{display:flex;gap:8px;align-items:center}
+.field-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.07)}
+.field-row:last-child{border-bottom:none;padding-bottom:0}
+.field-label{font-size:13px;color:#666;flex-shrink:0;min-width:160px}
+.field-value{font-size:13px;text-align:right;font-weight:500;max-width:280px;word-break:break-word}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;flex-shrink:0}
+.av-teal{background:#E1F5EE;color:#0F6E56}.av-blue{background:#E6F1FB;color:#185FA5}.av-amber{background:#FAEEDA;color:#854F0B}.av-purple{background:#EEEDFE;color:#534AB7}
+.profile-hero{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;padding-bottom:16px;border-bottom:0.5px solid rgba(0,0,0,0.08)}
+.profile-hero-info h2{font-size:17px;font-weight:500;margin-bottom:4px}
+.profile-hero-info p{font-size:13px;color:#666;margin-bottom:6px}
+.tag-list{display:flex;flex-wrap:wrap;gap:4px}
+.tag{background:#f0f0ee;color:#555;font-size:12px;padding:3px 9px;border-radius:20px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:11px;font-weight:500;color:#888;margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.05em}
+.form-input,.form-select,.form-textarea{width:100%;padding:8px 12px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;background:#fff;color:#1a1a18;font-size:13px;font-family:inherit}
+.form-textarea{resize:vertical;min-height:80px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;border:0.5px solid rgba(0,0,0,0.15);background:#fff;color:#1a1a18;transition:all .15s}
+.btn:hover{background:#f5f5f3}
+.btn-primary{background:#1a1a18;color:#fff;border-color:#1a1a18}.btn-primary:hover{opacity:.88}
+.btn-sm{padding:5px 12px;font-size:12px}
+.action-bar{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:0.5px solid rgba(0,0,0,0.08)}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-size:13px;color:#666;font-family:inherit;padding:0;margin-bottom:16px}
+.back-btn:hover{color:#1a1a18}
+.list-card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.list-card:hover{border-color:rgba(0,0,0,0.2);box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.list-info{flex:1}
+.list-name{font-size:14px;font-weight:500;margin-bottom:3px}
+.list-meta{font-size:12px;color:#888}
+.profile-tabs{display:flex;gap:2px;margin-bottom:20px;background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:4px;flex-wrap:wrap}
+.tab-btn{padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;border:none;background:none;color:#666;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{background:#f0f0ee;color:#1a1a18}
+.tab-btn.active{background:#1a1a18;color:#fff;font-weight:500}
+.tab-content{display:none}.tab-content.active{display:block}
+.progress-bar{height:6px;background:#f0f0ee;border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px}
+.fill-green{background:#1D9E75}.fill-amber{background:#EF9F27}.fill-red{background:#E24B4A}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:700px;margin:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:0.5px solid rgba(0,0,0,0.08)}
+.modal-title{font-size:16px;font-weight:500}
+.modal-close{background:none;border:none;cursor:pointer;font-size:22px;color:#888;line-height:1;padding:0}
+.modal-tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.modal-tab{padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;border:0.5px solid rgba(0,0,0,0.12);background:#fff;color:#666;transition:all .15s}
+.modal-tab.active{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.modal-section{display:none}.modal-section.active{display:block}
+.alert-banner{border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.alert-danger{background:#FCEBEB;border:0.5px solid #E24B4A}
+.alert-warning{background:#FAEEDA;border:0.5px solid #EF9F27}
+.alert-dot-danger{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#E24B4A}
+.alert-dot-warning{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#EF9F27}
+.alert-text-danger{font-size:13px;color:#A32D2D;font-weight:500}
+.alert-text-warning{font-size:13px;color:#854F0B;font-weight:500}
+.notice{background:#FAEEDA;border-radius:8px;padding:10px 14px;font-size:13px;color:#854F0B;margin-bottom:14px}
+.notice-info{background:#E6F1FB;border-radius:8px;padding:10px 14px;font-size:13px;color:#185FA5;margin-bottom:14px}
+.empty-state{text-align:center;padding:60px 20px;color:#888}
+.empty-state h3{font-size:16px;font-weight:500;margin-bottom:8px;color:#444}
+.empty-state p{font-size:13px;margin-bottom:20px}
+.loading{text-align:center;padding:40px;color:#888;font-size:13px}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:100;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}.toast.error{background:#E24B4A}
+.page-header{margin-bottom:20px}
+.page-header h1{font-size:18px;font-weight:500;margin-bottom:4px}
+.page-header p{font-size:13px;color:#666}
+.stat-card{background:#f5f5f3;border-radius:8px;padding:14px}
+.stat-label{font-size:12px;color:#666;margin-bottom:6px}
+.stat-value{font-size:22px;font-weight:500}
+.stat-sub{font-size:12px;color:#888;margin-top:3px}
+.training-row{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f5f5f3;border-radius:8px;margin-bottom:6px}
+.training-name{flex:1;font-size:13px}
+.training-date{font-size:12px;color:#888;min-width:90px;text-align:right}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:12px;font-weight:500;color:#888;padding:8px 10px;border-bottom:0.5px solid rgba(0,0,0,0.08)}
+td{padding:10px;border-bottom:0.5px solid rgba(0,0,0,0.06);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.compliance-ring{display:flex;align-items:center;gap:12px}
+.ring-label{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">Simplify<span>Care</span></div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="showScreen('residents')">Residents</button>
+    <button class="nav-btn" onclick="showScreen('staff')">Staff</button>
+    <button class="nav-btn" onclick="showScreen('incidents')">Incidents</button>
+    <button class="nav-btn" onclick="showScreen('compliance')">CQC</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- =================== RESIDENTS =================== -->
+  <div class="screen active" id="screen-residents">
+    <div class="page-header">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h1>Residents</h1><p>All current service users</p></div>
+        <button class="btn btn-primary" onclick="openAddResidentModal()">+ Add resident</button>
+      </div>
+    </div>
+    <div id="residents-loading" class="loading">Loading residents...</div>
+    <div id="residents-list" style="display:none;display:flex;flex-direction:column;gap:8px"></div>
+    <div id="residents-empty" class="empty-state" style="display:none">
+      <h3>No residents yet</h3><p>Add your first resident to get started</p>
+      <button class="btn btn-primary" onclick="openAddResidentModal()">+ Add resident</button>
+    </div>
+  </div>
+
+  <!-- RESIDENT PROFILE -->
+  <div class="screen" id="screen-resident-profile">
+    <button class="back-btn" onclick="showScreen('residents')">← Back to residents</button>
+    <div id="res-profile-header"></div>
+    <div class="profile-tabs">
+      <button class="tab-btn active" onclick="showTab(event,'res-overview')">Overview</button>
+      <button class="tab-btn" onclick="showTab(event,'res-contacts')">Contacts</button>
+      <button class="tab-btn" onclick="showTab(event,'res-care-needs')">Care needs</button>
+      <button class="tab-btn" onclick="showTab(event,'res-preferences')">Preferences</button>
+      <button class="tab-btn" onclick="showTab(event,'res-risks')">Risks</button>
+      <button class="tab-btn" onclick="showTab(event,'res-medication')">Medication</button>
+      <button class="tab-btn" onclick="showTab(event,'res-care-plan')">Care plan</button>
+      <button class="tab-btn" onclick="showTab(event,'res-visits')">Visits</button>
+      <button class="tab-btn" onclick="showTab(event,'res-documents')">Documents</button>
+      <button class="tab-btn" onclick="showTab(event,'res-linked')">Linked records</button>
+    </div>
+    <div class="tab-content active" id="tab-res-overview"><div id="res-ov-alerts"></div><div class="grid-2" style="margin-bottom:16px"><div class="card" id="res-ov-details"></div><div class="card" id="res-ov-legal"></div></div><div class="card"><div class="card-header"><span class="card-title">Recent events</span></div><div class="notice-info">Incidents and events will appear here once the incidents module is built.</div></div></div>
+    <div class="tab-content" id="tab-res-contacts"><div class="grid-2"><div class="card" id="res-ct-nok"></div><div class="card" id="res-ct-prof"></div></div></div>
+    <div class="tab-content" id="tab-res-care-needs"><div class="grid-2" id="res-cn-content"></div></div>
+    <div class="tab-content" id="tab-res-preferences"><div class="grid-2" id="res-pref-content"></div></div>
+    <div class="tab-content" id="tab-res-risks"><div id="res-risk-content"></div></div>
+    <div class="tab-content" id="tab-res-medication"><div class="card"><div class="card-header"><span class="card-title">Medication</span></div><div class="notice-info">Full MAR coming in the next update.</div><div id="res-med-allergies"></div></div></div>
+    <div class="tab-content" id="tab-res-care-plan"><div id="res-cp-content"></div></div>
+    <div class="tab-content" id="tab-res-visits"><div class="card"><div class="card-header"><span class="card-title">Visit log</span><button class="btn btn-sm" onclick="showToast('Visit logging coming soon')">+ Log visit</button></div><div class="notice-info">Family and professional visits will be logged here.</div></div></div>
+    <div class="tab-content" id="tab-res-documents"><div class="card"><div class="card-header"><span class="card-title">Documents</span><button class="btn btn-sm" onclick="showToast('Document upload coming soon')">+ Upload</button></div><div class="notice-info">Upload consent forms, hospital letters and care plan PDFs here.</div></div></div>
+    <div class="tab-content" id="tab-res-linked"><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">Linked incidents</span></div><div class="notice-info">Incidents will appear here once the incidents module is active.</div></div><div class="card" id="res-linked-staff"></div></div></div>
+  </div>
+
+  <!-- =================== STAFF LIST =================== -->
+  <div class="screen" id="screen-staff">
+    <div class="page-header">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h1>Staff</h1><p>All staff records — training compliance, DBS status and supervision tracking</p></div>
+        <button class="btn btn-primary" onclick="openAddStaffModal()">+ Add staff member</button>
+      </div>
+    </div>
+    <div id="staff-loading" class="loading">Loading staff...</div>
+    <div id="staff-list" style="display:none;display:flex;flex-direction:column;gap:8px"></div>
+    <div id="staff-empty" class="empty-state" style="display:none">
+      <h3>No staff records yet</h3><p>Add your first staff member to get started</p>
+      <button class="btn btn-primary" onclick="openAddStaffModal()">+ Add staff member</button>
+    </div>
+  </div>
+
+  <!-- STAFF PROFILE -->
+  <div class="screen" id="screen-staff-profile">
+    <button class="back-btn" onclick="showScreen('staff')">← Back to staff</button>
+    <div id="staff-profile-header"></div>
+    <div id="staff-alerts-bar" style="margin-bottom:16px"></div>
+    <div class="profile-tabs">
+      <button class="tab-btn active" onclick="showTab(event,'staff-overview')">Overview</button>
+      <button class="tab-btn" onclick="showTab(event,'staff-compliance')">Compliance</button>
+      <button class="tab-btn" onclick="showTab(event,'staff-training')">Training</button>
+      <button class="tab-btn" onclick="showTab(event,'staff-supervision')">Supervision</button>
+      <button class="tab-btn" onclick="showTab(event,'staff-documents')">Documents</button>
+      <button class="tab-btn" onclick="showTab(event,'staff-notes')">Notes</button>
+    </div>
+    <div class="tab-content active" id="tab-staff-overview"><div class="grid-2" style="margin-bottom:16px"><div class="card" id="so-details"></div><div class="card" id="so-summary"></div></div></div>
+    <div class="tab-content" id="tab-staff-compliance"><div class="grid-2"><div class="card" id="sc-dbs"></div><div class="card" id="sc-recruitment"></div></div></div>
+    <div class="tab-content" id="tab-staff-training"><div id="st-content"></div></div>
+    <div class="tab-content" id="tab-staff-supervision"><div class="grid-2"><div class="card" id="ss-supervision"></div><div class="card" id="ss-appraisal"></div></div></div>
+    <div class="tab-content" id="tab-staff-documents"><div class="card"><div class="card-header"><span class="card-title">Documents</span><button class="btn btn-sm" onclick="showToast('Document upload coming soon')">+ Upload</button></div><div class="notice-info">Upload contracts, DBS certificates, training certificates and ID documents here.</div></div></div>
+    <div class="tab-content" id="tab-staff-notes"><div class="card" id="sn-notes"></div></div>
+  </div>
+
+  <!-- INCIDENTS -->
+  <div class="screen" id="screen-incidents">
+    <div class="page-header"><h1>Incidents</h1><p>Coming next</p></div>
+    <div class="empty-state"><h3>Incidents module coming soon</h3></div>
+  </div>
+
+  <!-- COMPLIANCE -->
+  <div class="screen" id="screen-compliance">
+    <div class="page-header"><h1>CQC compliance</h1><p>Coming next</p></div>
+    <div class="empty-state"><h3>Compliance module coming soon</h3></div>
+  </div>
+
+</div>
+
+<!-- =================== RESIDENT MODAL =================== -->
+<div class="modal-overlay" id="res-modal" style="display:none" onclick="if(event.target.id==='res-modal')closeResModal()">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="res-modal-title">Add new resident</span><button class="modal-close" onclick="closeResModal()">×</button></div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="showModalTab(event,'rm-overview')">Overview</button>
+      <button class="modal-tab" onclick="showModalTab(event,'rm-contacts')">Contacts</button>
+      <button class="modal-tab" onclick="showModalTab(event,'rm-care')">Care needs</button>
+      <button class="modal-tab" onclick="showModalTab(event,'rm-prefs')">Preferences</button>
+      <button class="modal-tab" onclick="showModalTab(event,'rm-risks')">Risks</button>
+      <button class="modal-tab" onclick="showModalTab(event,'rm-legal')">Legal &amp; capacity</button>
+    </div>
+    <div class="modal-section active" id="rm-overview">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Full name</label><input type="text" class="form-input" id="rf-full_name"></div>
+        <div class="form-group"><label class="form-label">Preferred name</label><input type="text" class="form-input" id="rf-preferred_name"></div>
+        <div class="form-group"><label class="form-label">Date of birth</label><input type="date" class="form-input" id="rf-date_of_birth"></div>
+        <div class="form-group"><label class="form-label">NHS number</label><input type="text" class="form-input" id="rf-nhs_number"></div>
+        <div class="form-group"><label class="form-label">Start date</label><input type="date" class="form-input" id="rf-start_date"></div>
+        <div class="form-group"><label class="form-label">Funding type</label><select class="form-select" id="rf-funding_type"><option value="">Select...</option><option>Local authority (funded)</option><option>NHS continuing healthcare</option><option>Self-funded</option><option>Joint funded</option></select></div>
+        <div class="form-group"><label class="form-label">Risk level</label><select class="form-select" id="rf-risk_level"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option></select></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Address before admission</label><input type="text" class="form-input" id="rf-address"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Diagnoses / conditions</label><textarea class="form-textarea" id="rf-diagnoses"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-section" id="rm-contacts">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Next of kin 1 — name &amp; relationship</label><input type="text" class="form-input" id="rf-nok1_name"></div>
+        <div class="form-group"><label class="form-label">Next of kin 1 — phone</label><input type="text" class="form-input" id="rf-nok1_phone"></div>
+        <div class="form-group"><label class="form-label">Next of kin 2 — name &amp; relationship</label><input type="text" class="form-input" id="rf-nok2_name"></div>
+        <div class="form-group"><label class="form-label">Next of kin 2 — phone</label><input type="text" class="form-input" id="rf-nok2_phone"></div>
+        <div class="form-group"><label class="form-label">GP name &amp; surgery</label><input type="text" class="form-input" id="rf-gp_name"></div>
+        <div class="form-group"><label class="form-label">GP phone</label><input type="text" class="form-input" id="rf-gp_phone"></div>
+        <div class="form-group"><label class="form-label">District nurse</label><input type="text" class="form-input" id="rf-district_nurse"></div>
+        <div class="form-group"><label class="form-label">Social worker</label><input type="text" class="form-input" id="rf-social_worker"></div>
+        <div class="form-group"><label class="form-label">Key worker</label><input type="text" class="form-input" id="rf-key_worker"></div>
+        <div class="form-group"><label class="form-label">Advocate (if any)</label><input type="text" class="form-input" id="rf-advocate"></div>
+      </div>
+    </div>
+    <div class="modal-section" id="rm-care">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Mobility</label><select class="form-select" id="rf-mobility"><option value="">Select...</option><option>Independent</option><option>Requires supervision</option><option>Requires 1 person assist</option><option>Requires 2 person assist</option><option>Hoist required</option><option>Bedbound</option></select></div>
+        <div class="form-group"><label class="form-label">Personal care</label><select class="form-select" id="rf-personal_care"><option value="">Select...</option><option>Independent</option><option>Requires prompting</option><option>Requires partial assistance</option><option>Requires full assistance</option></select></div>
+        <div class="form-group"><label class="form-label">Continence</label><select class="form-select" id="rf-continence"><option value="">Select...</option><option>Continent</option><option>Occasionally incontinent</option><option>Urinary incontinence</option><option>Double incontinence</option><option>Catheter</option><option>Stoma</option></select></div>
+        <div class="form-group"><label class="form-label">Eating &amp; drinking</label><select class="form-select" id="rf-eating_drinking"><option value="">Select...</option><option>Independent</option><option>Requires prompting</option><option>Requires assistance</option><option>Full assistance needed</option><option>PEG fed</option></select></div>
+        <div class="form-group"><label class="form-label">Diet texture (IDDSI)</label><select class="form-select" id="rf-diet_texture"><option value="">Select...</option><option>Level 7 — regular</option><option>Level 6 — soft &amp; bite-sized</option><option>Level 5 — minced &amp; moist</option><option>Level 4 — pureed</option><option>Level 3 — liquidised</option></select></div>
+        <div class="form-group"><label class="form-label">Fluid consistency</label><select class="form-select" id="rf-fluid_consistency"><option value="">Select...</option><option>Normal fluids</option><option>Level 1 — slightly thick</option><option>Level 2 — mildly thick</option><option>Level 3 — moderately thick</option><option>Level 4 — extremely thick</option></select></div>
+        <div class="form-group"><label class="form-label">Communication</label><select class="form-select" id="rf-communication"><option value="">Select...</option><option>Verbal — no issues</option><option>Verbal — some difficulties</option><option>Limited verbal</option><option>Non-verbal</option><option>Uses communication aids</option></select></div>
+        <div class="form-group"><label class="form-label">Sleep needs</label><input type="text" class="form-input" id="rf-sleep_needs"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Additional care needs notes</label><textarea class="form-textarea" id="rf-care_needs_notes"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-section" id="rm-prefs">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Language</label><input type="text" class="form-input" id="rf-language"></div>
+        <div class="form-group"><label class="form-label">Religion / faith</label><input type="text" class="form-input" id="rf-religion"></div>
+        <div class="form-group"><label class="form-label">Ethnicity</label><input type="text" class="form-input" id="rf-ethnicity"></div>
+        <div class="form-group"><label class="form-label">Marital status</label><select class="form-select" id="rf-marital_status"><option value="">Select...</option><option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option><option>Separated</option></select></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Interests &amp; hobbies</label><textarea class="form-textarea" id="rf-interests"></textarea></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Life history summary</label><textarea class="form-textarea" id="rf-life_history"></textarea></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Likes &amp; dislikes</label><textarea class="form-textarea" id="rf-likes_dislikes"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-section" id="rm-risks">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Falls risk (Waterlow score)</label><input type="number" class="form-input" id="rf-falls_score"></div>
+        <div class="form-group"><label class="form-label">Falls risk level</label><select class="form-select" id="rf-falls_risk"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option></select></div>
+        <div class="form-group"><label class="form-label">Pressure ulcer (Braden score)</label><input type="number" class="form-input" id="rf-braden_score"></div>
+        <div class="form-group"><label class="form-label">Pressure ulcer risk level</label><select class="form-select" id="rf-pressure_risk"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option></select></div>
+        <div class="form-group"><label class="form-label">Malnutrition (MUST score)</label><input type="number" class="form-input" id="rf-must_score"></div>
+        <div class="form-group"><label class="form-label">Choking / aspiration risk</label><select class="form-select" id="rf-choking_risk"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option></select></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Other identified risks</label><textarea class="form-textarea" id="rf-other_risks"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-section" id="rm-legal">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Mental capacity</label><select class="form-select" id="rf-mental_capacity"><option value="">Select...</option><option>Has capacity</option><option>Lacks capacity</option><option>Fluctuating capacity</option><option>Under assessment</option></select></div>
+        <div class="form-group"><label class="form-label">DOLS status</label><select class="form-select" id="rf-dols_status"><option value="">Select...</option><option>Not required</option><option>Applied for</option><option>Authorised</option><option>Expired — renewal required</option></select></div>
+        <div class="form-group"><label class="form-label">DOLS expiry date</label><input type="date" class="form-input" id="rf-dols_expiry"></div>
+        <div class="form-group"><label class="form-label">LPA — Health &amp; welfare</label><select class="form-select" id="rf-lpa_health"><option value="">Select...</option><option>Not in place</option><option>Registered</option><option>Applied for</option></select></div>
+        <div class="form-group"><label class="form-label">LPA — Finance &amp; property</label><select class="form-select" id="rf-lpa_finance"><option value="">Select...</option><option>Not in place</option><option>Registered</option><option>Applied for</option></select></div>
+        <div class="form-group"><label class="form-label">DNACPR / ReSPECT</label><select class="form-select" id="rf-dnacpr"><option value="">Select...</option><option>Not in place</option><option>In place</option><option>Under review</option></select></div>
+        <div class="form-group"><label class="form-label">Advance care plan</label><select class="form-select" id="rf-advance_care_plan"><option value="">Select...</option><option>Not in place</option><option>In place</option><option>In progress</option></select></div>
+        <div class="form-group"><label class="form-label">Allergies</label><input type="text" class="form-input" id="rf-allergies"></div>
+      </div>
+    </div>
+    <div class="action-bar"><button class="btn" onclick="closeResModal()">Cancel</button><button class="btn btn-primary" onclick="saveResident()">Save resident</button></div>
+  </div>
+</div>
+
+<!-- =================== STAFF MODAL =================== -->
+<div class="modal-overlay" id="staff-modal" style="display:none" onclick="if(event.target.id==='staff-modal')closeStaffModal()">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="staff-modal-title">Add staff member</span><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="showModalTab(event,'sm-overview')">Overview</button>
+      <button class="modal-tab" onclick="showModalTab(event,'sm-compliance')">Compliance</button>
+      <button class="modal-tab" onclick="showModalTab(event,'sm-training')">Training</button>
+      <button class="modal-tab" onclick="showModalTab(event,'sm-supervision')">Supervision</button>
+      <button class="modal-tab" onclick="showModalTab(event,'sm-notes')">Notes</button>
+    </div>
+
+    <div class="modal-section active" id="sm-overview">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Full name</label><input type="text" class="form-input" id="sf-full_name"></div>
+        <div class="form-group"><label class="form-label">Job title</label><input type="text" class="form-input" id="sf-job_title" placeholder="e.g. Senior Care Worker"></div>
+        <div class="form-group"><label class="form-label">Employee ID</label><input type="text" class="form-input" id="sf-employee_id" placeholder="e.g. STF-001"></div>
+        <div class="form-group"><label class="form-label">Start date</label><input type="date" class="form-input" id="sf-start_date"></div>
+        <div class="form-group"><label class="form-label">Employment status</label><select class="form-select" id="sf-employment_status"><option value="">Select...</option><option>Active</option><option>Suspended</option><option>Left</option></select></div>
+        <div class="form-group"><label class="form-label">Contract type</label><select class="form-select" id="sf-contract_type"><option value="">Select...</option><option>Full-time</option><option>Part-time</option><option>Bank</option><option>Zero hours</option></select></div>
+        <div class="form-group"><label class="form-label">Line manager</label><input type="text" class="form-input" id="sf-line_manager"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-input" id="sf-phone"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Email</label><input type="email" class="form-input" id="sf-email"></div>
+      </div>
+    </div>
+
+    <div class="modal-section" id="sm-compliance">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">DBS number</label><input type="text" class="form-input" id="sf-dbs_number"></div>
+        <div class="form-group"><label class="form-label">DBS date</label><input type="date" class="form-input" id="sf-dbs_date"></div>
+        <div class="form-group"><label class="form-label">DBS status</label><select class="form-select" id="sf-dbs_status"><option value="">Select...</option><option>Clear</option><option>Pending</option><option>Expired</option></select></div>
+        <div class="form-group"><label class="form-label">Right to work verified</label><select class="form-select" id="sf-right_to_work"><option value="">Select...</option><option>Verified</option><option>Pending</option><option>Not verified</option></select></div>
+        <div class="form-group"><label class="form-label">ID verified</label><select class="form-select" id="sf-id_verified"><option value="">Select...</option><option>Yes</option><option>No</option></select></div>
+        <div class="form-group"><label class="form-label">Reference 1</label><input type="text" class="form-input" id="sf-reference_1" placeholder="Name, organisation, date received"></div>
+        <div class="form-group"><label class="form-label">Reference 2</label><input type="text" class="form-input" id="sf-reference_2" placeholder="Name, organisation, date received"></div>
+        <div class="form-group"><label class="form-label">Employment gaps explained</label><select class="form-select" id="sf-employment_gaps"><option value="">Select...</option><option>Yes</option><option>No</option><option>N/A</option></select></div>
+      </div>
+    </div>
+
+    <div class="modal-section" id="sm-training">
+      <div class="notice">Enter the date each training module was completed and when it expires.</div>
+      <div id="training-form-fields"></div>
+    </div>
+
+    <div class="modal-section" id="sm-supervision">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Last supervision date</label><input type="date" class="form-input" id="sf-supervision_last"></div>
+        <div class="form-group"><label class="form-label">Next supervision due</label><input type="date" class="form-input" id="sf-supervision_next"></div>
+        <div class="form-group"><label class="form-label">Last appraisal date</label><input type="date" class="form-input" id="sf-appraisal_last"></div>
+        <div class="form-group"><label class="form-label">Next appraisal due</label><input type="date" class="form-input" id="sf-appraisal_next"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Performance rating</label><select class="form-select" id="sf-performance_rating"><option value="">Select...</option><option>Outstanding</option><option>Good</option><option>Requires improvement</option><option>Unsatisfactory</option></select></div>
+      </div>
+    </div>
+
+    <div class="modal-section" id="sm-notes">
+      <div class="form-group"><label class="form-label">Manager notes</label><textarea class="form-textarea" style="min-height:200px" id="sf-notes" placeholder="General notes, key updates, manager observations"></textarea></div>
+    </div>
+
+    <div class="action-bar"><button class="btn" onclick="closeStaffModal()">Cancel</button><button class="btn btn-primary" onclick="saveStaff()">Save staff member</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://kzbhoheabpkntpbntxas.supabase.co';
+const SUPABASE_KEY='sb_publishable_SoiBt-QJuDe_aLtYMDc64g_Auw1l3C-';
+const {createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let currentResident=null,allResidents=[],isEditingResident=false;
+let currentStaff=null,allStaff=[],isEditingStaff=false;
+
+const TRAINING_MODULES=[
+  {key:'safeguarding',label:'Safeguarding adults'},
+  {key:'medication',label:'Medication awareness'},
+  {key:'moving_handling',label:'Moving &amp; handling'},
+  {key:'infection_control',label:'Infection prevention (IPC)'},
+  {key:'first_aid',label:'First aid / BLS'},
+  {key:'mental_capacity',label:'Mental capacity act'},
+  {key:'fire_safety',label:'Fire safety'},
+  {key:'health_safety',label:'Health &amp; safety'},
+];
+
+const RES_FIELDS=['full_name','preferred_name','date_of_birth','nhs_number','start_date','funding_type','risk_level','address','diagnoses','nok1_name','nok1_phone','nok2_name','nok2_phone','gp_name','gp_phone','district_nurse','social_worker','key_worker','advocate','mobility','personal_care','continence','eating_drinking','diet_texture','fluid_consistency','communication','sleep_needs','care_needs_notes','language','religion','ethnicity','marital_status','interests','life_history','likes_dislikes','falls_score','falls_risk','braden_score','pressure_risk','must_score','choking_risk','other_risks','mental_capacity','dols_status','dols_expiry','lpa_health','lpa_finance','dnacpr','advance_care_plan','allergies','cp_personal_care','cp_mobility','cp_nutrition','cp_communication','cp_continence','cp_emotional','cp_social','cp_end_of_life'];
+
+const STAFF_FIELDS=['full_name','job_title','employee_id','start_date','employment_status','contract_type','line_manager','phone','email','dbs_number','dbs_date','dbs_status','right_to_work','id_verified','reference_1','reference_2','employment_gaps','supervision_last','supervision_next','appraisal_last','appraisal_next','performance_rating','notes',...TRAINING_MODULES.map(m=>`train_${m.key}`),...TRAINING_MODULES.map(m=>`exp_${m.key}`)];
+
+// Build training form fields dynamically
+function buildTrainingForm(){
+  document.getElementById('training-form-fields').innerHTML=TRAINING_MODULES.map(m=>`
+    <div style="background:#f5f5f3;border-radius:8px;padding:12px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px">${m.label}</div>
+      <div class="form-grid">
+        <div class="form-group" style="margin-bottom:0"><label class="form-label">Date completed</label><input type="date" class="form-input" id="sf-train_${m.key}"></div>
+        <div class="form-group" style="margin-bottom:0"><label class="form-label">Expiry date</label><input type="date" class="form-input" id="sf-exp_${m.key}"></div>
+      </div>
+    </div>`).join('');
+}
+buildTrainingForm();
+
+// Helpers
+const getInitials=n=>n?n.trim().split(' ').filter((_,i,a)=>i===0||i===a.length-1).map(w=>w[0]).join('').toUpperCase():'?';
+const formatDate=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'—';
+const calcAge=d=>d?Math.floor((Date.now()-new Date(d).getTime())/31557600000):'';
+const daysUntil=d=>d?Math.ceil((new Date(d)-Date.now())/86400000):null;
+const f=(label,value)=>`<div class="field-row"><span class="field-label">${label}</span><span class="field-value">${value||'—'}</span></div>`;
+
+function trainingStatus(expiry){
+  if(!expiry) return {badge:'<span class="badge badge-neutral">Not recorded</span>',status:'none'};
+  const days=daysUntil(expiry);
+  if(days<0) return {badge:'<span class="badge badge-danger">Expired</span>',status:'expired'};
+  if(days<=60) return {badge:'<span class="badge badge-warning">Expiring soon</span>',status:'expiring'};
+  return {badge:'<span class="badge badge-success">Current</span>',status:'current'};
+}
+
+function calcCompliancePct(s){
+  const total=TRAINING_MODULES.length;
+  const current=TRAINING_MODULES.filter(m=>{
+    const exp=s[`exp_${m.key}`];
+    if(!exp) return false;
+    return daysUntil(exp)>=0;
+  }).length;
+  return Math.round((current/total)*100);
+}
+
+function getStatusBadge(status){
+  const map={'Active':'badge-success','Suspended':'badge-danger','Left':'badge-neutral'};
+  return status?`<span class="badge ${map[status]||'badge-neutral'}">${status}</span>`:'';
+}
+
+// Navigation
+function showScreen(key){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const map={residents:0,staff:1,incidents:2,compliance:3};
+  document.getElementById('screen-'+key).classList.add('active');
+  if(map[key]!==undefined) document.querySelectorAll('.nav-btn')[map[key]].classList.add('active');
+  if(key==='residents') loadResidents();
+  if(key==='staff') loadStaff();
+  window.scrollTo(0,0);
+}
+
+function showTab(e,name){
+  const container=e.target.closest('.profile-tabs');
+  container.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  const prefix=name.startsWith('staff')?'tab-staff-':name.startsWith('res-')||name.startsWith('res')?'tab-res-':'tab-';
+  document.querySelectorAll('[id^="tab-"]').forEach(t=>{
+    if(t.id===`tab-${name}`) t.classList.add('active');
+    else if(t.id.startsWith('tab-'+name.split('-')[0])) t.classList.remove('active');
+  });
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function showModalTab(e,id){
+  const modal=e.target.closest('.modal');
+  modal.querySelectorAll('.modal-section').forEach(s=>s.classList.remove('active'));
+  modal.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  e.target.classList.add('active');
+}
+
+// =================== RESIDENTS ===================
+async function loadResidents(){
+  document.getElementById('residents-loading').style.display='block';
+  document.getElementById('residents-list').style.display='none';
+  document.getElementById('residents-empty').style.display='none';
+  const {data,error}=await db.from('residents').select('*').order('full_name');
+  document.getElementById('residents-loading').style.display='none';
+  if(error){showToast('Error: '+error.message,true);return;}
+  allResidents=data||[];
+  if(!allResidents.length){document.getElementById('residents-empty').style.display='block';return;}
+  const list=document.getElementById('residents-list');
+  list.style.display='flex';
+  list.innerHTML=allResidents.map(r=>`
+    <div class="list-card" onclick="viewResident('${r.id}')">
+      <div class="avatar ${r.risk_level==='High'?'av-teal':r.risk_level==='Medium'?'av-amber':'av-blue'}" style="width:44px;height:44px;font-size:14px">${getInitials(r.full_name)}</div>
+      <div class="list-info">
+        <div class="list-name">${r.full_name||'—'}${r.preferred_name?` <span style="font-weight:400;color:#888;font-size:12px">(${r.preferred_name})</span>`:''}</div>
+        <div class="list-meta">${r.date_of_birth?`Age ${calcAge(r.date_of_birth)} · `:''}${r.funding_type||''}</div>
+      </div>
+      <div class="row" style="gap:8px">${r.risk_level?`<span class="risk-pill ${r.risk_level==='High'?'risk-high':r.risk_level==='Medium'?'risk-med':'risk-low'}">${r.risk_level} risk</span>`:''}<span style="color:#ccc;font-size:16px">›</span></div>
+    </div>`).join('');
+}
+
+function viewResident(id){
+  const r=allResidents.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  currentResident=r;
+  renderResidentProfile(r);
+  document.querySelectorAll('[id^="tab-res"]').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-res-overview').classList.add('active');
+  showScreen('resident-profile');
+  document.querySelectorAll('.nav-btn')[0].classList.add('active');
+}
+
+function renderResidentProfile(r){
+  const rb=r.risk_level?`<span class="risk-pill ${r.risk_level==='High'?'risk-high':r.risk_level==='Medium'?'risk-med':'risk-low'}">${r.risk_level} risk</span>`:'';
+  const av=r.risk_level==='High'?'av-teal':r.risk_level==='Medium'?'av-amber':'av-blue';
+  document.getElementById('res-profile-header').innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div class="row" style="gap:14px">
+        <div class="avatar ${av}" style="width:56px;height:56px;font-size:17px">${getInitials(r.full_name)}</div>
+        <div><h1 style="font-size:18px;font-weight:500;margin-bottom:3px">${r.full_name||'—'}${r.preferred_name?` <span style="font-size:14px;font-weight:400;color:#888">(${r.preferred_name})</span>`:''}</h1>
+        <p style="font-size:13px;color:#666">${r.date_of_birth?`DOB: ${formatDate(r.date_of_birth)} · Age ${calcAge(r.date_of_birth)} · `:''}${r.funding_type||''}</p></div>
+      </div>
+      <div class="row">${rb}<button class="btn" onclick="openEditResidentModal()">Edit record</button></div>
+    </div>`;
+  let alerts='';
+  if(r.dols_status==='Expired — renewal required') alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS authorisation has expired — renewal required urgently</div></div>`;
+  if(r.dols_expiry){const days=daysUntil(r.dols_expiry);if(days!==null&&days>0&&days<=30) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS expires in ${days} days — ${formatDate(r.dols_expiry)}</div></div>`;}
+  document.getElementById('res-ov-alerts').innerHTML=alerts;
+  document.getElementById('res-ov-details').innerHTML=`
+    <div class="profile-hero"><div class="avatar ${av}" style="width:52px;height:52px;font-size:15px">${getInitials(r.full_name)}</div>
+    <div class="profile-hero-info"><h2>${r.full_name||'—'}</h2><p>${r.date_of_birth?`DOB: ${formatDate(r.date_of_birth)} · Age ${calcAge(r.date_of_birth)}`:''}</p><div class="row">${rb}</div></div></div>
+    ${f('NHS number',r.nhs_number)}${f('Admission date',formatDate(r.start_date))}${f('Funding type',r.funding_type)}${f('Address',r.address)}${f('Key worker',r.key_worker)}
+    ${r.diagnoses?`<div style="height:1px;background:rgba(0,0,0,0.07);margin:12px 0"></div><div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Diagnoses</div><div class="tag-list">${r.diagnoses.split(',').map(d=>`<span class="tag">${d.trim()}</span>`).join('')}</div>`:''}`;
+  document.getElementById('res-ov-legal').innerHTML=`<div class="card-header"><span class="card-title">Legal &amp; capacity</span></div>
+    ${f('Mental capacity',r.mental_capacity?`<span class="badge ${r.mental_capacity==='Has capacity'?'badge-success':'badge-warning'}">${r.mental_capacity}</span>`:'')}
+    ${f('DOLS status',r.dols_status?`<span class="badge ${r.dols_status==='Authorised'?'badge-success':r.dols_status==='Expired — renewal required'?'badge-danger':'badge-warning'}">${r.dols_status}</span>`:'')}
+    ${r.dols_expiry?f('DOLS expiry',`<span class="badge badge-info">${formatDate(r.dols_expiry)}</span>`):''}
+    ${f('LPA — Health &amp; welfare',r.lpa_health?`<span class="badge ${r.lpa_health==='Registered'?'badge-success':'badge-neutral'}">${r.lpa_health}</span>`:'')}
+    ${f('LPA — Finance &amp; property',r.lpa_finance?`<span class="badge ${r.lpa_finance==='Registered'?'badge-success':'badge-neutral'}">${r.lpa_finance}</span>`:'')}
+    ${f('DNACPR / ReSPECT',r.dnacpr?`<span class="badge ${r.dnacpr==='In place'?'badge-danger':'badge-neutral'}">${r.dnacpr}</span>`:'')}
+    ${f('Advance care plan',r.advance_care_plan?`<span class="badge ${r.advance_care_plan==='In place'?'badge-success':'badge-neutral'}">${r.advance_care_plan}</span>`:'')}
+    ${f('Allergies',r.allergies?`<span class="badge badge-danger">${r.allergies}</span>`:'')}`;
+  document.getElementById('res-ct-nok').innerHTML=`<div class="card-header"><span class="card-title">Next of kin</span></div>${f('Next of kin 1',r.nok1_name)}${r.nok1_phone?f('NOK 1 phone',r.nok1_phone):''}${r.nok2_name?f('Next of kin 2',r.nok2_name):''}${r.nok2_phone?f('NOK 2 phone',r.nok2_phone):''}`;
+  document.getElementById('res-ct-prof').innerHTML=`<div class="card-header"><span class="card-title">Professional contacts</span></div>${f('GP',r.gp_name)}${r.gp_phone?f('GP phone',r.gp_phone):''}${f('District nurse',r.district_nurse)}${f('Social worker',r.social_worker)}${f('Key worker',r.key_worker)}`;
+  document.getElementById('res-cn-content').innerHTML=`<div class="card"><div class="card-header"><span class="card-title">Physical care needs</span></div>${f('Mobility',r.mobility)}${f('Personal care',r.personal_care)}${f('Continence',r.continence)}${f('Eating &amp; drinking',r.eating_drinking)}${f('Diet texture',r.diet_texture)}${f('Fluid consistency',r.fluid_consistency)}</div><div class="card"><div class="card-header"><span class="card-title">Communication &amp; other</span></div>${f('Communication',r.communication)}${f('Sleep needs',r.sleep_needs)}${r.care_needs_notes?`<div class="divider"></div><p style="font-size:13px;line-height:1.6">${r.care_needs_notes}</p>`:''}</div>`;
+  document.getElementById('res-pref-content').innerHTML=`<div class="card"><div class="card-header"><span class="card-title">Personal information</span></div>${f('Preferred name',r.preferred_name)}${f('Language',r.language)}${f('Religion / faith',r.religion)}${f('Ethnicity',r.ethnicity)}${f('Marital status',r.marital_status)}</div><div class="card"><div class="card-header"><span class="card-title">Interests &amp; life history</span></div>${r.interests?`<p style="font-size:13px;line-height:1.6;margin-bottom:12px"><strong style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Interests</strong>${r.interests}</p>`:''}${r.life_history?`<p style="font-size:13px;line-height:1.6;margin-bottom:12px"><strong style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Life history</strong>${r.life_history}</p>`:''}${r.likes_dislikes?`<p style="font-size:13px;line-height:1.6"><strong style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Likes &amp; dislikes</strong>${r.likes_dislikes}</p>`:''}${!r.interests&&!r.life_history&&!r.likes_dislikes?'<p style="font-size:13px;color:#888">No preferences recorded yet.</p>':''}</div>`;
+  const rBar=(score,max,level)=>{const pct=score?Math.min(100,Math.round((score/max)*100)):0;const fc=level==='High'?'fill-red':level==='Medium'?'fill-amber':'fill-green';return `<div class="progress-bar"><div class="progress-fill ${fc}" style="width:${pct}%"></div></div>`;};
+  const rPill=l=>l?`<span class="risk-pill ${l==='High'?'risk-high':l==='Medium'?'risk-med':'risk-low'}">${l}</span>`:'';
+  document.getElementById('res-risk-content').innerHTML=`<div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">Risk assessments</span></div><div style="display:flex;flex-direction:column;gap:14px"><div><div class="row" style="justify-content:space-between"><span style="font-size:13px">Falls risk (Waterlow)</span>${rPill(r.falls_risk)}</div>${r.falls_score?`<div style="font-size:12px;color:#888;margin-top:2px">Score: ${r.falls_score}</div>`:''} ${rBar(r.falls_score,30,r.falls_risk)}</div><div><div class="row" style="justify-content:space-between"><span style="font-size:13px">Pressure ulcer (Braden)</span>${rPill(r.pressure_risk)}</div>${r.braden_score?`<div style="font-size:12px;color:#888;margin-top:2px">Score: ${r.braden_score}</div>`:''} ${rBar(r.braden_score,23,r.pressure_risk)}</div><div><div class="row" style="justify-content:space-between"><span style="font-size:13px">Malnutrition (MUST)</span>${r.must_score?`<span class="risk-pill ${Number(r.must_score)>=2?'risk-high':Number(r.must_score)===1?'risk-med':'risk-low'}">Score: ${r.must_score}</span>`:''}</div>${rBar(r.must_score,6,Number(r.must_score)>=2?'High':Number(r.must_score)===1?'Medium':'Low')}</div><div><div class="row" style="justify-content:space-between"><span style="font-size:13px">Choking / aspiration</span>${rPill(r.choking_risk)}</div></div></div></div><div class="card"><div class="card-header"><span class="card-title">Other risks</span></div>${r.other_risks?`<p style="font-size:13px;line-height:1.6">${r.other_risks}</p>`:'<p style="font-size:13px;color:#888">No other risks recorded.</p>'}</div></div>`;
+  document.getElementById('res-med-allergies').innerHTML=r.allergies?`<div class="row" style="justify-content:space-between;margin-top:10px"><span style="font-size:13px;color:#666">Known allergies</span><span class="badge badge-danger">${r.allergies}</span></div>`:'';
+  const cpDomains=[{key:'cp_personal_care',label:'Personal care'},{key:'cp_mobility',label:'Mobility &amp; moving'},{key:'cp_nutrition',label:'Nutrition &amp; hydration'},{key:'cp_communication',label:'Communication'},{key:'cp_continence',label:'Continence'},{key:'cp_emotional',label:'Emotional wellbeing'},{key:'cp_social',label:'Social &amp; recreational'},{key:'cp_end_of_life',label:'End of life wishes'}];
+  document.getElementById('res-cp-content').innerHTML=`<div class="notice">Structured care plan — click Edit on any section to update.</div><div class="grid-2">${cpDomains.map(d=>`<div class="card"><div class="card-header"><span class="card-title">${d.label}</span><button class="btn btn-sm" onclick="editCP('${d.key}','${d.label.replace(/&amp;/g,'and')}')">Edit</button></div>${r[d.key]?`<p style="font-size:13px;line-height:1.7">${r[d.key]}</p>`:'<p style="font-size:13px;color:#888">Not yet completed.</p>'}</div>`).join('')}</div>`;
+  document.getElementById('res-linked-staff').innerHTML=`<div class="card-header"><span class="card-title">Linked staff</span></div>${r.key_worker?f('Key worker',r.key_worker):''}<div class="notice-info" style="margin-top:8px">Full staff linking coming once the staff module is complete.</div>`;
+}
+
+function openAddResidentModal(){
+  isEditingResident=false;currentResident=null;
+  document.getElementById('res-modal-title').textContent='Add new resident';
+  RES_FIELDS.forEach(f=>{const el=document.getElementById('rf-'+f);if(el) el.value='';});
+  document.getElementById('res-modal').style.display='flex';
+}
+function openEditResidentModal(){
+  if(!currentResident) return;
+  isEditingResident=true;
+  document.getElementById('res-modal-title').textContent='Edit resident';
+  RES_FIELDS.forEach(f=>{const el=document.getElementById('rf-'+f);if(el) el.value=currentResident[f]||'';});
+  document.getElementById('res-modal').style.display='flex';
+}
+function closeResModal(){document.getElementById('res-modal').style.display='none';}
+
+async function saveResident(){
+  const data={};
+  RES_FIELDS.forEach(f=>{const el=document.getElementById('rf-'+f);if(el) data[f]=el.value||null;});
+  if(!data.full_name){showToast('Please enter a full name',true);return;}
+  let error;
+  if(isEditingResident&&currentResident){
+    const res=await db.from('residents').update(data).eq('id',currentResident.id);
+    error=res.error;
+    if(!error){showToast('Resident updated');closeResModal();const {data:upd}=await db.from('residents').select('*').eq('id',currentResident.id).single();if(upd){currentResident=upd;allResidents=allResidents.map(r=>r.id===upd.id?upd:r);renderResidentProfile(upd);}}
+  } else {
+    const res=await db.from('residents').insert([data]).select().single();
+    error=res.error;
+    if(!error){showToast('Resident added');closeResModal();loadResidents();}
+  }
+  if(error) showToast('Error: '+error.message,true);
+}
+
+async function editCP(key,label){
+  const val=prompt(`Care plan — ${label}\n\nDescribe needs and how staff should support:`,currentResident?currentResident[key]||'':'');
+  if(val===null) return;
+  const {data,error}=await db.from('residents').update({[key]:val}).eq('id',currentResident.id).select().single();
+  if(error){showToast('Error saving',true);return;}
+  currentResident={...currentResident,[key]:val};
+  allResidents=allResidents.map(r=>r.id===currentResident.id?currentResident:r);
+  renderResidentProfile(currentResident);showToast('Care plan saved');
+}
+
+// =================== STAFF ===================
+async function loadStaff(){
+  document.getElementById('staff-loading').style.display='block';
+  document.getElementById('staff-list').style.display='none';
+  document.getElementById('staff-empty').style.display='none';
+  const {data,error}=await db.from('staff').select('*').order('full_name');
+  document.getElementById('staff-loading').style.display='none';
+  if(error){showToast('Error loading staff: '+error.message,true);return;}
+  allStaff=data||[];
+  if(!allStaff.length){document.getElementById('staff-empty').style.display='block';return;}
+  const list=document.getElementById('staff-list');
+  list.style.display='flex';
+  const pct=s=>calcCompliancePct(s);
+  list.innerHTML=allStaff.map(s=>{
+    const p=pct(s);
+    const compBadge=p===100?'badge-success':p>=75?'badge-warning':'badge-danger';
+    const dbsBadge=s.dbs_status==='Clear'?'badge-success':s.dbs_status==='Pending'?'badge-warning':'badge-danger';
+    return `<div class="list-card" onclick="viewStaff('${s.id}')">
+      <div class="avatar av-purple" style="width:44px;height:44px;font-size:14px">${getInitials(s.full_name)}</div>
+      <div class="list-info">
+        <div class="list-name">${s.full_name||'—'}</div>
+        <div class="list-meta">${s.job_title||''}${s.employee_id?` · ${s.employee_id}`:''}${s.contract_type?` · ${s.contract_type}`:''}</div>
+      </div>
+      <div class="row" style="gap:6px">
+        ${s.employment_status?`<span class="badge ${s.employment_status==='Active'?'badge-success':s.employment_status==='Suspended'?'badge-danger':'badge-neutral'}">${s.employment_status}</span>`:''}
+        <span class="badge ${compBadge}">Training ${p}%</span>
+        ${s.dbs_status?`<span class="badge ${dbsBadge}">DBS ${s.dbs_status}</span>`:''}
+        <span style="color:#ccc;font-size:16px">›</span>
+      </div>
+    </div>`;}).join('');
+}
+
+function viewStaff(id){
+  const s=allStaff.find(x=>String(x.id)===String(id));
+  if(!s) return;
+  currentStaff=s;
+  renderStaffProfile(s);
+  document.querySelectorAll('[id^="tab-staff"]').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-staff-overview').classList.add('active');
+  showScreen('staff-profile');
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+}
+
+function renderStaffProfile(s){
+  const pct=calcCompliancePct(s);
+  const fillClass=pct===100?'fill-green':pct>=75?'fill-amber':'fill-red';
+
+  // Header
+  document.getElementById('staff-profile-header').innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div class="row" style="gap:14px">
+        <div class="avatar av-purple" style="width:56px;height:56px;font-size:17px">${getInitials(s.full_name)}</div>
+        <div><h1 style="font-size:18px;font-weight:500;margin-bottom:3px">${s.full_name||'—'}</h1>
+        <p style="font-size:13px;color:#666">${s.job_title||''}${s.employee_id?` · ${s.employee_id}`:''}${s.contract_type?` · ${s.contract_type}`:''}</p></div>
+      </div>
+      <div class="row">${getStatusBadge(s.employment_status)}<button class="btn" onclick="openEditStaffModal()">Edit record</button></div>
+    </div>`;
+
+  // Alerts
+  let alerts='';
+  TRAINING_MODULES.forEach(m=>{
+    const exp=s[`exp_${m.key}`];
+    if(!exp) return;
+    const days=daysUntil(exp);
+    if(days!==null&&days<0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">${m.label} training has expired</div></div>`;
+    else if(days!==null&&days<=30) alerts+=`<div class="alert-banner alert-warning"><div class="alert-dot-warning"></div><div class="alert-text-warning">${m.label} training expires in ${days} days</div></div>`;
+  });
+  if(s.supervision_next){const days=daysUntil(s.supervision_next);if(days!==null&&days<0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">Supervision overdue — was due ${formatDate(s.supervision_next)}</div></div>`;else if(days!==null&&days<=7) alerts+=`<div class="alert-banner alert-warning"><div class="alert-dot-warning"></div><div class="alert-text-warning">Supervision due in ${days} days</div></div>`;}
+  if(s.appraisal_next){const days=daysUntil(s.appraisal_next);if(days!==null&&days<0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">Appraisal overdue — was due ${formatDate(s.appraisal_next)}</div></div>`;}
+  document.getElementById('staff-alerts-bar').innerHTML=alerts;
+
+  // Overview
+  document.getElementById('so-details').innerHTML=`
+    <div class="profile-hero"><div class="avatar av-purple" style="width:52px;height:52px;font-size:15px">${getInitials(s.full_name)}</div>
+    <div class="profile-hero-info"><h2>${s.full_name||'—'}</h2><p>${s.job_title||''}</p><div class="row">${getStatusBadge(s.employment_status)}</div></div></div>
+    ${f('Employee ID',s.employee_id)}${f('Start date',formatDate(s.start_date))}${f('Contract type',s.contract_type)}${f('Line manager',s.line_manager)}${f('Phone',s.phone)}${f('Email',s.email)}`;
+
+  document.getElementById('so-summary').innerHTML=`
+    <div class="card-header"><span class="card-title">Compliance summary</span></div>
+    <div style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px"><span style="font-size:13px">Training compliance</span><span style="font-size:13px;font-weight:500">${pct}%</span></div>
+      <div class="progress-bar" style="height:10px"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+    </div>
+    ${f('DBS status',s.dbs_status?`<span class="badge ${s.dbs_status==='Clear'?'badge-success':s.dbs_status==='Pending'?'badge-warning':'badge-danger'}">${s.dbs_status}</span>`:'')}
+    ${f('Right to work',s.right_to_work?`<span class="badge ${s.right_to_work==='Verified'?'badge-success':'badge-warning'}">${s.right_to_work}</span>`:'')}
+    ${f('Last supervision',formatDate(s.supervision_last))}
+    ${f('Next supervision',s.supervision_next?`<span class="badge ${daysUntil(s.supervision_next)<0?'badge-danger':daysUntil(s.supervision_next)<=7?'badge-warning':'badge-success'}">${formatDate(s.supervision_next)}</span>`:'')}
+    ${f('Last appraisal',formatDate(s.appraisal_last))}
+    ${f('Performance rating',s.performance_rating)}`;
+
+  // Compliance tab
+  document.getElementById('sc-dbs').innerHTML=`<div class="card-header"><span class="card-title">DBS check</span></div>
+    ${f('DBS number',s.dbs_number)}${f('DBS date',formatDate(s.dbs_date))}${f('DBS status',s.dbs_status?`<span class="badge ${s.dbs_status==='Clear'?'badge-success':s.dbs_status==='Pending'?'badge-warning':'badge-danger'}">${s.dbs_status}</span>`:'')}`;
+  document.getElementById('sc-recruitment').innerHTML=`<div class="card-header"><span class="card-title">Pre-employment checks</span></div>
+    ${f('Right to work',s.right_to_work?`<span class="badge ${s.right_to_work==='Verified'?'badge-success':'badge-warning'}">${s.right_to_work}</span>`:'')}
+    ${f('ID verified',s.id_verified?`<span class="badge ${s.id_verified==='Yes'?'badge-success':'badge-danger'}">${s.id_verified}</span>`:'')}
+    ${f('Reference 1',s.reference_1)}${f('Reference 2',s.reference_2)}
+    ${f('Employment gaps explained',s.employment_gaps?`<span class="badge ${s.employment_gaps==='Yes'?'badge-success':'badge-warning'}">${s.employment_gaps}</span>`:'')}`;
+
+  // Training tab
+  document.getElementById('st-content').innerHTML=`
+    <div class="grid-2" style="margin-bottom:12px">
+      <div class="stat-card"><div class="stat-label">Training compliance</div><div class="stat-value" style="color:${pct===100?'#3B6D11':pct>=75?'#854F0B':'#A32D2D'}">${pct}%</div><div class="stat-sub">${TRAINING_MODULES.filter(m=>s[`exp_${m.key}`]&&daysUntil(s[`exp_${m.key}`])>=0).length} of ${TRAINING_MODULES.length} modules current</div></div>
+      <div class="stat-card"><div class="stat-label">Expired modules</div><div class="stat-value" style="color:#A32D2D">${TRAINING_MODULES.filter(m=>s[`exp_${m.key}`]&&daysUntil(s[`exp_${m.key}`])<0).length}</div><div class="stat-sub">Require immediate renewal</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Mandatory training</span></div>
+      ${TRAINING_MODULES.map(m=>{
+        const completed=s[`train_${m.key}`];
+        const expiry=s[`exp_${m.key}`];
+        const {badge}=trainingStatus(expiry);
+        return `<div class="training-row"><span class="training-name">${m.label}</span>${badge}<span class="training-date">${expiry?`Exp. ${formatDate(expiry)}`:completed?`Done ${formatDate(completed)}`:'Not recorded'}</span></div>`;
+      }).join('')}
+    </div>`;
+
+  // Supervision tab
+  document.getElementById('ss-supervision').innerHTML=`<div class="card-header"><span class="card-title">Supervision</span></div>
+    ${f('Last supervision',formatDate(s.supervision_last))}
+    ${f('Next due',s.supervision_next?`<span class="badge ${daysUntil(s.supervision_next)<0?'badge-danger':daysUntil(s.supervision_next)<=7?'badge-warning':'badge-success'}">${formatDate(s.supervision_next)}</span>`:'')}`;
+  document.getElementById('ss-appraisal').innerHTML=`<div class="card-header"><span class="card-title">Appraisal</span></div>
+    ${f('Last appraisal',formatDate(s.appraisal_last))}
+    ${f('Next due',s.appraisal_next?`<span class="badge ${daysUntil(s.appraisal_next)<0?'badge-danger':'badge-info'}">${formatDate(s.appraisal_next)}</span>`:'')}
+    ${f('Performance rating',s.performance_rating)}`;
+
+  // Notes tab
+  document.getElementById('sn-notes').innerHTML=`<div class="card-header"><span class="card-title">Manager notes</span><button class="btn btn-sm" onclick="editStaffNotes()">Edit</button></div>${s.notes?`<p style="font-size:13px;line-height:1.7">${s.notes}</p>`:'<p style="font-size:13px;color:#888">No notes recorded yet.</p>'}`;
+}
+
+function openAddStaffModal(){
+  isEditingStaff=false;currentStaff=null;
+  document.getElementById('staff-modal-title').textContent='Add staff member';
+  STAFF_FIELDS.forEach(f=>{const el=document.getElementById('sf-'+f);if(el) el.value='';});
+  document.getElementById('staff-modal').style.display='flex';
+}
+function openEditStaffModal(){
+  if(!currentStaff) return;
+  isEditingStaff=true;
+  document.getElementById('staff-modal-title').textContent='Edit staff member';
+  STAFF_FIELDS.forEach(f=>{const el=document.getElementById('sf-'+f);if(el) el.value=currentStaff[f]||'';});
+  document.getElementById('staff-modal').style.display='flex';
+}
+function closeStaffModal(){document.getElementById('staff-modal').style.display='none';}
+
+async function saveStaff(){
+  const data={};
+  STAFF_FIELDS.forEach(f=>{const el=document.getElementById('sf-'+f);if(el) data[f]=el.value||null;});
+  if(!data.full_name){showToast('Please enter a full name',true);return;}
+  let error;
+  if(isEditingStaff&&currentStaff){
+    const res=await db.from('staff').update(data).eq('id',currentStaff.id);
+    error=res.error;
+    if(!error){showToast('Staff member updated');closeStaffModal();const {data:upd}=await db.from('staff').select('*').eq('id',currentStaff.id).single();if(upd){currentStaff=upd;allStaff=allStaff.map(s=>s.id===upd.id?upd:s);renderStaffProfile(upd);}}
+  } else {
+    const res=await db.from('staff').insert([data]).select().single();
+    error=res.error;
+    if(!error){showToast('Staff member added');closeStaffModal();loadStaff();}
+  }
+  if(error) showToast('Error: '+error.message,true);
+}
+
+async function editStaffNotes(){
+  const val=prompt('Manager notes:',currentStaff?currentStaff.notes||'':'');
+  if(val===null) return;
+  const {data,error}=await db.from('staff').update({notes:val}).eq('id',currentStaff.id).select().single();
+  if(error){showToast('Error saving',true);return;}
+  currentStaff={...currentStaff,notes:val};
+  allStaff=allStaff.map(s=>s.id===currentStaff.id?currentStaff:s);
+  renderStaffProfile(currentStaff);showToast('Notes saved');
+}
+
+function showToast(msg,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(isError?' error':'');
+  setTimeout(()=>t.className='toast',3000);
+}
+
+loadResidents();
+</script>
+</body>
+</html>
 
