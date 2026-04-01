@@ -208,6 +208,7 @@ tr:last-child td{border-bottom:none}
         <button class="tab-btn" onclick="showTab(event,'res-visits')">Visits</button>
         <button class="tab-btn" onclick="showTab(event,'res-documents')">Documents</button>
         <button class="tab-btn" onclick="showTab(event,'res-linked')">Linked records</button>
+      <button class="tab-btn" onclick="showTab(event,'res-notes')">Daily notes</button>
       </div>
       <div class="tab-content active" id="tab-res-overview"><div id="res-ov-alerts"></div><div class="grid-2" style="margin-bottom:16px"><div class="card" id="res-ov-details"></div><div class="card" id="res-ov-legal"></div></div><div class="card"><div class="card-header"><span class="card-title">Recent events</span></div><div class="notice-info">Incidents and events will appear here once the incidents module is built.</div></div></div>
       <div class="tab-content" id="tab-res-contacts"><div class="grid-2"><div class="card" id="res-ct-nok"></div><div class="card" id="res-ct-prof"></div></div></div>
@@ -218,7 +219,10 @@ tr:last-child td{border-bottom:none}
       <div class="tab-content" id="tab-res-care-plan"><div id="res-cp-content"></div></div>
       <div class="tab-content" id="tab-res-visits"><div class="card"><div class="card-header"><span class="card-title">Visit log</span></div><div class="notice-info">Visit logging coming soon.</div></div></div>
       <div class="tab-content" id="tab-res-documents"><div class="card"><div class="card-header"><span class="card-title">Documents</span></div><div class="notice-info">Document upload coming soon.</div></div></div>
-      <div class="tab-content" id="tab-res-linked"><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">Linked incidents</span></div><div class="notice-info">Incidents module coming soon.</div></div><div class="card" id="res-linked-staff"></div></div></div>
+      <div class="tab-content" id="tab-res-notes">
+      <div id="res-notes-content"></div>
+    </div>
+    <div class="tab-content" id="tab-res-linked"><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">Linked incidents</span></div><div class="notice-info">Incidents module coming soon.</div></div><div class="card" id="res-linked-staff"></div></div></div>
     </div>
 
     <!-- STAFF LIST -->
@@ -557,6 +561,37 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- DAILY NOTE MODAL -->
+<div class="modal-overlay" id="note-modal" style="display:none" onclick="if(event.target.id==='note-modal')closeNoteModal()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><span class="modal-title" id="note-modal-title">Add daily note</span><button class="modal-close" onclick="closeNoteModal()">x</button></div>
+    <div class="form-group"><label class="form-label">Resident</label><input type="text" class="form-input" id="nf-resident_name" readonly style="background:#f5f5f3"></div>
+    <div class="form-group"><label class="form-label">Category</label>
+      <select class="form-select" id="nf-category">
+        <option value="">Select...</option>
+        <option>Personal care</option>
+        <option>Medication</option>
+        <option>Mood &amp; behaviour</option>
+        <option>Food &amp; drink</option>
+        <option>Sleep</option>
+        <option>Activity &amp; engagement</option>
+        <option>Health concern</option>
+        <option>Visit</option>
+        <option>General observation</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" style="min-height:120px" id="nf-note" placeholder="Write your observation here — be factual and specific"></textarea></div>
+    <div class="form-group"><label class="form-label">Follow-up required?</label>
+      <select class="form-select" id="nf-follow_up_required">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+      </select>
+    </div>
+    <div class="form-group" id="nf-followup-details-group" style="display:none"><label class="form-label">Follow-up details</label><textarea class="form-textarea" id="nf-follow_up_details" placeholder="What follow-up is needed and by whom?"></textarea></div>
+    <div class="action-bar"><button class="btn" onclick="closeNoteModal()">Cancel</button><button class="btn btn-primary" onclick="saveNote()">Save note</button></div>
+  </div>
+</div>
+
 <!-- INCIDENT MODAL -->
 <div class="modal-overlay" id="incident-modal" style="display:none" onclick="if(event.target.id==='incident-modal')closeIncidentModal()">
   <div class="modal" style="max-width:760px">
@@ -788,6 +823,7 @@ function showTab(e,name){
     }
   });
   document.getElementById(`tab-${name}`).classList.add('active');
+  if(name==='res-notes'&&currentResident) loadResidentNotes(currentResident.id, currentResident.full_name);
 }
 
 function showModalTab(e,id){
@@ -1099,6 +1135,91 @@ async function saveUser(){
     closeUserModal();
     loadUsers();
   }
+}
+
+// =================== DAILY NOTES ===================
+let currentNoteResidentId=null;
+let currentNoteResidentName=null;
+
+async function loadResidentNotes(residentId, residentName){
+  currentNoteResidentId=residentId;
+  currentNoteResidentName=residentName;
+  const container=document.getElementById('res-notes-content');
+  container.innerHTML='<div class="loading">Loading notes...</div>';
+
+  const canSeeAll=['admin','manager','senior'];
+  let query=db.from('daily_notes').select('*').eq('resident_id',residentId).order('created_at',{ascending:false});
+
+  // Care workers can only see notes if they are the key worker
+  if(currentUser&&!canSeeAll.includes(currentUser.role)){
+    // check if this resident's key worker matches current user name
+    const res=allResidents.find(r=>String(r.id)===String(residentId));
+    if(!res||res.key_worker!==currentUser.full_name){
+      container.innerHTML='<div class="card"><p style="font-size:13px;color:#888;padding:8px 0">You do not have permission to view notes for this resident.</p></div>';
+      return;
+    }
+  }
+
+  const {data,error}=await query;
+  if(error){container.innerHTML='<div class="card"><p style="font-size:13px;color:#A32D2D">Error loading notes</p></div>';return;}
+
+  const canAdd=currentUser&&(canSeeAll.includes(currentUser.role)||true);
+  container.innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Daily notes</span>
+        <button class="btn btn-primary btn-sm" onclick="openNoteModal()">+ Add note</button>
+      </div>
+      ${!data||data.length===0?'<p style="font-size:13px;color:#888">No notes recorded yet.</p>':
+      data.map(n=>`
+        <div style="padding:12px 0;border-bottom:0.5px solid rgba(0,0,0,0.07)">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px">
+            <div class="row" style="gap:6px">
+              <span class="badge badge-info">${n.category||'General'}</span>
+              ${n.follow_up_required==='Yes'?'<span class="badge badge-warning">Follow-up required</span>':''}
+            </div>
+            <span style="font-size:12px;color:#888">${n.staff_name||''} · ${n.created_at?new Date(n.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span>
+          </div>
+          <p style="font-size:13px;line-height:1.7">${n.note||''}</p>
+          ${n.follow_up_required==='Yes'&&n.follow_up_details?`<div style="background:#FAEEDA;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:12px;color:#854F0B"><strong>Follow-up:</strong> ${n.follow_up_details}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+}
+
+function openNoteModal(){
+  document.getElementById('nf-resident_name').value=currentNoteResidentName||'';
+  document.getElementById('nf-category').value='';
+  document.getElementById('nf-note').value='';
+  document.getElementById('nf-follow_up_required').value='No';
+  document.getElementById('nf-follow_up_details').value='';
+  document.getElementById('nf-followup-details-group').style.display='none';
+  document.getElementById('nf-follow_up_required').onchange=function(){
+    document.getElementById('nf-followup-details-group').style.display=this.value==='Yes'?'block':'none';
+  };
+  document.getElementById('note-modal').style.display='flex';
+}
+
+function closeNoteModal(){document.getElementById('note-modal').style.display='none';}
+
+async function saveNote(){
+  const note=document.getElementById('nf-note').value.trim();
+  const category=document.getElementById('nf-category').value;
+  if(!note){showToast('Please write a note',true);return;}
+  if(!category){showToast('Please select a category',true);return;}
+  const data={
+    resident_id:currentNoteResidentId,
+    resident_name:currentNoteResidentName,
+    staff_name:currentUser?currentUser.full_name||currentUser.email:'',
+    category,
+    note,
+    follow_up_required:document.getElementById('nf-follow_up_required').value,
+    follow_up_details:document.getElementById('nf-follow_up_details').value||null
+  };
+  const {error}=await db.from('daily_notes').insert([data]);
+  if(error){showToast('Error saving note: '+error.message,true);return;}
+  showToast('Note saved');
+  closeNoteModal();
+  loadResidentNotes(currentNoteResidentId,currentNoteResidentName);
 }
 
 // =================== COMPLIANCE ===================
