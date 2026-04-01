@@ -282,8 +282,58 @@ tr:last-child td{border-bottom:none}
 
     <!-- COMPLIANCE -->
     <div class="screen" id="screen-compliance">
-      <div class="page-header"><h1>CQC compliance</h1><p>Coming next</p></div>
-      <div class="empty-state"><h3>Compliance module coming soon</h3></div>
+      <div class="page-header">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><h1>CQC compliance</h1><p>Live compliance overview — updated from your real data</p></div>
+          <button class="btn btn-primary" onclick="loadCompliance()">Refresh</button>
+        </div>
+      </div>
+      <div id="compliance-loading" class="loading">Loading compliance data...</div>
+      <div id="compliance-content" style="display:none">
+
+        <!-- STAT CARDS -->
+        <div class="grid-4" style="margin-bottom:20px" id="cqc-stats"></div>
+
+        <!-- ALERTS -->
+        <div id="cqc-alerts" style="margin-bottom:20px"></div>
+
+        <!-- FIVE KEY QUESTIONS + INCIDENTS -->
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Five key questions — self assessment</span><button class="btn btn-sm" onclick="editCQCRatings()">Edit ratings</button></div>
+            <div id="cqc-five-questions"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Incidents this month</span></div>
+            <div id="cqc-incidents"></div>
+          </div>
+        </div>
+
+        <!-- STAFF COMPLIANCE + AUDIT SCHEDULE -->
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Staff training compliance</span></div>
+            <div id="cqc-training"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Governance audit schedule</span><button class="btn btn-sm" onclick="openAuditModal()">+ Add audit</button></div>
+            <div id="cqc-audits"></div>
+          </div>
+        </div>
+
+        <!-- DOLS + REG 18 -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">DOLS — expiry tracker</span></div>
+            <div id="cqc-dols"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Regulation 18 notifications</span><button class="btn btn-sm" onclick="openReg18Modal()">+ Add notification</button></div>
+            <div id="cqc-reg18"></div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- USER MANAGEMENT (admin only) -->
@@ -466,6 +516,44 @@ tr:last-child td{border-bottom:none}
     </div>
     <div class="form-group"><label class="form-label">Temporary password</label><input type="text" class="form-input" id="uf-password" placeholder="They will be asked to change this"></div>
     <div class="action-bar"><button class="btn" onclick="closeUserModal()">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Create account</button></div>
+  </div>
+</div>
+
+<!-- CQC RATINGS MODAL -->
+<div class="modal-overlay" id="cqc-ratings-modal" style="display:none" onclick="if(event.target.id==='cqc-ratings-modal')document.getElementById('cqc-ratings-modal').style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><span class="modal-title">Edit CQC ratings</span><button class="modal-close" onclick="document.getElementById('cqc-ratings-modal').style.display='none'">x</button></div>
+    <div class="notice">Rate each key question based on your most recent self-assessment.</div>
+    <div id="cqc-ratings-form"></div>
+    <div class="action-bar"><button class="btn" onclick="document.getElementById('cqc-ratings-modal').style.display='none'">Cancel</button><button class="btn btn-primary" onclick="saveCQCRatings()">Save ratings</button></div>
+  </div>
+</div>
+
+<!-- AUDIT MODAL -->
+<div class="modal-overlay" id="audit-modal" style="display:none" onclick="if(event.target.id==='audit-modal')document.getElementById('audit-modal').style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><span class="modal-title">Add audit record</span><button class="modal-close" onclick="document.getElementById('audit-modal').style.display='none'">x</button></div>
+    <div class="form-group"><label class="form-label">Audit type</label><input type="text" class="form-input" id="audit-type" placeholder="e.g. Medication audit"></div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Last completed</label><input type="date" class="form-input" id="audit-last"></div>
+      <div class="form-group"><label class="form-label">Next due</label><input type="date" class="form-input" id="audit-next"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="audit-status"><option value="">Select...</option><option>Current</option><option>Overdue</option><option>Due soon</option></select></div>
+    <div class="action-bar"><button class="btn" onclick="document.getElementById('audit-modal').style.display='none'">Cancel</button><button class="btn btn-primary" onclick="saveAudit()">Save audit</button></div>
+  </div>
+</div>
+
+<!-- REG 18 MODAL -->
+<div class="modal-overlay" id="reg18-modal" style="display:none" onclick="if(event.target.id==='reg18-modal')document.getElementById('reg18-modal').style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><span class="modal-title">Add Regulation 18 notification</span><button class="modal-close" onclick="document.getElementById('reg18-modal').style.display='none'">x</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Date submitted</label><input type="date" class="form-input" id="reg18-date"></div>
+      <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="reg18-category"><option value="">Select...</option><option>Fall with injury</option><option>Unexpected death</option><option>Safeguarding allegation</option><option>Medication error</option><option>Missing person</option><option>Fire incident</option><option>Other</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Resident involved</label><input type="text" class="form-input" id="reg18-resident"></div>
+    <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="reg18-status"><option value="Submitted">Submitted</option><option value="Pending">Pending</option></select></div>
+    <div class="action-bar"><button class="btn" onclick="document.getElementById('reg18-modal').style.display='none'">Cancel</button><button class="btn btn-primary" onclick="saveReg18()">Save notification</button></div>
   </div>
 </div>
 
@@ -683,6 +771,7 @@ function showScreen(key){
   if(key==='residents') loadResidents();
   if(key==='staff') loadStaff();
   if(key==='incidents') loadIncidents();
+  if(key==='compliance') loadCompliance();
   if(key==='users') loadUsers();
   window.scrollTo(0,0);
 }
@@ -1010,6 +1099,206 @@ async function saveUser(){
     closeUserModal();
     loadUsers();
   }
+}
+
+// =================== COMPLIANCE ===================
+const CQC_DOMAINS=['Safe','Effective','Caring','Responsive','Well-led'];
+const CQC_RATINGS_KEY='cqc_ratings';
+const CQC_AUDITS_KEY='cqc_audits';
+const CQC_REG18_KEY='cqc_reg18';
+
+function getCQCData(key){try{const d=localStorage.getItem(key);return d?JSON.parse(d):null;}catch(e){return null;}}
+function setCQCData(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}
+
+async function loadCompliance(){
+  document.getElementById('compliance-loading').style.display='block';
+  document.getElementById('compliance-content').style.display='none';
+
+  // Load all data in parallel
+  const [resResult, staffResult, incResult] = await Promise.all([
+    db.from('residents').select('*'),
+    db.from('staff').select('*'),
+    db.from('incidents').select('*')
+  ]);
+
+  const residents = resResult.data||[];
+  const staff = staffResult.data||[];
+  const incidents = incResult.data||[];
+
+  document.getElementById('compliance-loading').style.display='none';
+  document.getElementById('compliance-content').style.display='block';
+
+  // STATS
+  const now = new Date();
+  const thisMonth = incidents.filter(i=>{
+    if(!i.date_of_incident) return false;
+    const d=new Date(i.date_of_incident);
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+  const openIncidents = incidents.filter(i=>i.status==='Draft'||i.status==='Submitted'||i.status==='Under review');
+  const staffCompliant = staff.filter(s=>calcCompliancePct(s)===100).length;
+
+  document.getElementById('cqc-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total residents</div><div class="stat-value">${residents.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Total staff</div><div class="stat-value">${staff.length}</div><div class="stat-sub">${staffCompliant} fully compliant</div></div>
+    <div class="stat-card"><div class="stat-label">Open incidents</div><div class="stat-value" style="color:${openIncidents.length>0?'#A32D2D':'#3B6D11'}">${openIncidents.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Incidents this month</div><div class="stat-value">${thisMonth.length}</div></div>`;
+
+  // ALERTS
+  let alerts='';
+  // DOLS expiring
+  residents.forEach(r=>{
+    if(r.dols_expiry){
+      const days=daysUntil(r.dols_expiry);
+      if(days!==null&&days<=30&&days>=0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS for ${r.full_name} expires in ${days} days — ${formatDate(r.dols_expiry)}</div></div>`;
+      if(days!==null&&days<0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS for ${r.full_name} has expired — urgent renewal required</div></div>`;
+    }
+  });
+  // Staff training expired
+  let expiredCount=0;
+  staff.forEach(s=>{
+    TRAINING_MODULES.forEach(m=>{
+      const exp=s[`exp_${m.key}`];
+      if(exp&&daysUntil(exp)<0) expiredCount++;
+    });
+  });
+  if(expiredCount>0) alerts+=`<div class="alert-banner alert-danger"><div class="alert-dot-danger"></div><div class="alert-text-danger">${expiredCount} staff training module${expiredCount>1?'s':''} have expired across your team</div></div>`;
+  // Supervisions overdue
+  const supOverdue=staff.filter(s=>s.supervision_next&&daysUntil(s.supervision_next)<0).length;
+  if(supOverdue>0) alerts+=`<div class="alert-banner alert-warning"><div class="alert-dot-warning"></div><div class="alert-text-warning">${supOverdue} staff member${supOverdue>1?'s have':' has'} overdue supervision</div></div>`;
+  // Open incidents
+  if(openIncidents.length>0) alerts+=`<div class="alert-banner alert-warning"><div class="alert-dot-warning"></div><div class="alert-text-warning">${openIncidents.length} incident${openIncidents.length>1?'s':''} require${openIncidents.length===1?'s':''} review or closure</div></div>`;
+  document.getElementById('cqc-alerts').innerHTML=alerts||'<div style="background:#EAF3DE;border-radius:8px;padding:12px 16px;font-size:13px;color:#3B6D11;font-weight:500;margin-bottom:10px">No urgent compliance alerts — looking good!</div>';
+
+  // FIVE KEY QUESTIONS
+  const ratings=getCQCData(CQC_RATINGS_KEY)||{};
+  const ratingLabels={'Outstanding':'badge-success','Good':'badge-success','Requires improvement':'badge-warning','Inadequate':'badge-danger'};
+  document.getElementById('cqc-five-questions').innerHTML=CQC_DOMAINS.map(d=>{
+    const r=ratings[d]||'';
+    const score=ratings[d+'_score']||0;
+    const pct=Math.min(100,Math.round((score/100)*100));
+    const fc=r==='Outstanding'||r==='Good'?'fill-green':r==='Requires improvement'?'fill-amber':'fill-red';
+    return `<div style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:500">${d}</span>
+        ${r?`<span class="badge ${ratingLabels[r]||'badge-neutral'}">${r}</span>`:'<span class="badge badge-neutral">Not rated</span>'}
+      </div>
+      ${score?`<div class="progress-bar"><div class="progress-fill ${fc}" style="width:${pct}%"></div></div>`:''}
+    </div>`;}).join('');
+
+  // INCIDENTS THIS MONTH
+  const incTypeCount={};
+  thisMonth.forEach(i=>{if(i.incident_type) incTypeCount[i.incident_type]=(incTypeCount[i.incident_type]||0)+1;});
+  document.getElementById('cqc-incidents').innerHTML=thisMonth.length===0?
+    '<p style="font-size:13px;color:#888">No incidents recorded this month.</p>':
+    Object.entries(incTypeCount).map(([type,count])=>`<div class="field-row"><span class="field-label">${type}</span><span class="field-value">${count}</span></div>`).join('')+
+    `<div class="divider"></div><div class="row" style="justify-content:space-between"><span style="font-size:13px;color:#666">Total this month</span><span style="font-size:14px;font-weight:500">${thisMonth.length}</span></div>`;
+
+  // STAFF TRAINING
+  const compliant=staff.filter(s=>calcCompliancePct(s)===100).length;
+  const needsAttention=staff.filter(s=>calcCompliancePct(s)<100).length;
+  const avgPct=staff.length?Math.round(staff.reduce((sum,s)=>sum+calcCompliancePct(s),0)/staff.length):0;
+  const fc=avgPct===100?'fill-green':avgPct>=75?'fill-amber':'fill-red';
+  document.getElementById('cqc-training').innerHTML=`
+    <div style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px"><span style="font-size:13px">Overall compliance</span><span style="font-size:13px;font-weight:500">${avgPct}%</span></div>
+      <div class="progress-bar" style="height:10px"><div class="progress-fill ${fc}" style="width:${avgPct}%"></div></div>
+    </div>
+    ${f('Fully compliant staff',`${compliant} of ${staff.length}`)}
+    ${f('Needs attention',`${needsAttention} staff member${needsAttention!==1?'s':''}`)}
+    ${staff.length===0?'<p style="font-size:13px;color:#888;margin-top:8px">No staff records yet.</p>':''}`;
+
+  // AUDITS
+  const audits=getCQCData(CQC_AUDITS_KEY)||[];
+  document.getElementById('cqc-audits').innerHTML=audits.length===0?
+    '<p style="font-size:13px;color:#888">No audits recorded yet — click + Add audit to get started.</p>':
+    audits.map(a=>`<div class="field-row"><span class="field-label">${a.type}</span><span class="field-value"><span class="badge ${a.status==='Current'?'badge-success':a.status==='Overdue'?'badge-danger':'badge-warning'}">${a.status}</span></span></div>`).join('');
+
+  // DOLS
+  const dolsResidents=residents.filter(r=>r.dols_status&&r.dols_status!=='Not required');
+  document.getElementById('cqc-dols').innerHTML=dolsResidents.length===0?
+    '<p style="font-size:13px;color:#888">No residents with DOLS authorisation recorded.</p>':
+    dolsResidents.map(r=>{
+      const days=r.dols_expiry?daysUntil(r.dols_expiry):null;
+      const badge=days===null?'badge-neutral':days<0?'badge-danger':days<=30?'badge-warning':'badge-success';
+      const label=days===null?r.dols_status:days<0?'Expired':days<=30?`${days} days`:formatDate(r.dols_expiry);
+      return `<div class="field-row"><span class="field-label">${r.full_name}</span><span class="field-value"><span class="badge ${badge}">${label}</span></span></div>`;
+    }).join('');
+
+  // REG 18
+  const reg18=getCQCData(CQC_REG18_KEY)||[];
+  document.getElementById('cqc-reg18').innerHTML=reg18.length===0?
+    '<p style="font-size:13px;color:#888">No Regulation 18 notifications recorded yet.</p>':
+    `<table><tr><th>Date</th><th>Category</th><th>Resident</th><th>Status</th></tr>${reg18.map(n=>`<tr><td>${formatDate(n.date)}</td><td>${n.category||'—'}</td><td>${n.resident||'—'}</td><td><span class="badge badge-success">${n.status}</span></td></tr>`).join('')}</table>`;
+}
+
+function editCQCRatings(){
+  const ratings=getCQCData(CQC_RATINGS_KEY)||{};
+  document.getElementById('cqc-ratings-form').innerHTML=CQC_DOMAINS.map(d=>`
+    <div class="form-group">
+      <label class="form-label">${d}</label>
+      <select class="form-select" id="cqc-rating-${d}">
+        <option value="">Select rating...</option>
+        <option ${ratings[d]==='Outstanding'?'selected':''}>Outstanding</option>
+        <option ${ratings[d]==='Good'?'selected':''}>Good</option>
+        <option ${ratings[d]==='Requires improvement'?'selected':''}>Requires improvement</option>
+        <option ${ratings[d]==='Inadequate'?'selected':''}>Inadequate</option>
+      </select>
+    </div>`).join('');
+  document.getElementById('cqc-ratings-modal').style.display='flex';
+}
+
+function saveCQCRatings(){
+  const ratings={};
+  CQC_DOMAINS.forEach(d=>{
+    const val=document.getElementById('cqc-rating-'+d).value;
+    if(val){
+      ratings[d]=val;
+      ratings[d+'_score']=val==='Outstanding'?95:val==='Good'?80:val==='Requires improvement'?55:30;
+    }
+  });
+  setCQCData(CQC_RATINGS_KEY,ratings);
+  document.getElementById('cqc-ratings-modal').style.display='none';
+  loadCompliance();
+  showToast('CQC ratings saved');
+}
+
+function openAuditModal(){
+  document.getElementById('audit-type').value='';
+  document.getElementById('audit-last').value='';
+  document.getElementById('audit-next').value='';
+  document.getElementById('audit-status').value='';
+  document.getElementById('audit-modal').style.display='flex';
+}
+
+function saveAudit(){
+  const type=document.getElementById('audit-type').value;
+  if(!type){showToast('Please enter an audit type',true);return;}
+  const audits=getCQCData(CQC_AUDITS_KEY)||[];
+  audits.unshift({type,last:document.getElementById('audit-last').value,next:document.getElementById('audit-next').value,status:document.getElementById('audit-status').value||'Current'});
+  setCQCData(CQC_AUDITS_KEY,audits);
+  document.getElementById('audit-modal').style.display='none';
+  loadCompliance();
+  showToast('Audit record saved');
+}
+
+function openReg18Modal(){
+  document.getElementById('reg18-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('reg18-category').value='';
+  document.getElementById('reg18-resident').value='';
+  document.getElementById('reg18-status').value='Submitted';
+  document.getElementById('reg18-modal').style.display='flex';
+}
+
+function saveReg18(){
+  const category=document.getElementById('reg18-category').value;
+  if(!category){showToast('Please select a category',true);return;}
+  const reg18=getCQCData(CQC_REG18_KEY)||[];
+  reg18.unshift({date:document.getElementById('reg18-date').value,category,resident:document.getElementById('reg18-resident').value,status:document.getElementById('reg18-status').value});
+  setCQCData(CQC_REG18_KEY,reg18);
+  document.getElementById('reg18-modal').style.display='none';
+  loadCompliance();
+  showToast('Regulation 18 notification saved');
 }
 
 // =================== INCIDENTS ===================
