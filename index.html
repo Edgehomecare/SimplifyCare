@@ -258,10 +258,26 @@ tr:last-child td{border-bottom:none}
       <div class="tab-content" id="tab-staff-notes"><div class="card" id="sn-notes"></div></div>
     </div>
 
-    <!-- INCIDENTS -->
+    <!-- INCIDENTS LIST -->
     <div class="screen" id="screen-incidents">
-      <div class="page-header"><h1>Incidents</h1><p>Coming next</p></div>
-      <div class="empty-state"><h3>Incidents module coming soon</h3></div>
+      <div class="page-header">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><h1>Incidents</h1><p>All incident reports — click to view or edit</p></div>
+          <button class="btn btn-primary" onclick="openAddIncidentModal()">+ Report incident</button>
+        </div>
+      </div>
+      <div id="incidents-loading" class="loading">Loading incidents...</div>
+      <div id="incidents-list" style="display:none;flex-direction:column;gap:8px"></div>
+      <div id="incidents-empty" class="empty-state" style="display:none">
+        <h3>No incidents recorded yet</h3><p>Report your first incident to get started</p>
+        <button class="btn btn-primary" onclick="openAddIncidentModal()">+ Report incident</button>
+      </div>
+    </div>
+
+    <!-- INCIDENT DETAIL -->
+    <div class="screen" id="screen-incident-detail">
+      <button class="back-btn" onclick="showScreen('incidents')">← Back to incidents</button>
+      <div id="incident-detail-content"></div>
     </div>
 
     <!-- COMPLIANCE -->
@@ -453,6 +469,62 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- INCIDENT MODAL -->
+<div class="modal-overlay" id="incident-modal" style="display:none" onclick="if(event.target.id==='incident-modal')closeIncidentModal()">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header"><span class="modal-title" id="incident-modal-title">Report incident</span><button class="modal-close" onclick="closeIncidentModal()">x</button></div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="showModalTab(event,'im-details')">Details</button>
+      <button class="modal-tab" onclick="showModalTab(event,'im-people')">People</button>
+      <button class="modal-tab" onclick="showModalTab(event,'im-narrative')">Narrative</button>
+      <button class="modal-tab" onclick="showModalTab(event,'im-notifications')">Notifications</button>
+      <button class="modal-tab" onclick="showModalTab(event,'im-followup')">Follow-up</button>
+    </div>
+    <div class="modal-section active" id="im-details">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Date of incident</label><input type="date" class="form-input" id="if-date_of_incident"></div>
+        <div class="form-group"><label class="form-label">Time of incident</label><input type="time" class="form-input" id="if-time_of_incident"></div>
+        <div class="form-group"><label class="form-label">Location</label><select class="form-select" id="if-location"><option value="">Select...</option><option>Resident bedroom</option><option>Communal lounge</option><option>Dining room</option><option>Bathroom / wet room</option><option>Corridor</option><option>Garden / outdoor area</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Incident type</label><select class="form-select" id="if-incident_type"><option value="">Select...</option><option>Fall — no injury</option><option>Fall — with injury</option><option>Medication error</option><option>Safeguarding concern</option><option>Unexplained injury</option><option>Choking / aspiration</option><option>Aggressive behaviour</option><option>Pressure ulcer (new)</option><option>Missing person</option><option>Infection outbreak</option><option>Fire / evacuation</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="if-severity"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="if-status"><option value="Draft">Draft</option><option value="Submitted">Submitted</option><option value="Under review">Under review</option><option value="Closed">Closed</option></select></div>
+      </div>
+    </div>
+    <div class="modal-section" id="im-people">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Resident(s) involved</label><input type="text" class="form-input" id="if-resident_involved" placeholder="Full name of resident(s)"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Staff present at time of incident</label><input type="text" class="form-input" id="if-staff_present"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Witnesses (if any)</label><input type="text" class="form-input" id="if-witnesses"></div>
+        <div class="form-group"><label class="form-label">Reported by</label><input type="text" class="form-input" id="if-reported_by"></div>
+        <div class="form-group"><label class="form-label">Date reported</label><input type="date" class="form-input" id="if-date_reported"></div>
+      </div>
+    </div>
+    <div class="modal-section" id="im-narrative">
+      <div class="form-group"><label class="form-label">What happened? (factual account — no opinions)</label><textarea class="form-textarea" style="min-height:120px" id="if-what_happened" placeholder="Describe exactly what you observed or were told, in the order events occurred."></textarea></div>
+      <div class="form-group"><label class="form-label">Immediate actions taken</label><textarea class="form-textarea" id="if-immediate_actions" placeholder="What was done immediately following the incident?"></textarea></div>
+      <div class="form-group"><label class="form-label">Contributing / causal factors</label><textarea class="form-textarea" id="if-contributing_factors" placeholder="Any environmental, health or care factors that may have contributed"></textarea></div>
+    </div>
+    <div class="modal-section" id="im-notifications">
+      <div class="notice">Incidents involving injury, abuse or significant harm must be notified to CQC via Regulation 18 within 24 hours.</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Next of kin notified</label><select class="form-select" id="if-nok_notified"><option value="">Select...</option><option>Yes</option><option>No</option><option>Not required</option></select></div>
+        <div class="form-group"><label class="form-label">GP notified</label><select class="form-select" id="if-gp_notified"><option value="">Select...</option><option>Yes</option><option>No</option><option>Not required</option></select></div>
+        <div class="form-group"><label class="form-label">Manager notified</label><select class="form-select" id="if-manager_notified"><option value="">Select...</option><option>Yes</option><option>No</option></select></div>
+        <div class="form-group"><label class="form-label">CQC Reg. 18 notification required</label><select class="form-select" id="if-cqc_notification_required"><option value="">Select...</option><option>Yes</option><option>No</option></select></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Safeguarding referral required</label><select class="form-select" id="if-safeguarding_referral"><option value="">Select...</option><option>Yes — referral made</option><option>Yes — pending</option><option>No</option></select></div>
+      </div>
+    </div>
+    <div class="modal-section" id="im-followup">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Follow-up actions required</label><textarea class="form-textarea" id="if-follow_up_actions" placeholder="List actions to be completed, numbered"></textarea></div>
+        <div class="form-group"><label class="form-label">Responsible person</label><input type="text" class="form-input" id="if-responsible_person"></div>
+        <div class="form-group"><label class="form-label">Review by date</label><input type="date" class="form-input" id="if-review_date"></div>
+      </div>
+    </div>
+    <div class="action-bar"><button class="btn" onclick="closeIncidentModal()">Cancel</button><button class="btn" onclick="saveIncident('Draft')">Save draft</button><button class="btn btn-primary" onclick="saveIncident('Submitted')">Submit report</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -610,6 +682,7 @@ function showScreen(key){
   if(map[key]!==undefined) document.querySelectorAll('.nav-btn')[map[key]]&&document.querySelectorAll('.nav-btn')[map[key]].classList.add('active');
   if(key==='residents') loadResidents();
   if(key==='staff') loadStaff();
+  if(key==='incidents') loadIncidents();
   if(key==='users') loadUsers();
   window.scrollTo(0,0);
 }
@@ -937,6 +1010,142 @@ async function saveUser(){
     closeUserModal();
     loadUsers();
   }
+}
+
+// =================== INCIDENTS ===================
+const INCIDENT_FIELDS=['date_of_incident','time_of_incident','location','incident_type','severity','status','resident_involved','staff_present','witnesses','reported_by','date_reported','what_happened','immediate_actions','contributing_factors','nok_notified','gp_notified','manager_notified','cqc_notification_required','safeguarding_referral','follow_up_actions','responsible_person','review_date'];
+
+let currentIncident=null,allIncidents=[],isEditingIncident=false;
+
+async function loadIncidents(){
+  document.getElementById('incidents-loading').style.display='block';
+  document.getElementById('incidents-list').style.display='none';
+  document.getElementById('incidents-empty').style.display='none';
+  const {data,error}=await db.from('incidents').select('*').order('date_of_incident',{ascending:false});
+  document.getElementById('incidents-loading').style.display='none';
+  if(error){showToast('Error: '+error.message,true);return;}
+  allIncidents=data||[];
+  if(!allIncidents.length){document.getElementById('incidents-empty').style.display='block';return;}
+  const list=document.getElementById('incidents-list');
+  list.style.display='flex';
+  list.innerHTML=allIncidents.map(i=>{
+    const sevClass=i.severity==='Critical'?'badge-danger':i.severity==='High'?'badge-danger':i.severity==='Medium'?'badge-warning':'badge-neutral';
+    const statClass=i.status==='Submitted'?'badge-info':i.status==='Closed'?'badge-success':i.status==='Under review'?'badge-warning':'badge-neutral';
+    return `<div class="list-card" onclick="viewIncident('${i.id}')">
+      <div class="avatar" style="width:44px;height:44px;font-size:11px;font-weight:600;background:#FCEBEB;color:#A32D2D;border-radius:10px;flex-shrink:0">${i.date_of_incident?new Date(i.date_of_incident).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</div>
+      <div class="list-info">
+        <div class="list-name">${i.incident_type||'Incident'}</div>
+        <div class="list-meta">${i.resident_involved||''}${i.location?` · ${i.location}`:''}</div>
+      </div>
+      <div class="row" style="gap:6px">
+        ${i.severity?`<span class="badge ${sevClass}">${i.severity}</span>`:''}
+        ${i.status?`<span class="badge ${statClass}">${i.status}</span>`:''}
+        <span style="color:#ccc;font-size:16px">›</span>
+      </div>
+    </div>`;}).join('');
+}
+
+function viewIncident(id){
+  const i=allIncidents.find(x=>String(x.id)===String(id));
+  if(!i) return;
+  currentIncident=i;
+  renderIncidentDetail(i);
+  showScreen('incident-detail');
+  document.querySelectorAll('.nav-btn')[2].classList.add('active');
+}
+
+function renderIncidentDetail(i){
+  const sevClass=i.severity==='Critical'||i.severity==='High'?'badge-danger':i.severity==='Medium'?'badge-warning':'badge-neutral';
+  const statClass=i.status==='Submitted'?'badge-info':i.status==='Closed'?'badge-success':i.status==='Under review'?'badge-warning':'badge-neutral';
+  document.getElementById('incident-detail-content').innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:18px;font-weight:500;margin-bottom:4px">${i.incident_type||'Incident report'}</h1>
+        <p style="font-size:13px;color:#666">${i.date_of_incident?formatDate(i.date_of_incident):''} ${i.time_of_incident?'at '+i.time_of_incident:''} · ${i.location||''}</p>
+      </div>
+      <div class="row">
+        ${i.severity?`<span class="badge ${sevClass}">${i.severity}</span>`:''}
+        ${i.status?`<span class="badge ${statClass}">${i.status}</span>`:''}
+        <button class="btn" onclick="openEditIncidentModal()">Edit</button>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Incident details</span></div>
+        ${f('Date',formatDate(i.date_of_incident))}
+        ${f('Time',i.time_of_incident||'—')}
+        ${f('Location',i.location)}
+        ${f('Type',i.incident_type)}
+        ${f('Severity',i.severity?`<span class="badge ${sevClass}">${i.severity}</span>`:'')}
+        ${f('Status',i.status?`<span class="badge ${statClass}">${i.status}</span>`:'')}
+        ${f('Reported by',i.reported_by)}
+        ${f('Date reported',formatDate(i.date_reported))}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">People involved</span></div>
+        ${f('Resident(s)',i.resident_involved)}
+        ${f('Staff present',i.staff_present)}
+        ${f('Witnesses',i.witnesses)}
+        <div class="divider"></div>
+        <div class="card-header" style="margin-top:4px"><span class="card-title">Notifications</span></div>
+        ${f('Next of kin',i.nok_notified?`<span class="badge ${i.nok_notified==='Yes'?'badge-success':'badge-neutral'}">${i.nok_notified}</span>`:'')}
+        ${f('GP notified',i.gp_notified?`<span class="badge ${i.gp_notified==='Yes'?'badge-success':'badge-neutral'}">${i.gp_notified}</span>`:'')}
+        ${f('Manager notified',i.manager_notified?`<span class="badge ${i.manager_notified==='Yes'?'badge-success':'badge-warning'}">${i.manager_notified}</span>`:'')}
+        ${f('CQC Reg. 18',i.cqc_notification_required?`<span class="badge ${i.cqc_notification_required==='Yes'?'badge-danger':'badge-neutral'}">${i.cqc_notification_required}</span>`:'')}
+        ${f('Safeguarding referral',i.safeguarding_referral)}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Narrative account</span></div>
+      ${i.what_happened?`<div class="form-group"><div class="form-label">What happened</div><p style="font-size:13px;line-height:1.7">${i.what_happened}</p></div>`:''}
+      ${i.immediate_actions?`<div class="form-group"><div class="form-label">Immediate actions taken</div><p style="font-size:13px;line-height:1.7">${i.immediate_actions}</p></div>`:''}
+      ${i.contributing_factors?`<div class="form-group"><div class="form-label">Contributing factors</div><p style="font-size:13px;line-height:1.7">${i.contributing_factors}</p></div>`:''}
+    </div>
+    ${i.follow_up_actions||i.responsible_person||i.review_date?`
+    <div class="card">
+      <div class="card-header"><span class="card-title">Follow-up actions</span></div>
+      ${i.follow_up_actions?`<p style="font-size:13px;line-height:1.7;margin-bottom:12px">${i.follow_up_actions}</p>`:''}
+      ${f('Responsible person',i.responsible_person)}
+      ${f('Review by',formatDate(i.review_date))}
+    </div>`:''}`;
+}
+
+function openAddIncidentModal(){
+  isEditingIncident=false;currentIncident=null;
+  document.getElementById('incident-modal-title').textContent='Report incident';
+  INCIDENT_FIELDS.forEach(field=>{const el=document.getElementById('if-'+field);if(el) el.value=field==='status'?'Draft':'';});
+  // set today as default
+  document.getElementById('if-date_of_incident').value=new Date().toISOString().split('T')[0];
+  document.getElementById('if-date_reported').value=new Date().toISOString().split('T')[0];
+  document.getElementById('incident-modal').style.display='flex';
+}
+
+function openEditIncidentModal(){
+  if(!currentIncident) return;
+  isEditingIncident=true;
+  document.getElementById('incident-modal-title').textContent='Edit incident report';
+  INCIDENT_FIELDS.forEach(field=>{const el=document.getElementById('if-'+field);if(el) el.value=currentIncident[field]||'';});
+  document.getElementById('incident-modal').style.display='flex';
+}
+
+function closeIncidentModal(){document.getElementById('incident-modal').style.display='none';}
+
+async function saveIncident(statusOverride){
+  const data={};
+  INCIDENT_FIELDS.forEach(field=>{const el=document.getElementById('if-'+field);if(el) data[field]=el.value||null;});
+  if(statusOverride) data.status=statusOverride;
+  if(!data.incident_type){showToast('Please select an incident type',true);return;}
+  let error;
+  if(isEditingIncident&&currentIncident){
+    const res=await db.from('incidents').update(data).eq('id',currentIncident.id);
+    error=res.error;
+    if(!error){showToast('Incident updated');closeIncidentModal();const {data:upd}=await db.from('incidents').select('*').eq('id',currentIncident.id).single();if(upd){currentIncident=upd;allIncidents=allIncidents.map(i=>i.id===upd.id?upd:i);renderIncidentDetail(upd);}}
+  } else {
+    const res=await db.from('incidents').insert([data]).select().single();
+    error=res.error;
+    if(!error){showToast(statusOverride==='Submitted'?'Incident report submitted':'Draft saved');closeIncidentModal();loadIncidents();}
+  }
+  if(error) showToast('Error: '+error.message,true);
 }
 
 function showToast(msg,isError=false){
