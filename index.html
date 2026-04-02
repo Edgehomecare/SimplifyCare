@@ -160,9 +160,20 @@ tr:last-child td{border-bottom:none}
 <!-- APP -->
 <div class="app" id="app">
   <div class="topbar">
-    <div class="topbar-logo">Simplify<span>Care</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px">
+    <svg width="22" height="26" viewBox="0 0 80 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M40,0 L80,15 L80,55 Q80,85 40,100 Q0,85 0,55 L0,15 Z" fill="#1D9E75"/>
+      <rect x="32" y="22" width="16" height="56" fill="white" rx="2"/>
+      <rect x="14" y="40" width="52" height="16" fill="white" rx="2"/>
+    </svg>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:-0.02em;line-height:1.1">Edge Homecare</div>
+      <div style="font-size:10px;color:#1D9E75;font-weight:600;letter-spacing:0.02em">SimplifyCare</div>
+    </div>
+  </div>
     <div class="topbar-nav" id="topbar-nav">
-      <button class="nav-btn active" onclick="showScreen('residents')">Residents</button>
+      <button class="nav-btn active" onclick="showScreen('dashboard')">Dashboard</button>
+      <button class="nav-btn" onclick="showScreen('residents')">Residents</button>
       <button class="nav-btn" onclick="showScreen('staff')">Staff</button>
       <button class="nav-btn" onclick="showScreen('incidents')">Incidents</button>
       <button class="nav-btn" onclick="showScreen('compliance')">CQC</button>
@@ -177,8 +188,13 @@ tr:last-child td{border-bottom:none}
 
   <div class="main">
 
+    <!-- DASHBOARD -->
+    <div class="screen active" id="screen-dashboard">
+      <div id="dashboard-content"></div>
+    </div>
+
     <!-- RESIDENTS LIST -->
-    <div class="screen active" id="screen-residents">
+    <div class="screen" id="screen-residents">
       <div class="page-header">
         <div class="row" style="justify-content:space-between;align-items:flex-start">
           <div><h1>Residents</h1><p>All current service users</p></div>
@@ -208,7 +224,7 @@ tr:last-child td{border-bottom:none}
         <button class="tab-btn" onclick="showTab(event,'res-visits')">Visits</button>
         <button class="tab-btn" onclick="showTab(event,'res-documents')">Documents</button>
         <button class="tab-btn" onclick="showTab(event,'res-linked')">Linked records</button>
-      <button class="tab-btn" onclick="showTab(event,'res-notes')">Daily notes</button>
+        <button class="tab-btn" onclick="showTab(event,'res-notes')">Daily notes</button>
       </div>
       <div class="tab-content active" id="tab-res-overview"><div id="res-ov-alerts"></div><div class="grid-2" style="margin-bottom:16px"><div class="card" id="res-ov-details"></div><div class="card" id="res-ov-legal"></div></div><div class="card"><div class="card-header"><span class="card-title">Recent events</span></div><div class="notice-info">Incidents and events will appear here once the incidents module is built.</div></div></div>
       <div class="tab-content" id="tab-res-contacts"><div class="grid-2"><div class="card" id="res-ct-nok"></div><div class="card" id="res-ct-prof"></div></div></div>
@@ -756,6 +772,7 @@ async function loadUserProfile(authUser){
   }
   currentUser={...authUser,...data};
   applyRoleUI();
+  loadDashboard();
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('topbar-username').textContent=data.full_name||data.email;
@@ -803,6 +820,8 @@ function showScreen(key){
   const map={residents:0,staff:1,incidents:2,compliance:3,users:4};
   document.getElementById('screen-'+key).classList.add('active');
   if(map[key]!==undefined) document.querySelectorAll('.nav-btn')[map[key]]&&document.querySelectorAll('.nav-btn')[map[key]].classList.add('active');
+  if(key==='users'){const nb=document.getElementById('nav-users');if(nb)nb.classList.add('active');}
+  if(key==='dashboard') loadDashboard();
   if(key==='residents') loadResidents();
   if(key==='staff') loadStaff();
   if(key==='incidents') loadIncidents();
@@ -1220,6 +1239,148 @@ async function saveNote(){
   showToast('Note saved');
   closeNoteModal();
   loadResidentNotes(currentNoteResidentId,currentNoteResidentName);
+}
+
+// =================== DASHBOARD ===================
+async function loadDashboard(){
+  const container=document.getElementById('dashboard-content');
+  if(!container) return;
+  container.innerHTML='<div class="loading">Loading dashboard...</div>';
+
+  const [resResult,staffResult,incResult,notesResult]=await Promise.all([
+    db.from('residents').select('*'),
+    db.from('staff').select('*'),
+    db.from('incidents').select('*').order('created_at',{ascending:false}).limit(5),
+    db.from('daily_notes').select('*').eq('follow_up_required','Yes').order('created_at',{ascending:false}).limit(5)
+  ]);
+
+  const residents=resResult.data||[];
+  const staff=staffResult.data||[];
+  const recentIncidents=incResult.data||[];
+  const followUpNotes=notesResult.data||[];
+
+  const now=new Date();
+  const today=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // Calculate compliance alerts
+  let alertCount=0;
+  residents.forEach(r=>{if(r.dols_expiry&&daysUntil(r.dols_expiry)<=30) alertCount++;});
+  staff.forEach(s=>{TRAINING_MODULES.forEach(m=>{const exp=s[`exp_${m.key}`];if(exp&&daysUntil(exp)<0) alertCount++;});});
+  const supOverdue=staff.filter(s=>s.supervision_next&&daysUntil(s.supervision_next)<0).length;
+  alertCount+=supOverdue;
+
+  const openInc=recentIncidents.filter(i=>i.status==='Draft'||i.status==='Submitted'||i.status==='Under review').length;
+  const staffCompliant=staff.filter(s=>calcCompliancePct(s)===100).length;
+  const avgPct=staff.length?Math.round(staff.reduce((sum,s)=>sum+calcCompliancePct(s),0)/staff.length):0;
+
+  // Birthdays today
+  const todayBirthdays=residents.filter(r=>{
+    if(!r.date_of_birth) return false;
+    const d=new Date(r.date_of_birth);
+    return d.getDate()===now.getDate()&&d.getMonth()===now.getMonth();
+  });
+
+  container.innerHTML=`
+    <!-- HERO WELCOME -->
+    <div style="background:#1a1a18;border-radius:16px;padding:28px 32px;margin-bottom:20px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;right:0;width:200px;height:100%;background:#1D9E75;opacity:0.08;border-radius:0 16px 16px 0"></div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px">
+        <svg width="32" height="38" viewBox="0 0 80 100" fill="none"><path d="M40,0 L80,15 L80,55 Q80,85 40,100 Q0,85 0,55 L0,15 Z" fill="#1D9E75"/><rect x="32" y="22" width="16" height="56" fill="white" rx="2"/><rect x="14" y="40" width="52" height="16" fill="white" rx="2"/></svg>
+        <div>
+          <div style="font-size:11px;color:#1D9E75;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">Edge Homecare Services</div>
+          <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.02em">Good ${now.getHours()<12?'morning':now.getHours()<17?'afternoon':'evening'}, ${currentUser?currentUser.full_name||'there':'there'}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:#888;margin-top:8px">${today}</div>
+      ${todayBirthdays.length>0?`<div style="margin-top:12px;background:rgba(29,158,117,0.15);border-radius:8px;padding:8px 14px;font-size:13px;color:#1D9E75;font-weight:500">Birthday today: ${todayBirthdays.map(r=>r.preferred_name||r.full_name).join(', ')}</div>`:''}
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card" style="cursor:pointer" onclick="showScreen('residents')">
+        <div class="stat-label">Residents</div>
+        <div class="stat-value">${residents.length}</div>
+        <div class="stat-sub">${residents.filter(r=>r.risk_level==='High').length} high risk</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="showScreen('staff')">
+        <div class="stat-label">Staff</div>
+        <div class="stat-value">${staff.length}</div>
+        <div class="stat-sub">${staffCompliant} fully compliant</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="showScreen('incidents')">
+        <div class="stat-label">Open incidents</div>
+        <div class="stat-value" style="color:${openInc>0?'#A32D2D':'#3B6D11'}">${openInc}</div>
+        <div class="stat-sub">Require attention</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="showScreen('compliance')">
+        <div class="stat-label">Training compliance</div>
+        <div class="stat-value" style="color:${avgPct===100?'#3B6D11':avgPct>=75?'#854F0B':'#A32D2D'}">${avgPct}%</div>
+        <div class="stat-sub">Across all staff</div>
+      </div>
+    </div>
+
+    <!-- ALERTS + QUICK ACTIONS -->
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Compliance alerts</span>${alertCount>0?`<span class="badge badge-danger">${alertCount} alerts</span>`:'<span class="badge badge-success">All clear</span>'}</div>
+        <div id="dash-alerts">
+          ${(()=>{
+            let a='';
+            residents.forEach(r=>{
+              if(r.dols_expiry){const days=daysUntil(r.dols_expiry);
+                if(days!==null&&days<0) a+=`<div class="alert-banner alert-danger" style="margin-bottom:6px"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS expired — ${r.preferred_name||r.full_name}</div></div>`;
+                else if(days!==null&&days<=30) a+=`<div class="alert-banner alert-danger" style="margin-bottom:6px"><div class="alert-dot-danger"></div><div class="alert-text-danger">DOLS expiring in ${days} days — ${r.preferred_name||r.full_name}</div></div>`;
+              }
+            });
+            let expCount=0;
+            staff.forEach(s=>{TRAINING_MODULES.forEach(m=>{const exp=s[`exp_${m.key}`];if(exp&&daysUntil(exp)<0) expCount++;});});
+            if(expCount>0) a+=`<div class="alert-banner alert-danger" style="margin-bottom:6px"><div class="alert-dot-danger"></div><div class="alert-text-danger">${expCount} training module${expCount>1?'s':''} expired across team</div></div>`;
+            if(supOverdue>0) a+=`<div class="alert-banner alert-warning" style="margin-bottom:6px"><div class="alert-dot-warning"></div><div class="alert-text-warning">${supOverdue} supervision${supOverdue>1?'s':''} overdue</div></div>`;
+            return a||'<p style="font-size:13px;color:#3B6D11;font-weight:500">No compliance alerts — everything is in order.</p>';
+          })()}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Quick actions</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" style="text-align:left;justify-content:flex-start" onclick="showScreen('residents');setTimeout(openAddResidentModal,300)">+ Add new resident</button>
+          <button class="btn" style="text-align:left;justify-content:flex-start" onclick="showScreen('incidents');setTimeout(openAddIncidentModal,300)">+ Report incident</button>
+          <button class="btn" style="text-align:left;justify-content:flex-start" onclick="showScreen('staff');setTimeout(openAddStaffModal,300)">+ Add staff member</button>
+          <button class="btn" style="text-align:left;justify-content:flex-start" onclick="showScreen('compliance')">View CQC compliance</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT INCIDENTS + FOLLOW-UP NOTES -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Recent incidents</span><button class="btn btn-sm" onclick="showScreen('incidents')">View all</button></div>
+        ${recentIncidents.length===0?'<p style="font-size:13px;color:#888">No incidents recorded yet.</p>':
+        recentIncidents.slice(0,5).map(i=>{
+          const sevClass=i.severity==='Critical'||i.severity==='High'?'badge-danger':i.severity==='Medium'?'badge-warning':'badge-neutral';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.07)">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500">${i.incident_type||'Incident'}</div>
+              <div style="font-size:12px;color:#888">${i.resident_involved||''} · ${i.date_of_incident?formatDate(i.date_of_incident):''}</div>
+            </div>
+            ${i.severity?`<span class="badge ${sevClass}">${i.severity}</span>`:''}
+            <span class="badge ${i.status==='Closed'?'badge-success':i.status==='Submitted'?'badge-info':'badge-neutral'}">${i.status||'Draft'}</span>
+          </div>`;}).join('')}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Notes requiring follow-up</span></div>
+        ${followUpNotes.length===0?'<p style="font-size:13px;color:#888">No outstanding follow-up notes.</p>':
+        followUpNotes.slice(0,5).map(n=>`
+          <div style="padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.07)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <span style="font-size:13px;font-weight:500">${n.resident_name||'—'}</span>
+              <span class="badge badge-warning">Follow-up</span>
+            </div>
+            <div style="font-size:12px;color:#888">${n.category||''} · ${n.staff_name||''}</div>
+            ${n.follow_up_details?`<div style="font-size:12px;color:#854F0B;margin-top:4px">${n.follow_up_details}</div>`:''}
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 // =================== COMPLIANCE ===================
