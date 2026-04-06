@@ -1493,7 +1493,11 @@
   }
 
   async function loadTrainingTable() {
-    const { data } = await db.from('staff_training').select('*, staff(first_name, last_name)').order('expiry_date');
+    const { data, error } = await db.from('staff_training').select('*, staff(first_name, last_name)').order('expiry_date');
+    if (error) {
+      document.getElementById('training-table').innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📚</div><p>Training table not set up yet — run the SQL in Supabase first</p></div></td></tr>';
+      return;
+    }
     const list = data || [];
     const tb = document.getElementById('training-table');
     if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📚</div><p>No training records yet — click View on a staff member to add</p></div></td></tr>'; return; }
@@ -2094,4 +2098,31 @@
 
   // Safeguarding
   function saveSafeguarding(){ const date=document.getElementById('sfg-date').value; if(!date){alert('Please enter the date');return;} govStore.safeguarding.push({id:Date.now(),date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value}); govSave('safeguarding'); closeGovModal('sfg-modal'); renderGovSafeguarding(); ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovSafeguarding
+  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td></tr>`).join(''); }
+
+  // Meetings
+  function saveMeeting(){ const date=document.getElementById('mtg-date').value; if(!date){alert('Please enter the meeting date');return;} govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value}); govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings(); ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
+
+  // Init governance
+  function initGovernance(){
+    initGovKPIMonth();
+    document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
+    updateGovOverview();
+    renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
+    renderGovComplaints(); renderGovMed(); renderGovSupervisions();
+    renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
+  }
+
+  // ══════════════════════════════════════════════
+
+  // ── ENTER KEY LOGIN ──
+  try {
+    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  } catch(e) { console.warn('login-password listener:', e); }
+
+  // ── INIT ──
+  try { checkSession(); } catch(e) { console.error('Init error:', e); }
+</script>
+</body>
+</html>
