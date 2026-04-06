@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -219,6 +218,24 @@
     .profile-tab { padding: 7px 14px; font-size: 12px; font-weight: 600; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
     .profile-tab.active { background: var(--teal); color: white; border-color: var(--teal); }
 
+    /* ── GOVERNANCE TABS ── */
+    .gov-tab { padding: 7px 13px; border: none; background: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--muted); font-weight: 500; transition: all .15s; white-space: nowrap; }
+    .gov-tab:hover { background: var(--bg); color: var(--navy); }
+    .gov-tab.active { background: var(--teal); color: white; }
+    .gov-section { display: none; }
+    .gov-section.active { display: block; }
+
+    /* ── KPI ROW ── */
+    .kpi-row { display: grid; grid-template-columns: 1fr 80px 80px 100px 1fr 80px; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .kpi-row:last-child { border-bottom: none; }
+    .kpi-bar-wrap { background: var(--border); border-radius: 6px; height: 8px; overflow: hidden; }
+    .kpi-bar { height: 100%; border-radius: 6px; transition: width .4s; }
+
+    /* ── AUDIT ROW ── */
+    .audit-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .audit-row:last-child { border-bottom: none; }
+    .score-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
@@ -289,6 +306,9 @@
         <div class="nav-section">Compliance</div>
         <div class="nav-item" onclick="showPage('cqc')">
           <span class="icon">✅</span> CQC Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('governance')">
+          <span class="icon">🏛️</span> Governance Hub
         </div>
       </nav>
       <div class="sidebar-user">
@@ -514,9 +534,341 @@
         </div>
       </div>
 
+      <!-- GOVERNANCE HUB -->
+      <div class="page" id="page-governance">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Governance Hub</h1>
+            <p>Edge Homecare Services Ltd — Compliance &amp; Quality Oversight</p>
+          </div>
+          <div id="inspection-badge" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;"></span> Ready for inspection
+          </div>
+        </div>
+
+        <!-- Gov Sub-Nav -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
+          <button class="gov-tab active" onclick="showGovSection('overview',this)">Overview</button>
+          <button class="gov-tab" onclick="showGovSection('policies',this)">Policies &amp; procedures</button>
+          <button class="gov-tab" onclick="showGovSection('kpis',this)">Monthly KPIs</button>
+          <button class="gov-tab" onclick="showGovSection('audits',this)">Monthly audits</button>
+          <button class="gov-tab" onclick="showGovSection('actions',this)">Action plans</button>
+          <button class="gov-tab" onclick="showGovSection('complaints',this)">Complaints &amp; compliments</button>
+          <button class="gov-tab" onclick="showGovSection('medication',this)">Medication audits</button>
+          <button class="gov-tab" onclick="showGovSection('supervisions',this)">Supervisions</button>
+          <button class="gov-tab" onclick="showGovSection('risks',this)">Risk register</button>
+          <button class="gov-tab" onclick="showGovSection('safeguarding',this)">Safeguarding</button>
+          <button class="gov-tab" onclick="showGovSection('meetings',this)">Meeting minutes</button>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div id="gov-overview" class="gov-section active">
+          <div class="stats-grid">
+            <div class="stat-card amber"><div class="label">Policies due review</div><div class="value" id="ov-policies">—</div><div class="sub">this month</div></div>
+            <div class="stat-card teal"><div class="label">KPIs on target</div><div class="value" id="ov-kpis">—</div><div class="sub">this month</div></div>
+            <div class="stat-card green"><div class="label">Audits completed</div><div class="value" id="ov-audits">—</div><div class="sub">this month</div></div>
+            <div class="stat-card amber"><div class="label">Open actions</div><div class="value" id="ov-actions">—</div><div class="sub">awaiting completion</div></div>
+            <div class="stat-card red"><div class="label">Open complaints</div><div class="value" id="ov-complaints">—</div><div class="sub">in progress</div></div>
+            <div class="stat-card red"><div class="label">High risks</div><div class="value" id="ov-risks">—</div><div class="sub">on register</div></div>
+            <div class="stat-card amber"><div class="label">Safeguarding</div><div class="value" id="ov-safeguarding">—</div><div class="sub">open referrals</div></div>
+          </div>
+          <div class="card"><div class="card-title">Alerts &amp; overdue items</div><div id="alert-list"><p style="color:var(--muted);text-align:center;padding:24px;">No overdue items — great work!</p></div></div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Governance health summary</div>
+              <span style="font-size:12px;color:var(--muted);" id="summary-date"></span>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Area</th><th>Status</th><th>Last reviewed</th><th>Notes</th></tr></thead>
+            <tbody id="health-table">
+              <tr><td>Policies &amp; procedures</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Monthly KPIs</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Monthly audits</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Action plans</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Complaints</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Medication audits</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Risk register</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+              <tr><td>Safeguarding</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
+            </tbody></table></div>
+          </div>
+        </div>
+
+        <!-- POLICIES -->
+        <div id="gov-policies" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Policies &amp; procedures register</div><button class="btn-add" onclick="openGovModal('policy-modal')">+ Add policy</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Policy name</th><th>Category</th><th>Version</th><th>Owner</th><th>Last reviewed</th><th>Next review</th><th>Status</th><th></th></tr></thead>
+            <tbody id="policy-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div id="gov-kpis" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Monthly KPIs — <span id="kpi-month-label"></span></div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select id="kpi-month-select" onchange="renderGovKPIs()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"></select>
+                <button class="btn-add" onclick="openGovModal('kpi-modal')">+ Add KPI</button>
+              </div>
+            </div>
+            <div id="kpi-list"><p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p></div>
+          </div>
+        </div>
+
+        <!-- AUDITS -->
+        <div id="gov-audits" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Monthly audit schedule</div><button class="btn-add" onclick="openGovModal('audit-modal')">+ Record audit</button></div>
+            <div id="audit-list"><p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p></div>
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div id="gov-actions" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Action plans</div><button class="btn-add" onclick="openGovModal('action-modal')">+ Add action</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Action</th><th>Source</th><th>Priority</th><th>Owner</th><th>Due date</th><th>Status</th><th></th></tr></thead>
+            <tbody id="action-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- COMPLAINTS -->
+        <div id="gov-complaints" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card"><div class="label">Total this month</div><div class="value" id="comp-month">0</div></div>
+            <div class="stat-card red"><div class="label">Open</div><div class="value" id="comp-open">0</div></div>
+            <div class="stat-card green"><div class="label">Resolved</div><div class="value" id="comp-resolved">0</div></div>
+            <div class="stat-card green"><div class="label">Compliments</div><div class="value" id="comp-compliments">0</div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Complaints log</div><button class="btn-add" onclick="openGovModal('complaint-modal')">+ Log complaint</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Raised by</th><th>Nature</th><th>Assigned to</th><th>Response due</th><th>Status</th><th>Escalated</th><th></th></tr></thead>
+            <tbody id="complaint-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Compliments log</div><button class="btn-add" onclick="openGovModal('compliment-modal')">+ Log compliment</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Source</th><th>About</th><th>Staff mentioned</th><th>Details</th></tr></thead>
+            <tbody id="compliment-table"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- MEDICATION AUDITS -->
+        <div id="gov-medication" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Medication audit log</div><button class="btn-add" onclick="openGovModal('med-modal')">+ Record audit</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Auditor</th><th>MAR accurate</th><th>Stock correct</th><th>Errors found</th><th>Actions required</th><th>Score</th></tr></thead>
+            <tbody id="med-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- SUPERVISIONS -->
+        <div id="gov-supervisions" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Supervision &amp; appraisal oversight</div><button class="btn-add" onclick="openGovModal('sup-modal')">+ Log supervision</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Staff member</th><th>Role</th><th>Type</th><th>Date</th><th>Conducted by</th><th>Outcome</th><th>Next due</th><th>Status</th></tr></thead>
+            <tbody id="sup-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- RISK REGISTER -->
+        <div id="gov-risks" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Risk register</div><button class="btn-add" onclick="openGovModal('risk-modal')">+ Add risk</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Risk</th><th>Category</th><th>Likelihood</th><th>Impact</th><th>Score</th><th>Rating</th><th>Controls in place</th><th>Owner</th><th>Review date</th><th></th></tr></thead>
+            <tbody id="risk-table"><tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- SAFEGUARDING -->
+        <div id="gov-safeguarding" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Safeguarding log</div><button class="btn-add" onclick="openGovModal('sfg-modal')">+ Log referral</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Type of concern</th><th>Referred to</th><th>Referred by</th><th>Outcome</th><th>Learning</th><th>Status</th></tr></thead>
+            <tbody id="sfg-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- MEETINGS -->
+        <div id="gov-meetings" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Meeting minutes</div><button class="btn-add" onclick="openGovModal('meeting-modal')">+ Add minutes</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Meeting type</th><th>Chair</th><th>Attendees</th><th>Key decisions</th><th>Actions arising</th><th>Next meeting</th></tr></thead>
+            <tbody id="meeting-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+      </div><!-- /governance page -->
+
     </main>
   </div>
 </div>
+
+<!-- ═══════════ GOVERNANCE MODALS ═══════════ -->
+<div id="policy-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add policy / procedure</h2><button class="modal-close" onclick="closeGovModal('policy-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Policy name *</label><input id="pol-name" placeholder="e.g. Medication management policy" /></div>
+    <div class="form-group"><label>Category</label><select id="pol-cat"><option>Health &amp; safety</option><option>Medication</option><option>Safeguarding</option><option>Infection control</option><option>HR &amp; staffing</option><option>Care delivery</option><option>Governance</option><option>Equality &amp; diversity</option><option>Other</option></select></div>
+    <div class="form-group"><label>Version</label><input id="pol-ver" placeholder="e.g. v1.2" /></div>
+    <div class="form-group"><label>Policy owner</label><input id="pol-owner" placeholder="Name or role" /></div>
+    <div class="form-group"><label>Last reviewed</label><input type="date" id="pol-reviewed" /></div>
+    <div class="form-group"><label>Next review due</label><input type="date" id="pol-due" /></div>
+    <div class="form-group"><label>Status</label><select id="pol-status"><option>Current</option><option>Due for review</option><option>Overdue</option><option>Archived</option></select></div>
+    <div class="form-group full"><label>Notes</label><textarea id="pol-notes" placeholder="Any additional notes..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('policy-modal')">Cancel</button><button class="btn btn-save" onclick="savePolicy()">Save policy</button></div>
+</div></div>
+
+<div id="kpi-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add / update KPI</h2><button class="modal-close" onclick="closeGovModal('kpi-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group full"><label>KPI name *</label><input id="kpi-name" placeholder="e.g. Care call delivery rate" /></div>
+    <div class="form-group"><label>Unit</label><select id="kpi-unit"><option>%</option><option>Number</option><option>Days</option><option>Hours</option><option>£</option></select></div>
+    <div class="form-group"><label>Target</label><input id="kpi-target" type="number" placeholder="95" /></div>
+    <div class="form-group"><label>Actual this month</label><input id="kpi-actual" type="number" placeholder="92" /></div>
+    <div class="form-group"><label>Month</label><input id="kpi-month" type="month" /></div>
+    <div class="form-group"><label>Category</label><select id="kpi-cat"><option>Quality &amp; safety</option><option>People</option><option>Finance</option><option>Operations</option><option>Compliance</option></select></div>
+    <div class="form-group full"><label>Notes / commentary</label><textarea id="kpi-notes" placeholder="Context or explanation..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('kpi-modal')">Cancel</button><button class="btn btn-save" onclick="saveGovKPI()">Save KPI</button></div>
+</div></div>
+
+<div id="audit-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Record audit</h2><button class="modal-close" onclick="closeGovModal('audit-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Audit type *</label><select id="aud-type"><option>Medication audit</option><option>Care plan audit</option><option>Infection control audit</option><option>Health &amp; safety audit</option><option>Lone working audit</option><option>Equality &amp; diversity audit</option><option>Environmental audit</option><option>Quality monitoring visit</option><option>Other</option></select></div>
+    <div class="form-group"><label>Date conducted</label><input type="date" id="aud-date" /></div>
+    <div class="form-group"><label>Conducted by</label><input id="aud-by" placeholder="Name" /></div>
+    <div class="form-group"><label>Score (%) or N/A</label><input id="aud-score" placeholder="e.g. 87" /></div>
+    <div class="form-group"><label>RAG rating</label><select id="aud-rag"><option value="green">Green — compliant</option><option value="amber">Amber — minor concerns</option><option value="red">Red — significant concerns</option></select></div>
+    <div class="form-group"><label>Next audit due</label><input type="date" id="aud-next" /></div>
+    <div class="form-group full"><label>Findings / summary</label><textarea id="aud-findings" placeholder="Summary of what was found..."></textarea></div>
+    <div class="form-group full"><label>Actions required</label><textarea id="aud-actions-text" placeholder="List any actions arising from this audit..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('audit-modal')">Cancel</button><button class="btn btn-save" onclick="saveAudit()">Save audit</button></div>
+</div></div>
+
+<div id="action-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add action</h2><button class="modal-close" onclick="closeGovModal('action-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Action description *</label><textarea id="act-desc" placeholder="What needs to be done?"></textarea></div>
+    <div class="form-group"><label>Source</label><select id="act-source"><option>Audit</option><option>Complaint</option><option>Incident</option><option>Risk register</option><option>CQC requirement</option><option>Staff feedback</option><option>Management decision</option><option>Other</option></select></div>
+    <div class="form-group"><label>Priority</label><select id="act-priority"><option>High</option><option>Medium</option><option>Low</option></select></div>
+    <div class="form-group"><label>Owner (responsible person)</label><input id="act-owner" placeholder="Name" /></div>
+    <div class="form-group"><label>Due date</label><input type="date" id="act-due" /></div>
+    <div class="form-group"><label>Status</label><select id="act-status"><option>Open</option><option>In progress</option><option>Completed</option><option>Overdue</option></select></div>
+    <div class="form-group full"><label>Notes</label><textarea id="act-notes" placeholder="Additional context..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('action-modal')">Cancel</button><button class="btn btn-save" onclick="saveGovAction()">Save action</button></div>
+</div></div>
+
+<div id="complaint-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Log complaint</h2><button class="modal-close" onclick="closeGovModal('complaint-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date received *</label><input type="date" id="cmp-date" /></div>
+    <div class="form-group"><label>Raised by</label><select id="cmp-raised"><option>Resident</option><option>Family member</option><option>Professional</option><option>Anonymous</option><option>Other</option></select></div>
+    <div class="form-group"><label>Method received</label><select id="cmp-method"><option>Telephone</option><option>Written</option><option>Email</option><option>In person</option><option>Online</option></select></div>
+    <div class="form-group"><label>Nature of complaint</label><select id="cmp-nature"><option>Care quality</option><option>Staff conduct</option><option>Communication</option><option>Medication</option><option>Call timing</option><option>Safety concern</option><option>Other</option></select></div>
+    <div class="form-group"><label>Assigned to</label><input id="cmp-assigned" placeholder="Name" /></div>
+    <div class="form-group"><label>Response due date</label><input type="date" id="cmp-due" /></div>
+    <div class="form-group"><label>Status</label><select id="cmp-status"><option>Open</option><option>Under investigation</option><option>Resolved</option><option>Escalated</option></select></div>
+    <div class="form-group"><label>Escalated to</label><select id="cmp-escalated"><option value="">Not escalated</option><option>Local authority</option><option>ICB</option><option>CQC</option><option>Ombudsman</option><option>Safeguarding</option></select></div>
+    <div class="form-group full"><label>Details of complaint</label><textarea id="cmp-details" placeholder="Describe the complaint..."></textarea></div>
+    <div class="form-group full"><label>Outcome / resolution</label><textarea id="cmp-outcome" placeholder="How was it resolved?"></textarea></div>
+    <div class="form-group full"><label>Learning &amp; changes made</label><textarea id="cmp-learning" placeholder="e.g. Updated policy, staff retraining, process change..."></textarea></div>
+    <div class="form-group"><label>Complainant satisfied?</label><select id="cmp-satisfied"><option value="">Unknown</option><option>Yes</option><option>Partially</option><option>No</option></select></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('complaint-modal')">Cancel</button><button class="btn btn-save" onclick="saveComplaint()">Save complaint</button></div>
+</div></div>
+
+<div id="compliment-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Log compliment</h2><button class="modal-close" onclick="closeGovModal('compliment-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date received *</label><input type="date" id="comp-date" /></div>
+    <div class="form-group"><label>Source</label><select id="comp-source"><option>Resident</option><option>Family member</option><option>Professional</option><option>Other</option></select></div>
+    <div class="form-group"><label>Related to</label><select id="comp-re"><option>Care delivery</option><option>Specific staff member</option><option>Communication</option><option>Overall service</option><option>Other</option></select></div>
+    <div class="form-group"><label>Staff member mentioned</label><input id="comp-staff" placeholder="Name (if applicable)" /></div>
+    <div class="form-group full"><label>Details</label><textarea id="comp-details" placeholder="What was the compliment?"></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('compliment-modal')">Cancel</button><button class="btn btn-save" onclick="saveCompliment()">Save compliment</button></div>
+</div></div>
+
+<div id="med-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Record medication audit</h2><button class="modal-close" onclick="closeGovModal('med-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date *</label><input type="date" id="med-date" /></div>
+    <div class="form-group"><label>Resident</label><input id="med-resident" placeholder="Name" /></div>
+    <div class="form-group"><label>Auditor</label><input id="med-auditor" placeholder="Name" /></div>
+    <div class="form-group"><label>MAR sheet accurate?</label><select id="med-mar"><option>Yes</option><option>No — errors found</option><option>Partial</option></select></div>
+    <div class="form-group"><label>Stock count correct?</label><select id="med-stock"><option>Yes</option><option>No — discrepancy found</option><option>N/A</option></select></div>
+    <div class="form-group"><label>Number of errors found</label><input type="number" id="med-errors" placeholder="0" /></div>
+    <div class="form-group full"><label>Details of errors / findings</label><textarea id="med-findings" placeholder="Describe any errors or concerns..."></textarea></div>
+    <div class="form-group full"><label>Actions required</label><textarea id="med-actions" placeholder="What needs to happen as a result?"></textarea></div>
+    <div class="form-group"><label>Overall score (%)</label><input type="number" id="med-score" placeholder="e.g. 95" /></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('med-modal')">Cancel</button><button class="btn btn-save" onclick="saveMed()">Save audit</button></div>
+</div></div>
+
+<div id="sup-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Log supervision / appraisal</h2><button class="modal-close" onclick="closeGovModal('sup-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Staff member *</label><input id="sup-staff" placeholder="Name" /></div>
+    <div class="form-group"><label>Role</label><input id="sup-role" placeholder="e.g. Care worker" /></div>
+    <div class="form-group"><label>Type</label><select id="sup-type"><option>Supervision</option><option>Annual appraisal</option><option>Probation review</option><option>Return to work</option><option>Other</option></select></div>
+    <div class="form-group"><label>Date</label><input type="date" id="sup-date" /></div>
+    <div class="form-group"><label>Conducted by</label><input id="sup-by" placeholder="Name" /></div>
+    <div class="form-group"><label>Next due</label><input type="date" id="sup-next" /></div>
+    <div class="form-group"><label>Outcome</label><select id="sup-outcome"><option>Satisfactory</option><option>Good</option><option>Outstanding</option><option>Improvement needed</option><option>Action plan set</option></select></div>
+    <div class="form-group full"><label>Key discussion points</label><textarea id="sup-notes" placeholder="Summary of what was discussed..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sup-modal')">Cancel</button><button class="btn btn-save" onclick="saveSupervision()">Save</button></div>
+</div></div>
+
+<div id="risk-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add risk</h2><button class="modal-close" onclick="closeGovModal('risk-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Risk description *</label><textarea id="risk-desc" placeholder="Describe the risk..."></textarea></div>
+    <div class="form-group"><label>Category</label><select id="risk-cat"><option>Clinical / care</option><option>Medication</option><option>Staffing</option><option>Financial</option><option>Premises</option><option>Information governance</option><option>Regulatory</option><option>Reputational</option><option>Other</option></select></div>
+    <div class="form-group"><label>Likelihood (1–5)</label><select id="risk-like"><option value="1">1 — Rare</option><option value="2">2 — Unlikely</option><option value="3">3 — Possible</option><option value="4">4 — Likely</option><option value="5">5 — Almost certain</option></select></div>
+    <div class="form-group"><label>Impact (1–5)</label><select id="risk-impact"><option value="1">1 — Negligible</option><option value="2">2 — Minor</option><option value="3">3 — Moderate</option><option value="4">4 — Major</option><option value="5">5 — Catastrophic</option></select></div>
+    <div class="form-group"><label>Risk owner</label><input id="risk-owner" placeholder="Name or role" /></div>
+    <div class="form-group"><label>Review date</label><input type="date" id="risk-review" /></div>
+    <div class="form-group full"><label>Controls already in place</label><textarea id="risk-controls" placeholder="What is already being done to manage this risk?"></textarea></div>
+    <div class="form-group full"><label>Further action required</label><textarea id="risk-actions" placeholder="What additional steps are needed?"></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('risk-modal')">Cancel</button><button class="btn btn-save" onclick="saveRisk()">Save risk</button></div>
+</div></div>
+
+<div id="sfg-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Log safeguarding referral</h2><button class="modal-close" onclick="closeGovModal('sfg-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date of concern *</label><input type="date" id="sfg-date" /></div>
+    <div class="form-group"><label>Resident concerned</label><input id="sfg-resident" placeholder="Name" /></div>
+    <div class="form-group"><label>Type of concern</label><select id="sfg-type"><option>Physical abuse</option><option>Emotional abuse</option><option>Financial abuse</option><option>Neglect</option><option>Sexual abuse</option><option>Self-neglect</option><option>Domestic abuse</option><option>Discriminatory abuse</option><option>Institutional abuse</option><option>Other</option></select></div>
+    <div class="form-group"><label>Referred to</label><select id="sfg-referred"><option>Local authority safeguarding</option><option>Police</option><option>CQC</option><option>GP</option><option>Other</option></select></div>
+    <div class="form-group"><label>Referred by (staff name)</label><input id="sfg-by" placeholder="Name" /></div>
+    <div class="form-group"><label>Status</label><select id="sfg-status"><option>Open</option><option>Under investigation</option><option>Closed — no further action</option><option>Closed — action taken</option></select></div>
+    <div class="form-group full"><label>Details of concern</label><textarea id="sfg-details" placeholder="Describe what happened..."></textarea></div>
+    <div class="form-group full"><label>Outcome</label><textarea id="sfg-outcome" placeholder="What was the outcome of the referral?"></textarea></div>
+    <div class="form-group full"><label>Learning — what changed as a result?</label><textarea id="sfg-learning" placeholder="Policy updates, training, process changes..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sfg-modal')">Cancel</button><button class="btn btn-save" onclick="saveSafeguarding()">Save referral</button></div>
+</div></div>
+
+<div id="meeting-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add meeting minutes</h2><button class="modal-close" onclick="closeGovModal('meeting-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date *</label><input type="date" id="mtg-date" /></div>
+    <div class="form-group"><label>Meeting type</label><select id="mtg-type"><option>Governance meeting</option><option>Team meeting</option><option>Resident review meeting</option><option>Quality &amp; safety meeting</option><option>Senior management meeting</option><option>Other</option></select></div>
+    <div class="form-group"><label>Chair</label><input id="mtg-chair" placeholder="Name" /></div>
+    <div class="form-group"><label>Next meeting date</label><input type="date" id="mtg-next" /></div>
+    <div class="form-group full"><label>Attendees</label><input id="mtg-attendees" placeholder="Names separated by commas" /></div>
+    <div class="form-group full"><label>Key decisions made</label><textarea id="mtg-decisions" placeholder="Summarise key decisions..."></textarea></div>
+    <div class="form-group full"><label>Actions arising</label><textarea id="mtg-actions-text" placeholder="List actions, owner and timescale..."></textarea></div>
+    <div class="form-group full"><label>Minutes / notes</label><textarea id="mtg-notes" placeholder="Full meeting notes..." style="min-height:120px;"></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('meeting-modal')">Cancel</button><button class="btn btn-save" onclick="saveMeeting()">Save minutes</button></div>
+</div></div>
 
 <!-- ═══════════════ MODALS ═══════════════ -->
 
@@ -786,6 +1138,7 @@
     if (name === 'daily-notes') { setTodayDate(); loadNotes(); }
     if (name === 'documents') loadDocuments();
     if (name === 'cqc') loadCQC();
+    if (name === 'governance') initGovernance();
   }
 
   function switchTab(el, panelId) {
@@ -1170,6 +1523,123 @@
     const map = { low: 'blue', medium: 'amber', high: 'red', critical: 'red' };
     return `<span class="badge badge-${map[s] || 'blue'}">${s || '—'}</span>`;
   }
+
+  // ══════════════════════════════════════════════
+  // GOVERNANCE HUB
+  // ══════════════════════════════════════════════
+  const govStore = {
+    policies: JSON.parse(localStorage.getItem('gov_policies')||'[]'),
+    kpis: JSON.parse(localStorage.getItem('gov_kpis')||'[]'),
+    audits: JSON.parse(localStorage.getItem('gov_audits')||'[]'),
+    actions: JSON.parse(localStorage.getItem('gov_actions')||'[]'),
+    complaints: JSON.parse(localStorage.getItem('gov_complaints')||'[]'),
+    compliments: JSON.parse(localStorage.getItem('gov_compliments')||'[]'),
+    medAudits: JSON.parse(localStorage.getItem('gov_medaudits')||'[]'),
+    supervisions: JSON.parse(localStorage.getItem('gov_supervisions')||'[]'),
+    risks: JSON.parse(localStorage.getItem('gov_risks')||'[]'),
+    safeguarding: JSON.parse(localStorage.getItem('gov_safeguarding')||'[]'),
+    meetings: JSON.parse(localStorage.getItem('gov_meetings')||'[]'),
+  };
+  function govSave(key){ localStorage.setItem('gov_'+key, JSON.stringify(govStore[key])); }
+
+  function showGovSection(id, btn){
+    document.querySelectorAll('.gov-section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.gov-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('gov-'+id).classList.add('active');
+    btn.classList.add('active');
+    if(id==='overview') updateGovOverview();
+  }
+  function openGovModal(id){ document.getElementById(id).classList.add('open'); }
+  function closeGovModal(id){ document.getElementById(id).classList.remove('open'); }
+
+  function govFmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+  function govRagBadge(r){ const map={green:'badge-green',amber:'badge-amber',red:'badge-red',blue:'badge-blue'}; return `<span class="badge ${map[r]||'badge-blue'}">${r.charAt(0).toUpperCase()+r.slice(1)}</span>`; }
+  function govStatusBadge(s){ const map={Open:'badge-red','Under investigation':'badge-amber','In progress':'badge-amber',Resolved:'badge-green',Completed:'badge-green',Escalated:'badge-red',Current:'badge-green','Due for review':'badge-amber',Overdue:'badge-red',Archived:'badge-blue',Satisfactory:'badge-green',Good:'badge-green',Outstanding:'badge-teal','Improvement needed':'badge-amber','Action plan set':'badge-amber'}; return `<span class="badge ${map[s]||'badge-blue'}">${s||'—'}</span>`; }
+  function govPriorityBadge(p){ const map={High:'badge-red',Medium:'badge-amber',Low:'badge-green'}; return `<span class="badge ${map[p]||'badge-blue'}">${p}</span>`; }
+  function govDel(storeKey, id, rerender){ if(!confirm('Delete this record?')) return; govStore[storeKey]=govStore[storeKey].filter(i=>i.id!==id); govSave(storeKey); rerender(); }
+
+  function updateGovOverview(){
+    document.getElementById('summary-date').textContent='As of '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+    const today=new Date(); today.setHours(0,0,0,0);
+    const polDue=govStore.policies.filter(p=>{ if(!p.due) return false; return new Date(p.due)<=new Date(today.getTime()+30*86400000); }).length;
+    document.getElementById('ov-policies').textContent=polDue;
+    const thisMonth=new Date().toISOString().slice(0,7);
+    const monthKpis=govStore.kpis.filter(k=>k.month===thisMonth);
+    const onTarget=monthKpis.filter(k=>parseFloat(k.actual)>=parseFloat(k.target)).length;
+    document.getElementById('ov-kpis').textContent=monthKpis.length?`${onTarget}/${monthKpis.length}`:'—';
+    document.getElementById('ov-audits').textContent=govStore.audits.filter(a=>a.date&&a.date.startsWith(thisMonth)).length;
+    document.getElementById('ov-actions').textContent=govStore.actions.filter(a=>a.status==='Open'||a.status==='In progress').length;
+    document.getElementById('ov-complaints').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length;
+    document.getElementById('ov-risks').textContent=govStore.risks.filter(r=>(parseInt(r.likelihood)*parseInt(r.impact))>=12).length;
+    document.getElementById('ov-safeguarding').textContent=govStore.safeguarding.filter(s=>s.status==='Open'||s.status==='Under investigation').length;
+    buildGovAlerts();
+  }
+
+  function buildGovAlerts(){
+    const alerts=[];
+    const today=new Date(); today.setHours(0,0,0,0);
+    const soon=new Date(today.getTime()+14*86400000);
+    govStore.actions.filter(a=>a.status!=='Completed'&&a.due).forEach(a=>{ const d=new Date(a.due); if(d<today) alerts.push({level:'red',text:`Action overdue: "${a.desc.slice(0,60)}..." — was due ${govFmtDate(a.due)}`}); else if(d<=soon) alerts.push({level:'amber',text:`Action due soon: "${a.desc.slice(0,60)}..." — due ${govFmtDate(a.due)}`}); });
+    govStore.complaints.filter(c=>c.status==='Open'&&c.due).forEach(c=>{ if(new Date(c.due)<today) alerts.push({level:'red',text:`Complaint response overdue — received ${govFmtDate(c.date)}`}); });
+    govStore.policies.filter(p=>p.due).forEach(p=>{ const d=new Date(p.due); if(d<today) alerts.push({level:'red',text:`Policy overdue for review: ${p.name}`}); else if(d<=new Date(today.getTime()+30*86400000)) alerts.push({level:'amber',text:`Policy review due soon: ${p.name} — due ${govFmtDate(p.due)}`}); });
+    const al=document.getElementById('alert-list');
+    if(!alerts.length){ al.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No overdue items — great work!</p>'; return; }
+    al.innerHTML=alerts.map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);"><span class="badge badge-${a.level}">${a.level==='red'?'Overdue':'Due soon'}</span><span style="font-size:13px;">${a.text}</span></div>`).join('');
+  }
+
+  // Policies
+  function savePolicy(){ const name=document.getElementById('pol-name').value.trim(); if(!name){alert('Please enter a policy name');return;} govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value}); govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies(); ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
+
+  // KPIs
+  function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
+  function saveGovKPI(){ const name=document.getElementById('kpi-name').value.trim(); if(!name){alert('Please enter a KPI name');return;} govStore.kpis.push({id:Date.now(),name,unit:document.getElementById('kpi-unit').value,target:document.getElementById('kpi-target').value,actual:document.getElementById('kpi-actual').value,month:document.getElementById('kpi-month').value||new Date().toISOString().slice(0,7),category:document.getElementById('kpi-cat').value,notes:document.getElementById('kpi-notes').value}); govSave('kpis'); closeGovModal('kpi-modal'); renderGovKPIs(); ['kpi-name','kpi-target','kpi-actual','kpi-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovKPIs(){ const month=document.getElementById('kpi-month-select').value; document.getElementById('kpi-month-label').textContent=new Date(month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); const data=govStore.kpis.filter(k=>k.month===month); const el=document.getElementById('kpi-list'); if(!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p>';return;} el.innerHTML=data.map(k=>{ const t=parseFloat(k.target)||0,a=parseFloat(k.actual)||0; const pct=t>0?Math.min(Math.round(a/t*100),100):0; const col=a>=t?'#10b981':a>=t*0.9?'#f59e0b':'#ef4444'; const rag=a>=t?'green':a>=t*0.9?'amber':'red'; return `<div class="kpi-row"><div><div style="font-weight:600;">${k.name}</div><div style="font-size:12px;color:var(--muted);">${k.category}</div></div><div style="text-align:center;">${k.target}${k.unit}</div><div style="text-align:center;font-weight:700;color:${col}">${k.actual}${k.unit}</div><div>${govRagBadge(rag)}</div><div><div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${pct}%;background:${col}"></div></div></div><div><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('kpis',${k.id},renderGovKPIs)">Remove</button></div></div>`; }).join(''); }
+
+  // Audits
+  function saveAudit(){ const type=document.getElementById('aud-type').value; govStore.audits.push({id:Date.now(),type,date:document.getElementById('aud-date').value,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value,findings:document.getElementById('aud-findings').value,actions:document.getElementById('aud-actions-text').value}); govSave('audits'); closeGovModal('audit-modal'); renderGovAudits(); ['aud-date','aud-by','aud-score','aud-next','aud-findings','aud-actions-text'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovAudits(){ const el=document.getElementById('audit-list'); if(!govStore.audits.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p>';return;} el.innerHTML=[...govStore.audits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=>{ const sn=parseInt(a.score); const bg=a.rag==='green'?'#dcfce7':a.rag==='amber'?'#fef3c7':'#fee2e2'; const tc=a.rag==='green'?'#15803d':a.rag==='amber'?'#92400e':'#b91c1c'; return `<div class="audit-row"><div class="score-circle" style="background:${bg};color:${tc}">${isNaN(sn)?'N/A':sn+'%'}</div><div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.type}</div><div style="font-size:12px;color:var(--muted);">By ${a.by||'—'} on ${govFmtDate(a.date)} · Next: ${govFmtDate(a.next)}</div>${a.findings?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${a.findings}</div>`:''}</div>${govRagBadge(a.rag)}<button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('audits',${a.id},renderGovAudits)">Delete</button></div>`; }).join(''); }
+
+  // Actions
+  function saveGovAction(){ const desc=document.getElementById('act-desc').value.trim(); if(!desc){alert('Please describe the action');return;} govStore.actions.push({id:Date.now(),desc,source:document.getElementById('act-source').value,priority:document.getElementById('act-priority').value,owner:document.getElementById('act-owner').value,due:document.getElementById('act-due').value,status:document.getElementById('act-status').value,notes:document.getElementById('act-notes').value}); govSave('actions'); closeGovModal('action-modal'); renderGovActions(); ['act-desc','act-owner','act-due','act-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('actions',${a.id},renderGovActions)">Delete</button></td></tr>`).join(''); }
+
+  // Complaints & compliments
+  function saveComplaint(){ const date=document.getElementById('cmp-date').value; if(!date){alert('Please enter the date received');return;} govStore.complaints.push({id:Date.now(),date,raised:document.getElementById('cmp-raised').value,method:document.getElementById('cmp-method').value,nature:document.getElementById('cmp-nature').value,assigned:document.getElementById('cmp-assigned').value,due:document.getElementById('cmp-due').value,status:document.getElementById('cmp-status').value,escalated:document.getElementById('cmp-escalated').value,details:document.getElementById('cmp-details').value,outcome:document.getElementById('cmp-outcome').value,learning:document.getElementById('cmp-learning').value,satisfied:document.getElementById('cmp-satisfied').value}); govSave('complaints'); closeGovModal('complaint-modal'); renderGovComplaints(); ['cmp-date','cmp-assigned','cmp-due','cmp-details','cmp-outcome','cmp-learning'].forEach(id=>document.getElementById(id).value=''); }
+  function saveCompliment(){ const date=document.getElementById('comp-date').value; if(!date){alert('Please enter the date');return;} govStore.compliments.push({id:Date.now(),date,source:document.getElementById('comp-source').value,re:document.getElementById('comp-re').value,staff:document.getElementById('comp-staff').value,details:document.getElementById('comp-details').value}); govSave('compliments'); closeGovModal('compliment-modal'); renderGovComplaints(); ['comp-date','comp-staff','comp-details'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovComplaints(){ const thisMonth=new Date().toISOString().slice(0,7); document.getElementById('comp-month').textContent=govStore.complaints.filter(c=>c.date&&c.date.startsWith(thisMonth)).length; document.getElementById('comp-open').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length; document.getElementById('comp-resolved').textContent=govStore.complaints.filter(c=>c.status==='Resolved').length; document.getElementById('comp-compliments').textContent=govStore.compliments.length; const tb=document.getElementById('complaint-table'); if(!govStore.complaints.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr>';}else{tb.innerHTML=[...govStore.complaints].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.raised}</td><td>${c.nature}</td><td>${c.assigned||'—'}</td><td>${govFmtDate(c.due)}</td><td>${govStatusBadge(c.status)}</td><td>${c.escalated?`<span class="badge badge-red">${c.escalated}</span>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('complaints',${c.id},renderGovComplaints)">Delete</button></td></tr>`).join('');} const tb2=document.getElementById('compliment-table'); if(!govStore.compliments.length){tb2.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr>';}else{tb2.innerHTML=[...govStore.compliments].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.source}</td><td>${c.re}</td><td>${c.staff||'—'}</td><td>${c.details}</td></tr>`).join('');} }
+
+  // Medication audits
+  function saveMed(){ const date=document.getElementById('med-date').value; if(!date){alert('Please enter the date');return;} govStore.medAudits.push({id:Date.now(),date,resident:document.getElementById('med-resident').value,auditor:document.getElementById('med-auditor').value,mar:document.getElementById('med-mar').value,stock:document.getElementById('med-stock').value,errors:document.getElementById('med-errors').value,findings:document.getElementById('med-findings').value,actions:document.getElementById('med-actions').value,score:document.getElementById('med-score').value}); govSave('medAudits'); closeGovModal('med-modal'); renderGovMed(); ['med-date','med-resident','med-auditor','med-errors','med-findings','med-actions','med-score'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovMed(){ const tb=document.getElementById('med-table'); if(!govStore.medAudits.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.medAudits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{ const err=parseInt(m.errors)||0; const score=parseInt(m.score); return `<tr><td>${govFmtDate(m.date)}</td><td>${m.resident||'—'}</td><td>${m.auditor||'—'}</td><td>${m.mar==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-red">'+m.mar+'</span>'}</td><td>${m.stock==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-amber">'+m.stock+'</span>'}</td><td>${err===0?'<span class="badge badge-green">None</span>':'<span class="badge badge-red">'+err+'</span>'}</td><td style="font-size:12px;">${m.actions||'—'}</td><td>${isNaN(score)?'—':'<span class="badge badge-'+(score>=90?'green':score>=75?'amber':'red')+'">'+score+'%</span>'}</td></tr>`; }).join(''); }
+
+  // Supervisions
+  function saveSupervision(){ const staff=document.getElementById('sup-staff').value.trim(); if(!staff){alert('Please enter the staff member name');return;} govStore.supervisions.push({id:Date.now(),staff,role:document.getElementById('sup-role').value,type:document.getElementById('sup-type').value,date:document.getElementById('sup-date').value,by:document.getElementById('sup-by').value,next:document.getElementById('sup-next').value,outcome:document.getElementById('sup-outcome').value,notes:document.getElementById('sup-notes').value}); govSave('supervisions'); closeGovModal('sup-modal'); renderGovSupervisions(); ['sup-staff','sup-role','sup-date','sup-by','sup-next','sup-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovSupervisions(){ const tb=document.getElementById('sup-table'); if(!govStore.supervisions.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.supervisions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td><strong>${s.staff}</strong></td><td>${s.role||'—'}</td><td><span class="badge badge-blue">${s.type}</span></td><td>${govFmtDate(s.date)}</td><td>${s.by||'—'}</td><td>${govStatusBadge(s.outcome)}</td><td>${govFmtDate(s.next)}</td><td>${new Date(s.next)<new Date()?'<span class="badge badge-red">Overdue</span>':'<span class="badge badge-green">On track</span>'}</td></tr>`).join(''); }
+
+  // Risks
+  function saveRisk(){ const desc=document.getElementById('risk-desc').value.trim(); if(!desc){alert('Please describe the risk');return;} govStore.risks.push({id:Date.now(),desc,category:document.getElementById('risk-cat').value,likelihood:document.getElementById('risk-like').value,impact:document.getElementById('risk-impact').value,owner:document.getElementById('risk-owner').value,review:document.getElementById('risk-review').value,controls:document.getElementById('risk-controls').value,actions:document.getElementById('risk-actions').value}); govSave('risks'); closeGovModal('risk-modal'); renderGovRisks(); ['risk-desc','risk-owner','risk-review','risk-controls','risk-actions'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovRisks(){ const tb=document.getElementById('risk-table'); if(!govStore.risks.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.risks].sort((a,b)=>(parseInt(b.likelihood)*parseInt(b.impact))-(parseInt(a.likelihood)*parseInt(a.impact))).map(r=>{ const score=parseInt(r.likelihood)*parseInt(r.impact); const rating=score>=15?'red':score>=8?'amber':'green'; return `<tr><td style="max-width:200px;font-size:13px;">${r.desc}</td><td><span class="badge badge-blue">${r.category}</span></td><td style="text-align:center;">${r.likelihood}</td><td style="text-align:center;">${r.impact}</td><td style="text-align:center;font-weight:700;">${score}</td><td><span class="badge badge-${rating}">${score>=15?'High':score>=8?'Medium':'Low'}</span></td><td style="font-size:12px;max-width:180px;">${r.controls||'—'}</td><td>${r.owner||'—'}</td><td>${govFmtDate(r.review)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('risks',${r.id},renderGovRisks)">Delete</button></td></tr>`; }).join(''); }
+
+  // Safeguarding
+  function saveSafeguarding(){ const date=document.getElementById('sfg-date').value; if(!date){alert('Please enter the date');return;} govStore.safeguarding.push({id:Date.now(),date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value}); govSave('safeguarding'); closeGovModal('sfg-modal'); renderGovSafeguarding(); ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td></tr>`).join(''); }
+
+  // Meetings
+  function saveMeeting(){ const date=document.getElementById('mtg-date').value; if(!date){alert('Please enter the meeting date');return;} govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value}); govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings(); ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value=''); }
+  function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
+
+  // Init governance
+  function initGovernance(){
+    initGovKPIMonth();
+    document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
+    updateGovOverview();
+    renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
+    renderGovComplaints(); renderGovMed(); renderGovSupervisions();
+    renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
+  }
+
+  // ══════════════════════════════════════════════
 
   // ── ENTER KEY LOGIN ──
   document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
