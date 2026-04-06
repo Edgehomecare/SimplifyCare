@@ -1114,26 +1114,47 @@
 <div class="modal-overlay" id="doc-modal">
   <div class="modal">
     <div class="modal-header">
-      <h2>Add Document Record</h2>
+      <h2>Add Document</h2>
       <button class="modal-close" onclick="closeModal('doc-modal')">✕</button>
     </div>
     <div class="form-grid">
       <div class="form-group full"><label>Document Name *</label><input id="d-name" placeholder="e.g. Moving & Handling Policy" /></div>
       <div class="form-group"><label>Category</label>
         <select id="d-category">
-          <option value="policy">Policy</option><option value="care_plan">Care Plan</option>
-          <option value="form">Form</option><option value="risk_assessment">Risk Assessment</option>
-          <option value="training">Training</option><option value="other">Other</option>
+          <option value="policy">Policy</option>
+          <option value="care_plan">Care Plan</option>
+          <option value="form">Form</option>
+          <option value="risk_assessment">Risk Assessment</option>
+          <option value="training">Training</option>
+          <option value="kpi">Monthly KPI</option>
+          <option value="meeting">Meeting Minutes</option>
+          <option value="other">Other</option>
         </select>
       </div>
-      <div class="form-group"><label>Version</label><input id="d-version" placeholder="e.g. v1.2" /></div>
+      <div class="form-group"><label>Version</label><input id="d-version" placeholder="e.g. 1.2" /></div>
       <div class="form-group"><label>Review Date</label><input type="date" id="d-review" /></div>
       <div class="form-group"><label>Owner</label><input id="d-owner" placeholder="Who is responsible?" /></div>
       <div class="form-group"><label>Status</label>
         <select id="d-status"><option value="current">Current</option><option value="under_review">Under Review</option><option value="archived">Archived</option></select>
       </div>
       <div class="form-group full"><label>Description / Notes</label><textarea id="d-notes" placeholder="Brief description of this document..."></textarea></div>
-      <div class="form-group full"><label>Document URL / Link</label><input id="d-url" placeholder="Paste a link to the document if stored online" /></div>
+
+      <!-- FILE UPLOAD -->
+      <div class="form-group full">
+        <label>Upload File</label>
+        <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('d-file').click()" id="d-drop-zone">
+          <div style="font-size:28px;margin-bottom:8px;">📎</div>
+          <div id="d-file-label" style="font-size:13px;color:var(--muted);">Choose file or click to browse</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, Word, Excel, images — any file type</div>
+          <input type="file" id="d-file" style="display:none;" onchange="document.getElementById('d-file-label').textContent = this.files[0]?.name || 'Choose file...'" />
+        </div>
+      </div>
+
+      <!-- OR paste a link -->
+      <div class="form-group full">
+        <label>Or paste a link (optional)</label>
+        <input id="d-url" placeholder="https://... (if document is stored online)" />
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('doc-modal')">Cancel</button>
@@ -1746,25 +1767,69 @@
     const el = document.getElementById(elId);
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="emoji">📁</div><p>No documents in this category</p></div>'; return; }
     el.innerHTML = list.map(d => `
-      <div class="doc-card" onclick="${d.document_url ? `window.open('${d.document_url}','_blank')` : ''}">
+      <div class="doc-card" onclick="${d.document_url ? `window.open('${d.document_url}','_blank')` : 'alert(\"No file attached to this document.\")'}">
         <div class="doc-icon">${docIcon(d.category)}</div>
         <div class="doc-name">${d.document_name || 'Untitled'}</div>
-        <div class="doc-meta">${d.version || ''} · ${formatDate(d.review_date) !== '—' ? 'Review: ' + formatDate(d.review_date) : ''}</div>
-        <div style="margin-top:8px;">${statusBadge(d.status)}</div>
+        <div class="doc-meta">${d.version ? 'v' + d.version : ''} ${formatDate(d.review_date) !== '—' ? '· Review: ' + formatDate(d.review_date) : ''}</div>
+        <div style="margin-top:6px;font-size:11px;color:var(--muted);">${d.owner ? 'Owner: ' + d.owner : ''}</div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+          ${statusBadge(d.status)}
+          ${d.document_url ? '<span style="font-size:11px;color:var(--teal);">📎 File attached</span>' : '<span style="font-size:11px;color:var(--muted);">No file</span>'}
+        </div>
       </div>`).join('');
   }
 
   async function saveDocument() {
+    const docName = val('d-name');
+    if (!docName) { alert('Please enter document name.'); return; }
+
+    // Show uploading state
+    const saveBtn = document.querySelector('#doc-modal .btn-save');
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+
+    let fileUrl = val('d-url');
+
+    // Handle file upload if a file was selected
+    const fileInput = document.getElementById('d-file');
+    const file = fileInput.files[0];
+    if (file) {
+      const category = val('d-category');
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `${category}/${Date.now()}_${safeName}`;
+      const { data: uploadData, error: uploadError } = await db.storage
+        .from('documents')
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) {
+        alert('File upload failed: ' + uploadError.message);
+        saveBtn.textContent = 'Save Document';
+        saveBtn.disabled = false;
+        return;
+      }
+      const { data: urlData } = db.storage.from('documents').getPublicUrl(filePath);
+      fileUrl = urlData.publicUrl;
+    }
+
     const payload = {
-      document_name: val('d-name'), category: val('d-category'),
-      version: val('d-version'), review_date: val('d-review'),
-      owner: val('d-owner'), status: val('d-status'),
-      notes: val('d-notes'), document_url: val('d-url')
+      document_name: docName,
+      category: val('d-category'),
+      version: val('d-version'),
+      review_date: val('d-review') || null,
+      owner: val('d-owner'),
+      status: val('d-status'),
+      notes: val('d-notes'),
+      document_url: fileUrl || null
     };
-    if (!payload.document_name) { alert('Please enter document name.'); return; }
+
     const { error } = await db.from('documents').insert([payload]);
-    if (error) { alert('Error: ' + error.message); return; }
+    saveBtn.textContent = 'Save Document';
+    saveBtn.disabled = false;
+    if (error) { alert('Error saving document: ' + error.message); return; }
     closeModal('doc-modal');
+    // Reset form
+    ['d-name','d-version','d-review','d-owner','d-notes','d-url'].forEach(id => document.getElementById(id).value = '');
+    fileInput.value = '';
+    document.getElementById('d-file-label').textContent = 'Choose file...';
     loadDocuments();
   }
 
@@ -2029,29 +2094,4 @@
 
   // Safeguarding
   function saveSafeguarding(){ const date=document.getElementById('sfg-date').value; if(!date){alert('Please enter the date');return;} govStore.safeguarding.push({id:Date.now(),date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value}); govSave('safeguarding'); closeGovModal('sfg-modal'); renderGovSafeguarding(); ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td></tr>`).join(''); }
-
-  // Meetings
-  function saveMeeting(){ const date=document.getElementById('mtg-date').value; if(!date){alert('Please enter the meeting date');return;} govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value}); govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings(); ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
-
-  // Init governance
-  function initGovernance(){
-    initGovKPIMonth();
-    document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
-    updateGovOverview();
-    renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
-    renderGovComplaints(); renderGovMed(); renderGovSupervisions();
-    renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
-  }
-
-  // ══════════════════════════════════════════════
-
-  // ── ENTER KEY LOGIN ──
-  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-
-  // ── INIT ──
-  checkSession();
-</script>
-</body>
-</html>
+  function renderGovSafeguarding
