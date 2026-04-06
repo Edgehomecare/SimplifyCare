@@ -596,7 +596,7 @@
         <div id="gov-policies" class="gov-section">
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Policies &amp; procedures register</div><button class="btn-add" onclick="openGovModal('policy-modal')">+ Add policy</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Policy name</th><th>Category</th><th>Version</th><th>Owner</th><th>Last reviewed</th><th>Next review</th><th>Status</th><th></th></tr></thead>
+            <div class="table-wrap"><table><thead><tr><th>Policy name</th><th>Category</th><th>Version</th><th>Owner</th><th>Last reviewed</th><th>Next review</th><th>Status</th><th>File</th><th></th></tr></thead>
             <tbody id="policy-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr></tbody></table></div>
           </div>
         </div>
@@ -780,6 +780,13 @@
     <div class="form-group"><label>Next review due</label><input type="date" id="pol-due" /></div>
     <div class="form-group"><label>Status</label><select id="pol-status"><option>Current</option><option>Due for review</option><option>Overdue</option><option>Archived</option></select></div>
     <div class="form-group full"><label>Notes</label><textarea id="pol-notes" placeholder="Any additional notes..."></textarea></div>
+    <div class="form-group full"><label>Upload File (optional)</label>
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('pol-file').click()">
+        <div style="font-size:22px;">📎</div>
+        <div id="pol-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload policy document</div>
+        <input type="file" id="pol-file" style="display:none;" onchange="document.getElementById('pol-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+      </div>
+    </div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('policy-modal')">Cancel</button><button class="btn btn-save" onclick="savePolicy()">Save policy</button></div>
 </div></div>
@@ -809,6 +816,13 @@
     <div class="form-group"><label>Next audit due</label><input type="date" id="aud-next" /></div>
     <div class="form-group full"><label>Findings / summary</label><textarea id="aud-findings" placeholder="Summary of what was found..."></textarea></div>
     <div class="form-group full"><label>Actions required</label><textarea id="aud-actions-text" placeholder="List any actions arising from this audit..."></textarea></div>
+    <div class="form-group full"><label>Upload Audit Report (optional)</label>
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('aud-file').click()">
+        <div style="font-size:22px;">📎</div>
+        <div id="aud-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload audit document</div>
+        <input type="file" id="aud-file" style="display:none;" onchange="document.getElementById('aud-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+      </div>
+    </div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('audit-modal')">Cancel</button><button class="btn btn-save" onclick="saveAudit()">Save audit</button></div>
 </div></div>
@@ -931,6 +945,13 @@
     <div class="form-group full"><label>Key decisions made</label><textarea id="mtg-decisions" placeholder="Summarise key decisions..."></textarea></div>
     <div class="form-group full"><label>Actions arising</label><textarea id="mtg-actions-text" placeholder="List actions, owner and timescale..."></textarea></div>
     <div class="form-group full"><label>Minutes / notes</label><textarea id="mtg-notes" placeholder="Full meeting notes..." style="min-height:120px;"></textarea></div>
+    <div class="form-group full"><label>Upload Minutes Document (optional)</label>
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('mtg-file').click()">
+        <div style="font-size:22px;">📎</div>
+        <div id="mtg-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload meeting minutes</div>
+        <input type="file" id="mtg-file" style="display:none;" onchange="document.getElementById('mtg-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+      </div>
+    </div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('meeting-modal')">Cancel</button><button class="btn btn-save" onclick="saveMeeting()">Save minutes</button></div>
 </div></div>
@@ -2063,8 +2084,22 @@
   }
 
   // Policies
-  function savePolicy(){ const name=document.getElementById('pol-name').value.trim(); if(!name){alert('Please enter a policy name');return;} govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value}); govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies(); ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
+  async function savePolicy(){
+    const name=document.getElementById('pol-name').value.trim();
+    if(!name){alert('Please enter a policy name');return;}
+    let fileUrl = '';
+    const file = document.getElementById('pol-file').files[0];
+    if (file) {
+      const path = `policies/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
+      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+    }
+    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,fileUrl});
+    govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies();
+    ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pol-file').value=''; document.getElementById('pol-file-label').textContent='Click to upload policy document';
+  }
+  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.fileUrl?`<a href="${p.fileUrl}" target="_blank" style="color:var(--teal);font-size:12px;">📎 Open</a>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
 
   // KPIs
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
@@ -2072,7 +2107,20 @@
   function renderGovKPIs(){ const month=document.getElementById('kpi-month-select').value; document.getElementById('kpi-month-label').textContent=new Date(month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); const data=govStore.kpis.filter(k=>k.month===month); const el=document.getElementById('kpi-list'); if(!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p>';return;} el.innerHTML=data.map(k=>{ const t=parseFloat(k.target)||0,a=parseFloat(k.actual)||0; const pct=t>0?Math.min(Math.round(a/t*100),100):0; const col=a>=t?'#10b981':a>=t*0.9?'#f59e0b':'#ef4444'; const rag=a>=t?'green':a>=t*0.9?'amber':'red'; return `<div class="kpi-row"><div><div style="font-weight:600;">${k.name}</div><div style="font-size:12px;color:var(--muted);">${k.category}</div></div><div style="text-align:center;">${k.target}${k.unit}</div><div style="text-align:center;font-weight:700;color:${col}">${k.actual}${k.unit}</div><div>${govRagBadge(rag)}</div><div><div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${pct}%;background:${col}"></div></div></div><div><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('kpis',${k.id},renderGovKPIs)">Remove</button></div></div>`; }).join(''); }
 
   // Audits
-  function saveAudit(){ const type=document.getElementById('aud-type').value; govStore.audits.push({id:Date.now(),type,date:document.getElementById('aud-date').value,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value,findings:document.getElementById('aud-findings').value,actions:document.getElementById('aud-actions-text').value}); govSave('audits'); closeGovModal('audit-modal'); renderGovAudits(); ['aud-date','aud-by','aud-score','aud-next','aud-findings','aud-actions-text'].forEach(id=>document.getElementById(id).value=''); }
+  async function saveAudit(){
+    const type=document.getElementById('aud-type').value;
+    let fileUrl = '';
+    const file = document.getElementById('aud-file').files[0];
+    if (file) {
+      const path = `audits/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
+      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+    }
+    govStore.audits.push({id:Date.now(),type,date:document.getElementById('aud-date').value,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value,findings:document.getElementById('aud-findings').value,actions:document.getElementById('aud-actions-text').value,fileUrl});
+    govSave('audits'); closeGovModal('audit-modal'); renderGovAudits();
+    ['aud-date','aud-by','aud-score','aud-next','aud-findings','aud-actions-text'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('aud-file').value=''; document.getElementById('aud-file-label').textContent='Click to upload audit document';
+  }
   function renderGovAudits(){ const el=document.getElementById('audit-list'); if(!govStore.audits.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p>';return;} el.innerHTML=[...govStore.audits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=>{ const sn=parseInt(a.score); const bg=a.rag==='green'?'#dcfce7':a.rag==='amber'?'#fef3c7':'#fee2e2'; const tc=a.rag==='green'?'#15803d':a.rag==='amber'?'#92400e':'#b91c1c'; return `<div class="audit-row"><div class="score-circle" style="background:${bg};color:${tc}">${isNaN(sn)?'N/A':sn+'%'}</div><div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.type}</div><div style="font-size:12px;color:var(--muted);">By ${a.by||'—'} on ${govFmtDate(a.date)} · Next: ${govFmtDate(a.next)}</div>${a.findings?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${a.findings}</div>`:''}</div>${govRagBadge(a.rag)}<button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('audits',${a.id},renderGovAudits)">Delete</button></div>`; }).join(''); }
 
   // Actions
@@ -2101,7 +2149,21 @@
   function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td></tr>`).join(''); }
 
   // Meetings
-  function saveMeeting(){ const date=document.getElementById('mtg-date').value; if(!date){alert('Please enter the meeting date');return;} govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value}); govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings(); ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value=''); }
+  async function saveMeeting(){
+    const date=document.getElementById('mtg-date').value;
+    if(!date){alert('Please enter the meeting date');return;}
+    let fileUrl = '';
+    const file = document.getElementById('mtg-file').files[0];
+    if (file) {
+      const path = `meetings/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
+      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+    }
+    govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value,fileUrl});
+    govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings();
+    ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('mtg-file').value=''; document.getElementById('mtg-file-label').textContent='Click to upload meeting minutes';
+  }
   function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
 
   // Init governance
