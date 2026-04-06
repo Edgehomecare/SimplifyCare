@@ -1,1 +1,1181 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimplifyCare – Care Management Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --teal: #0d9488;
+      --teal-light: #ccfbf1;
+      --teal-dark: #0f766e;
+      --navy: #0f172a;
+      --slate: #334155;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --white: #ffffff;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --sidebar-w: 240px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--navy); min-height: 100vh; }
+
+    /* ── AUTH ── */
+    #auth-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #0d9488 100%);
+    }
+    .auth-card {
+      background: var(--white); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+    .auth-logo { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--teal); margin-bottom: 8px; }
+    .auth-tagline { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    .auth-card label { display: block; font-size: 13px; font-weight: 600; color: var(--slate); margin-bottom: 6px; }
+    .auth-card input {
+      width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; margin-bottom: 16px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .auth-card input:focus { border-color: var(--teal); }
+    .btn-primary {
+      width: 100%; padding: 13px; background: var(--teal); color: white; border: none;
+      border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--teal-dark); }
+    .auth-error { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; }
+
+    /* ── LAYOUT ── */
+    #app { display: none; min-height: 100vh; }
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w); background: var(--navy); color: white;
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh;
+      z-index: 100; overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-brand .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--teal); }
+    .sidebar-brand .sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .sidebar-nav { flex: 1; padding: 16px 0; }
+    .nav-section { padding: 8px 20px 4px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); letter-spacing: 1.2px; text-transform: uppercase; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 11px 20px;
+      cursor: pointer; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.65);
+      transition: all 0.15s; border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+    .nav-item.active { background: rgba(13,148,136,0.15); color: var(--teal); border-left-color: var(--teal); }
+    .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+    .sidebar-user {
+      padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px; color: rgba(255,255,255,0.5);
+    }
+    .sidebar-user strong { display: block; color: white; font-size: 14px; }
+    .logout-btn {
+      margin-top: 8px; background: none; border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.5); padding: 6px 14px; border-radius: 6px;
+      cursor: pointer; font-size: 12px; font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-family: 'DM Serif Display', serif; font-size: 30px; color: var(--navy); }
+    .page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--white); border-radius: 14px; border: 1px solid var(--border);
+      padding: 24px; margin-bottom: 20px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+
+    /* ── STAT CARDS ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--white); border-radius: 14px; border: 1px solid var(--border);
+      padding: 20px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .stat-card .label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 32px; font-weight: 700; color: var(--navy); }
+    .stat-card .sub { font-size: 12px; color: var(--muted); }
+    .stat-card.teal { border-left: 4px solid var(--teal); }
+    .stat-card.red { border-left: 4px solid var(--red); }
+    .stat-card.amber { border-left: 4px solid var(--amber); }
+    .stat-card.green { border-left: 4px solid var(--green); }
+    .stat-card.blue { border-left: 4px solid var(--blue); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--slate); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-red { background: #fee2e2; color: #dc2626; }
+    .badge-amber { background: #fef3c7; color: #d97706; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
+    .badge-teal { background: var(--teal-light); color: var(--teal-dark); }
+
+    /* ── FORMS ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--slate); }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--navy); outline: none;
+      transition: border-color 0.2s; background: white;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--teal); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: none; }
+    .btn-save { background: var(--teal); color: white; }
+    .btn-save:hover { background: var(--teal-dark); }
+    .btn-cancel { background: var(--bg); color: var(--slate); border: 1px solid var(--border); }
+    .btn-cancel:hover { border-color: var(--slate); }
+    .btn-add { background: var(--teal); color: white; padding: 9px 18px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn-add:hover { background: var(--teal-dark); }
+    .btn-danger { background: #fee2e2; color: var(--red); border: 1px solid #fecaca; }
+    .btn-danger:hover { background: var(--red); color: white; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 580px;
+      max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .modal-header h2 { font-family: 'DM Serif Display', serif; font-size: 22px; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); }
+
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+    .tab { padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+    .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── SEARCH ── */
+    .search-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .search-bar input { flex: 1; padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; }
+    .search-bar input:focus { border-color: var(--teal); }
+
+    /* ── CQC SCORE ── */
+    .cqc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .cqc-card { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 20px; text-align: center; }
+    .cqc-card .domain { font-size: 13px; font-weight: 700; color: var(--slate); margin-bottom: 8px; }
+    .cqc-score { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+    .cqc-label { font-size: 12px; color: var(--muted); }
+    .progress-bar { height: 6px; border-radius: 3px; background: var(--border); margin-top: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+    /* ── DOCUMENT CARD ── */
+    .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .doc-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+    .doc-card:hover { border-color: var(--teal); box-shadow: 0 4px 16px rgba(13,148,136,0.12); }
+    .doc-icon { font-size: 32px; margin-bottom: 10px; }
+    .doc-name { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+    .doc-meta { font-size: 12px; color: var(--muted); }
+
+    /* ── LOADING ── */
+    .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+    .empty-state { text-align: center; padding: 48px 20px; }
+    .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { color: var(--muted); font-size: 14px; }
+
+    /* ── PROFILE TABS ── */
+    .profile-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; }
+    .profile-tab { padding: 7px 14px; font-size: 12px; font-weight: 600; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .profile-tab.active { background: var(--teal); color: white; border-color: var(--teal); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .topbar { display: none; background: white; border-bottom: 1px solid var(--border); padding: 12px 16px; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50; }
+    @media (max-width: 768px) { .topbar { display: flex; } }
+    .hamburger { background: none; border: none; font-size: 22px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">SimplifyCare</div>
+    <div class="auth-tagline">Care Management Platform for Edge Homecare</div>
+    <label>Email address</label>
+    <input type="email" id="login-email" placeholder="you@example.com" />
+    <label>Password</label>
+    <input type="password" id="login-password" placeholder="••••••••" />
+    <button class="btn-primary" onclick="handleLogin()">Sign In</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- Mobile topbar -->
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <span style="font-family:'DM Serif Display',serif;color:var(--teal);font-size:18px;">SimplifyCare</span>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo">SimplifyCare</div>
+        <div class="sub">Edge Homecare Services Ltd</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Overview</div>
+        <div class="nav-item active" onclick="showPage('dashboard')">
+          <span class="icon">🏠</span> Dashboard
+        </div>
+        <div class="nav-section">Care</div>
+        <div class="nav-item" onclick="showPage('residents')">
+          <span class="icon">👥</span> Residents
+        </div>
+        <div class="nav-item" onclick="showPage('daily-notes')">
+          <span class="icon">📋</span> Daily Notes
+        </div>
+        <div class="nav-item" onclick="showPage('incidents')">
+          <span class="icon">🚨</span> Incidents
+        </div>
+        <div class="nav-section">Organisation</div>
+        <div class="nav-item" onclick="showPage('staff')">
+          <span class="icon">👤</span> Staff
+        </div>
+        <div class="nav-item" onclick="showPage('documents')">
+          <span class="icon">📁</span> Documents
+        </div>
+        <div class="nav-section">Compliance</div>
+        <div class="nav-item" onclick="showPage('cqc')">
+          <span class="icon">✅</span> CQC Dashboard
+        </div>
+      </nav>
+      <div class="sidebar-user">
+        <strong id="user-name">Loading...</strong>
+        <span id="user-email"></span>
+        <button class="logout-btn" onclick="handleLogout()">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>Good morning 👋</h1>
+          <p>Here's what's happening at Edge Homecare today.</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card teal">
+            <div class="label">Residents</div>
+            <div class="value" id="stat-residents">—</div>
+            <div class="sub">Active service users</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="label">Staff</div>
+            <div class="value" id="stat-staff">—</div>
+            <div class="sub">Team members</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="label">Open Incidents</div>
+            <div class="value" id="stat-incidents">—</div>
+            <div class="sub">Require attention</div>
+          </div>
+          <div class="stat-card green">
+            <div class="label">Notes Today</div>
+            <div class="value" id="stat-notes">—</div>
+            <div class="sub">Daily notes logged</div>
+          </div>
+          <div class="stat-card red">
+            <div class="label">Documents</div>
+            <div class="value" id="stat-docs">—</div>
+            <div class="sub">Files stored</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-title">Recent Incidents</div>
+            <div id="dash-incidents"><div class="loading">Loading...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Recent Daily Notes</div>
+            <div id="dash-notes"><div class="loading">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESIDENTS -->
+      <div class="page" id="page-residents">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Residents</h1>
+            <p>Manage service user profiles and care plans</p>
+          </div>
+          <button class="btn-add" onclick="openModal('resident-modal')">+ Add Resident</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" placeholder="Search residents..." oninput="filterResidents(this.value)" />
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th><th>DOB</th><th>Room</th><th>Key Worker</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="residents-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAFF -->
+      <div class="page" id="page-staff">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Staff</h1>
+            <p>Team management, training and DBS compliance</p>
+          </div>
+          <button class="btn-add" onclick="openModal('staff-modal')">+ Add Staff</button>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'staff-all')">All Staff</div>
+          <div class="tab" onclick="switchTab(this,'staff-training')">Training</div>
+          <div class="tab" onclick="switchTab(this,'staff-dbs')">DBS</div>
+        </div>
+        <div class="tab-panel active" id="staff-all">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="staff-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="staff-training">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Staff Member</th><th>Training</th><th>Completed</th><th>Expiry</th><th>Status</th></tr></thead>
+                <tbody id="training-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="staff-dbs">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Staff Member</th><th>DBS Number</th><th>Issue Date</th><th>Expiry</th><th>Status</th></tr></thead>
+                <tbody id="dbs-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INCIDENTS -->
+      <div class="page" id="page-incidents">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Incidents</h1>
+            <p>Report and track all incidents and near misses</p>
+          </div>
+          <button class="btn-add" onclick="openModal('incident-modal')">+ Report Incident</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Resident</th><th>Type</th><th>Severity</th><th>Reported By</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="incidents-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DAILY NOTES -->
+      <div class="page" id="page-daily-notes">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Daily Notes</h1>
+            <p>Care observations and daily records</p>
+          </div>
+          <button class="btn-add" onclick="openModal('note-modal')">+ Add Note</button>
+        </div>
+        <div class="search-bar">
+          <input type="date" id="notes-date-filter" onchange="loadNotes()" style="max-width:200px;" />
+          <input type="text" placeholder="Search notes..." oninput="filterNotes(this.value)" style="flex:1;" />
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date/Time</th><th>Resident</th><th>Category</th><th>Note</th><th>Staff</th><th>Actions</th></tr></thead>
+              <tbody id="notes-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTS -->
+      <div class="page" id="page-documents">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>Documents</h1>
+            <p>Policies, care plans, forms and files</p>
+          </div>
+          <button class="btn-add" onclick="openModal('doc-modal')">+ Add Document</button>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'docs-all')">All Documents</div>
+          <div class="tab" onclick="switchTab(this,'docs-policies')">Policies</div>
+          <div class="tab" onclick="switchTab(this,'docs-careplans')">Care Plans</div>
+          <div class="tab" onclick="switchTab(this,'docs-forms')">Forms</div>
+        </div>
+        <div class="tab-panel active" id="docs-all">
+          <div class="doc-grid" id="docs-grid"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="tab-panel" id="docs-policies">
+          <div class="doc-grid" id="docs-policies-grid"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="tab-panel" id="docs-careplans">
+          <div class="doc-grid" id="docs-careplans-grid"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="tab-panel" id="docs-forms">
+          <div class="doc-grid" id="docs-forms-grid"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- CQC DASHBOARD -->
+      <div class="page" id="page-cqc">
+        <div class="page-header">
+          <h1>CQC Compliance Dashboard</h1>
+          <p>Monitor your readiness across the 5 Key Questions</p>
+        </div>
+        <div class="stats-grid" style="margin-bottom:28px;">
+          <div class="stat-card teal">
+            <div class="label">Overall Score</div>
+            <div class="value" id="cqc-overall">—</div>
+            <div class="sub">Out of 100</div>
+          </div>
+          <div class="stat-card green">
+            <div class="label">Rating</div>
+            <div class="value" style="font-size:18px;" id="cqc-rating">—</div>
+            <div class="sub">Current projection</div>
+          </div>
+        </div>
+        <div class="cqc-grid" id="cqc-domains"></div>
+        <div class="card" style="margin-top:24px;">
+          <div class="card-title">Action Items</div>
+          <div id="cqc-actions"><div class="loading">Calculating...</div></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- RESIDENT MODAL -->
+<div class="modal-overlay" id="resident-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="resident-modal-title">Add Resident</h2>
+      <button class="modal-close" onclick="closeModal('resident-modal')">✕</button>
+    </div>
+    <div class="profile-tabs">
+      <div class="profile-tab active" onclick="switchProfileTab(this,'rt-personal')">Personal</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-care')">Care Needs</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-medical')">Medical</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-contacts')">Contacts</div>
+    </div>
+    <div id="rt-personal" class="tab-panel active">
+      <div class="form-grid">
+        <div class="form-group"><label>First Name *</label><input id="r-firstname" placeholder="First name" /></div>
+        <div class="form-group"><label>Last Name *</label><input id="r-lastname" placeholder="Last name" /></div>
+        <div class="form-group"><label>Date of Birth</label><input type="date" id="r-dob" /></div>
+        <div class="form-group"><label>Gender</label>
+          <select id="r-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option></select>
+        </div>
+        <div class="form-group"><label>Room / Address</label><input id="r-room" placeholder="Room number or address" /></div>
+        <div class="form-group"><label>Move-in Date</label><input type="date" id="r-movein" /></div>
+        <div class="form-group"><label>Key Worker</label><input id="r-keyworker" placeholder="Assigned key worker" /></div>
+        <div class="form-group"><label>Status</label>
+          <select id="r-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="hospital">Hospital</option><option value="discharged">Discharged</option></select>
+        </div>
+        <div class="form-group full"><label>Likes & Preferences</label><textarea id="r-likes" placeholder="What does the resident enjoy? Hobbies, preferences..."></textarea></div>
+      </div>
+    </div>
+    <div id="rt-care" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group full"><label>Care Needs Summary</label><textarea id="r-care-needs" placeholder="Describe the resident's care needs..."></textarea></div>
+        <div class="form-group full"><label>Mobility</label><textarea id="r-mobility" placeholder="Mobility aids, assistance required..."></textarea></div>
+        <div class="form-group full"><label>Personal Care</label><textarea id="r-personal-care" placeholder="Bathing, dressing, continence..."></textarea></div>
+        <div class="form-group"><label>Communication Needs</label><input id="r-communication" placeholder="e.g. hearing aid, interpreter" /></div>
+        <div class="form-group"><label>Dietary Requirements</label><input id="r-dietary" placeholder="e.g. diabetic, vegetarian" /></div>
+      </div>
+    </div>
+    <div id="rt-medical" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group full"><label>Medical Conditions</label><textarea id="r-conditions" placeholder="Diagnosed conditions..."></textarea></div>
+        <div class="form-group full"><label>Current Medications</label><textarea id="r-medications" placeholder="List medications and dosages..."></textarea></div>
+        <div class="form-group"><label>GP Name</label><input id="r-gp-name" placeholder="GP full name" /></div>
+        <div class="form-group"><label>GP Phone</label><input id="r-gp-phone" placeholder="GP surgery number" /></div>
+        <div class="form-group full"><label>Allergies</label><input id="r-allergies" placeholder="Known allergies and reactions..." /></div>
+        <div class="form-group full"><label>DNR / DNAR</label>
+          <select id="r-dnr"><option value="not_set">Not set</option><option value="yes">Yes – DNR in place</option><option value="no">No – Full resuscitation</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="rt-contacts" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>Next of Kin Name</label><input id="r-nok-name" placeholder="Full name" /></div>
+        <div class="form-group"><label>Relationship</label><input id="r-nok-rel" placeholder="e.g. Daughter, Son" /></div>
+        <div class="form-group"><label>NOK Phone</label><input id="r-nok-phone" placeholder="Contact number" /></div>
+        <div class="form-group"><label>NOK Email</label><input id="r-nok-email" placeholder="Email address" /></div>
+        <div class="form-group full"><label>Power of Attorney</label><input id="r-poa" placeholder="Name of POA if applicable" /></div>
+        <div class="form-group full"><label>Social Worker</label><input id="r-sw" placeholder="Social worker name and contact" /></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('resident-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveResident()">Save Resident</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="modal-overlay" id="staff-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="staff-modal-title">Add Staff Member</h2>
+      <button class="modal-close" onclick="closeModal('staff-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>First Name *</label><input id="s-firstname" placeholder="First name" /></div>
+      <div class="form-group"><label>Last Name *</label><input id="s-lastname" placeholder="Last name" /></div>
+      <div class="form-group"><label>Role *</label>
+        <select id="s-role">
+          <option value="">Select role</option>
+          <option>Care Worker</option><option>Senior Care Worker</option><option>Care Coordinator</option>
+          <option>Registered Manager</option><option>Deputy Manager</option><option>Administrator</option><option>Driver</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Employment Type</label>
+        <select id="s-emptype"><option>Full-time</option><option>Part-time</option><option>Bank</option><option>Agency</option></select>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="s-email" placeholder="Email address" /></div>
+      <div class="form-group"><label>Phone</label><input id="s-phone" placeholder="Phone number" /></div>
+      <div class="form-group"><label>Start Date</label><input type="date" id="s-startdate" /></div>
+      <div class="form-group"><label>Status</label>
+        <select id="s-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select>
+      </div>
+      <div class="form-group"><label>DBS Number</label><input id="s-dbs-number" placeholder="DBS certificate number" /></div>
+      <div class="form-group"><label>DBS Issue Date</label><input type="date" id="s-dbs-date" /></div>
+      <div class="form-group"><label>DBS Expiry Date</label><input type="date" id="s-dbs-expiry" /></div>
+      <div class="form-group"><label>NI Number</label><input id="s-ni" placeholder="National Insurance number" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('staff-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveStaff()">Save Staff Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCIDENT MODAL -->
+<div class="modal-overlay" id="incident-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Report Incident</h2>
+      <button class="modal-close" onclick="closeModal('incident-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Date *</label><input type="date" id="i-date" /></div>
+      <div class="form-group"><label>Time</label><input type="time" id="i-time" /></div>
+      <div class="form-group"><label>Resident Involved</label><input id="i-resident" placeholder="Resident name" /></div>
+      <div class="form-group"><label>Incident Type *</label>
+        <select id="i-type">
+          <option value="">Select type</option>
+          <option>Fall</option><option>Medication Error</option><option>Safeguarding</option>
+          <option>Near Miss</option><option>Behaviour</option><option>Injury</option>
+          <option>Property Damage</option><option>Complaint</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Severity</label>
+        <select id="i-severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+      </div>
+      <div class="form-group"><label>Reported By</label><input id="i-reporter" placeholder="Staff member name" /></div>
+      <div class="form-group full"><label>Description *</label><textarea id="i-description" placeholder="Describe what happened, when, where, and who was involved..."></textarea></div>
+      <div class="form-group full"><label>Immediate Actions Taken</label><textarea id="i-actions" placeholder="What was done immediately after the incident?"></textarea></div>
+      <div class="form-group"><label>CQC Notifiable?</label>
+        <select id="i-cqc"><option value="no">No</option><option value="yes">Yes</option><option value="unsure">Unsure</option></select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="i-status"><option value="open">Open</option><option value="investigating">Investigating</option><option value="closed">Closed</option></select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('incident-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveIncident()">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAILY NOTE MODAL -->
+<div class="modal-overlay" id="note-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Daily Note</h2>
+      <button class="modal-close" onclick="closeModal('note-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Date *</label><input type="date" id="n-date" /></div>
+      <div class="form-group"><label>Time</label><input type="time" id="n-time" /></div>
+      <div class="form-group"><label>Resident *</label><input id="n-resident" placeholder="Resident name" /></div>
+      <div class="form-group"><label>Category</label>
+        <select id="n-category">
+          <option>General</option><option>Personal Care</option><option>Medication</option>
+          <option>Nutrition</option><option>Mobility</option><option>Mood & Behaviour</option>
+          <option>Medical</option><option>Social</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Note *</label><textarea id="n-note" placeholder="Record your observations and care provided..."></textarea></div>
+      <div class="form-group"><label>Staff Member</label><input id="n-staff" placeholder="Your name" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('note-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENT MODAL -->
+<div class="modal-overlay" id="doc-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Document Record</h2>
+      <button class="modal-close" onclick="closeModal('doc-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Document Name *</label><input id="d-name" placeholder="e.g. Moving & Handling Policy" /></div>
+      <div class="form-group"><label>Category</label>
+        <select id="d-category">
+          <option value="policy">Policy</option><option value="care_plan">Care Plan</option>
+          <option value="form">Form</option><option value="risk_assessment">Risk Assessment</option>
+          <option value="training">Training</option><option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Version</label><input id="d-version" placeholder="e.g. v1.2" /></div>
+      <div class="form-group"><label>Review Date</label><input type="date" id="d-review" /></div>
+      <div class="form-group"><label>Owner</label><input id="d-owner" placeholder="Who is responsible?" /></div>
+      <div class="form-group"><label>Status</label>
+        <select id="d-status"><option value="current">Current</option><option value="under_review">Under Review</option><option value="archived">Archived</option></select>
+      </div>
+      <div class="form-group full"><label>Description / Notes</label><textarea id="d-notes" placeholder="Brief description of this document..."></textarea></div>
+      <div class="form-group full"><label>Document URL / Link</label><input id="d-url" placeholder="Paste a link to the document if stored online" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('doc-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveDocument()">Save Document</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ JAVASCRIPT ═══════════════ -->
+<script>
+  const SUPABASE_URL = 'https://pctcoagonirqgjcovfdn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_HckfRtUhMiH6yVZlyfNmeg_CP83sULa';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let allResidents = [];
+  let allNotes = [];
+
+  // ── AUTH ──
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    document.getElementById('auth-error').textContent = '';
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      document.getElementById('auth-error').textContent = error.message;
+    } else {
+      currentUser = data.user;
+      showApp();
+    }
+  }
+
+  async function handleLogout() {
+    await db.auth.signOut();
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+
+  async function checkSession() {
+    const { data } = await db.auth.getSession();
+    if (data.session) {
+      currentUser = data.session.user;
+      showApp();
+    }
+  }
+
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-email').textContent = currentUser.email;
+    document.getElementById('user-name').textContent = currentUser.email.split('@')[0];
+    loadDashboard();
+  }
+
+  // ── NAVIGATION ──
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+    closeSidebar();
+    if (name === 'dashboard') loadDashboard();
+    if (name === 'residents') loadResidents();
+    if (name === 'staff') loadStaff();
+    if (name === 'incidents') loadIncidents();
+    if (name === 'daily-notes') { setTodayDate(); loadNotes(); }
+    if (name === 'documents') loadDocuments();
+    if (name === 'cqc') loadCQC();
+  }
+
+  function switchTab(el, panelId) {
+    const parent = el.closest('.tabs, .profile-tabs');
+    parent.querySelectorAll('.tab, .profile-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const panels = el.closest('.page, .modal').querySelectorAll('.tab-panel');
+    panels.forEach(p => p.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+  }
+
+  function switchProfileTab(el, panelId) {
+    const modal = el.closest('.modal');
+    modal.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    modal.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+  }
+
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+  function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
+
+  // ── MODALS ──
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // ── DASHBOARD ──
+  async function loadDashboard() {
+    const today = new Date().toISOString().split('T')[0];
+    const [residents, staff, incidents, notes, docs] = await Promise.all([
+      db.from('residents').select('id', { count: 'exact' }).eq('status', 'active'),
+      db.from('staff').select('id', { count: 'exact' }).eq('status', 'active'),
+      db.from('incidents').select('id', { count: 'exact' }).eq('status', 'open'),
+      db.from('daily_notes').select('id', { count: 'exact' }).gte('created_at', today),
+      db.from('documents').select('id', { count: 'exact' })
+    ]);
+    document.getElementById('stat-residents').textContent = residents.count ?? 0;
+    document.getElementById('stat-staff').textContent = staff.count ?? 0;
+    document.getElementById('stat-incidents').textContent = incidents.count ?? 0;
+    document.getElementById('stat-notes').textContent = notes.count ?? 0;
+    document.getElementById('stat-docs').textContent = docs.count ?? 0;
+
+    // Recent incidents
+    const { data: recentInc } = await db.from('incidents').select('*').order('created_at', { ascending: false }).limit(5);
+    const incEl = document.getElementById('dash-incidents');
+    if (!recentInc || recentInc.length === 0) {
+      incEl.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>No open incidents</p></div>';
+    } else {
+      incEl.innerHTML = recentInc.map(i => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:14px;font-weight:600;">${i.resident_name || 'Unknown'}</div>
+            <div style="font-size:12px;color:var(--muted);">${i.incident_type || ''} · ${formatDate(i.incident_date)}</div>
+          </div>
+          ${severityBadge(i.severity)}
+        </div>`).join('');
+    }
+
+    // Recent notes
+    const { data: recentNotes } = await db.from('daily_notes').select('*').order('created_at', { ascending: false }).limit(5);
+    const notesEl = document.getElementById('dash-notes');
+    if (!recentNotes || recentNotes.length === 0) {
+      notesEl.innerHTML = '<div class="empty-state"><div class="emoji">📋</div><p>No notes yet today</p></div>';
+    } else {
+      notesEl.innerHTML = recentNotes.map(n => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:14px;font-weight:600;">${n.resident_name || 'Unknown'}</span>
+            <span class="badge badge-teal">${n.category || 'General'}</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);">${(n.note || '').substring(0, 80)}${(n.note || '').length > 80 ? '...' : ''}</div>
+        </div>`).join('');
+    }
+  }
+
+  // ── RESIDENTS ──
+  async function loadResidents() {
+    const { data, error } = await db.from('residents').select('*').order('last_name');
+    allResidents = data || [];
+    renderResidents(allResidents);
+  }
+
+  function renderResidents(list) {
+    const tb = document.getElementById('residents-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👥</div><p>No residents added yet</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(r => `
+      <tr>
+        <td><strong>${r.first_name || ''} ${r.last_name || ''}</strong></td>
+        <td>${formatDate(r.date_of_birth)}</td>
+        <td>${r.room || '—'}</td>
+        <td>${r.key_worker || '—'}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewResident('${r.id}')">View</button></td>
+      </tr>`).join('');
+  }
+
+  function filterResidents(q) {
+    const filtered = allResidents.filter(r => `${r.first_name} ${r.last_name}`.toLowerCase().includes(q.toLowerCase()));
+    renderResidents(filtered);
+  }
+
+  async function saveResident() {
+    const payload = {
+      first_name: val('r-firstname'), last_name: val('r-lastname'),
+      date_of_birth: val('r-dob'), gender: val('r-gender'),
+      room: val('r-room'), move_in_date: val('r-movein'),
+      key_worker: val('r-keyworker'), status: val('r-status'),
+      likes_preferences: val('r-likes'), care_needs: val('r-care-needs'),
+      mobility: val('r-mobility'), personal_care: val('r-personal-care'),
+      communication_needs: val('r-communication'), dietary_requirements: val('r-dietary'),
+      medical_conditions: val('r-conditions'), medications: val('r-medications'),
+      gp_name: val('r-gp-name'), gp_phone: val('r-gp-phone'),
+      allergies: val('r-allergies'), dnr_status: val('r-dnr'),
+      nok_name: val('r-nok-name'), nok_relationship: val('r-nok-rel'),
+      nok_phone: val('r-nok-phone'), nok_email: val('r-nok-email'),
+      power_of_attorney: val('r-poa'), social_worker: val('r-sw')
+    };
+    if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
+    const { error } = await db.from('residents').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('resident-modal');
+    loadResidents();
+  }
+
+  function viewResident(id) { alert('Full resident profile view — coming in next update!'); }
+
+  // ── STAFF ──
+  async function loadStaff() {
+    const { data } = await db.from('staff').select('*').order('last_name');
+    const list = data || [];
+    const tb = document.getElementById('staff-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👤</div><p>No staff added yet</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(s => `
+      <tr>
+        <td><strong>${s.first_name || ''} ${s.last_name || ''}</strong></td>
+        <td>${s.role || '—'}</td>
+        <td>${s.email || '—'}</td>
+        <td>${s.phone || '—'}</td>
+        <td>${statusBadge(s.status)}</td>
+        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;">View</button></td>
+      </tr>`).join('');
+
+    // DBS tab
+    const dbs = document.getElementById('dbs-table');
+    dbs.innerHTML = list.map(s => {
+      const expiry = s.dbs_expiry_date;
+      const expired = expiry && new Date(expiry) < new Date();
+      return `<tr>
+        <td><strong>${s.first_name || ''} ${s.last_name || ''}</strong></td>
+        <td>${s.dbs_number || '—'}</td>
+        <td>${formatDate(s.dbs_issue_date)}</td>
+        <td>${formatDate(expiry)}</td>
+        <td>${expired ? '<span class="badge badge-red">Expired</span>' : expiry ? '<span class="badge badge-green">Valid</span>' : '<span class="badge badge-amber">Not set</span>'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('training-table').innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="emoji">📚</div><p>Training records — add via staff profile</p></div></td></tr>';
+  }
+
+  async function saveStaff() {
+    const payload = {
+      first_name: val('s-firstname'), last_name: val('s-lastname'),
+      role: val('s-role'), employment_type: val('s-emptype'),
+      email: val('s-email'), phone: val('s-phone'),
+      start_date: val('s-startdate'), status: val('s-status'),
+      dbs_number: val('s-dbs-number'), dbs_issue_date: val('s-dbs-date'),
+      dbs_expiry_date: val('s-dbs-expiry'), ni_number: val('s-ni')
+    };
+    if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
+    const { error } = await db.from('staff').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('staff-modal');
+    loadStaff();
+  }
+
+  // ── INCIDENTS ──
+  async function loadIncidents() {
+    const { data } = await db.from('incidents').select('*').order('created_at', { ascending: false });
+    const list = data || [];
+    const tb = document.getElementById('incidents-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">🚨</div><p>No incidents reported</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(i => `
+      <tr>
+        <td>${formatDate(i.incident_date)}</td>
+        <td>${i.resident_name || '—'}</td>
+        <td>${i.incident_type || '—'}</td>
+        <td>${severityBadge(i.severity)}</td>
+        <td>${i.reported_by || '—'}</td>
+        <td>${statusBadge(i.status)}</td>
+        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;">View</button></td>
+      </tr>`).join('');
+  }
+
+  async function saveIncident() {
+    const payload = {
+      incident_date: val('i-date'), incident_time: val('i-time'),
+      resident_name: val('i-resident'), incident_type: val('i-type'),
+      severity: val('i-severity'), reported_by: val('i-reporter'),
+      description: val('i-description'), immediate_actions: val('i-actions'),
+      cqc_notifiable: val('i-cqc'), status: val('i-status')
+    };
+    if (!payload.incident_date || !payload.incident_type) { alert('Please fill in date and incident type.'); return; }
+    const { error } = await db.from('incidents').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('incident-modal');
+    loadIncidents();
+  }
+
+  // ── DAILY NOTES ──
+  function setTodayDate() {
+    const el = document.getElementById('notes-date-filter');
+    if (!el.value) el.value = new Date().toISOString().split('T')[0];
+  }
+
+  async function loadNotes() {
+    const dateFilter = document.getElementById('notes-date-filter').value;
+    let query = db.from('daily_notes').select('*').order('created_at', { ascending: false });
+    if (dateFilter) query = query.gte('created_at', dateFilter).lt('created_at', nextDay(dateFilter));
+    const { data } = await query;
+    allNotes = data || [];
+    renderNotes(allNotes);
+  }
+
+  function renderNotes(list) {
+    const tb = document.getElementById('notes-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📋</div><p>No notes for this date</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(n => `
+      <tr>
+        <td>${formatDateTime(n.created_at)}</td>
+        <td>${n.resident_name || '—'}</td>
+        <td><span class="badge badge-teal">${n.category || 'General'}</span></td>
+        <td style="max-width:300px;">${(n.note || '').substring(0, 100)}${(n.note || '').length > 100 ? '...' : ''}</td>
+        <td>${n.staff_name || '—'}</td>
+        <td><button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteNote('${n.id}')">Delete</button></td>
+      </tr>`).join('');
+  }
+
+  function filterNotes(q) {
+    const filtered = allNotes.filter(n => (n.note || '').toLowerCase().includes(q.toLowerCase()) || (n.resident_name || '').toLowerCase().includes(q.toLowerCase()));
+    renderNotes(filtered);
+  }
+
+  async function saveNote() {
+    const payload = {
+      note_date: val('n-date'), note_time: val('n-time'),
+      resident_name: val('n-resident'), category: val('n-category'),
+      note: val('n-note'), staff_name: val('n-staff')
+    };
+    if (!payload.resident_name || !payload.note) { alert('Please enter resident name and note.'); return; }
+    const { error } = await db.from('daily_notes').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('note-modal');
+    loadNotes();
+  }
+
+  async function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    await db.from('daily_notes').delete().eq('id', id);
+    loadNotes();
+  }
+
+  // ── DOCUMENTS ──
+  async function loadDocuments() {
+    const { data } = await db.from('documents').select('*').order('created_at', { ascending: false });
+    const list = data || [];
+    renderDocGrid('docs-grid', list);
+    renderDocGrid('docs-policies-grid', list.filter(d => d.category === 'policy'));
+    renderDocGrid('docs-careplans-grid', list.filter(d => d.category === 'care_plan'));
+    renderDocGrid('docs-forms-grid', list.filter(d => d.category === 'form'));
+  }
+
+  function renderDocGrid(elId, list) {
+    const el = document.getElementById(elId);
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="emoji">📁</div><p>No documents in this category</p></div>'; return; }
+    el.innerHTML = list.map(d => `
+      <div class="doc-card" onclick="${d.document_url ? `window.open('${d.document_url}','_blank')` : ''}">
+        <div class="doc-icon">${docIcon(d.category)}</div>
+        <div class="doc-name">${d.document_name || 'Untitled'}</div>
+        <div class="doc-meta">${d.version || ''} · ${formatDate(d.review_date) !== '—' ? 'Review: ' + formatDate(d.review_date) : ''}</div>
+        <div style="margin-top:8px;">${statusBadge(d.status)}</div>
+      </div>`).join('');
+  }
+
+  async function saveDocument() {
+    const payload = {
+      document_name: val('d-name'), category: val('d-category'),
+      version: val('d-version'), review_date: val('d-review'),
+      owner: val('d-owner'), status: val('d-status'),
+      notes: val('d-notes'), document_url: val('d-url')
+    };
+    if (!payload.document_name) { alert('Please enter document name.'); return; }
+    const { error } = await db.from('documents').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('doc-modal');
+    loadDocuments();
+  }
+
+  // ── CQC DASHBOARD ──
+  async function loadCQC() {
+    const [residents, staff, incidents, notes, docs] = await Promise.all([
+      db.from('residents').select('id', { count: 'exact' }),
+      db.from('staff').select('id, dbs_expiry_date, status', { count: 'exact' }),
+      db.from('incidents').select('id, status', { count: 'exact' }),
+      db.from('daily_notes').select('id', { count: 'exact' }),
+      db.from('documents').select('id, category', { count: 'exact' })
+    ]);
+
+    const resCount = residents.count || 0;
+    const staffCount = staff.count || 0;
+    const openInc = (incidents.data || []).filter(i => i.status === 'open').length;
+    const docsCount = docs.count || 0;
+    const policies = (docs.data || []).filter(d => d.category === 'policy').length;
+    const dbsValid = (staff.data || []).filter(s => s.dbs_expiry_date && new Date(s.dbs_expiry_date) > new Date()).length;
+
+    const domains = [
+      { label: 'Safe', emoji: '🛡️', color: '#ef4444', score: calcSafe(openInc, dbsValid, staffCount) },
+      { label: 'Effective', emoji: '🎯', color: '#10b981', score: calcEffective(resCount, notes.count) },
+      { label: 'Caring', emoji: '💚', color: '#8b5cf6', score: resCount > 0 ? 70 : 20 },
+      { label: 'Responsive', emoji: '⚡', color: '#f59e0b', score: calcResponsive(openInc, docsCount) },
+      { label: 'Well-Led', emoji: '🏆', color: '#3b82f6', score: calcWellLed(policies, docsCount) }
+    ];
+
+    const overall = Math.round(domains.reduce((a, b) => a + b.score, 0) / 5);
+    document.getElementById('cqc-overall').textContent = overall;
+    document.getElementById('cqc-rating').textContent = overall >= 80 ? 'Outstanding' : overall >= 65 ? 'Good' : overall >= 45 ? 'Requires Improvement' : 'Inadequate';
+
+    document.getElementById('cqc-domains').innerHTML = domains.map(d => `
+      <div class="cqc-card">
+        <div class="domain">${d.emoji} ${d.label}</div>
+        <div class="cqc-score" style="color:${d.color};">${d.score}</div>
+        <div class="cqc-label">out of 100</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${d.score}%;background:${d.color};"></div></div>
+      </div>`).join('');
+
+    const actions = [];
+    if (openInc > 0) actions.push({ priority: 'high', text: `${openInc} open incident(s) need to be reviewed and closed` });
+    if (dbsValid < staffCount) actions.push({ priority: 'high', text: `${staffCount - dbsValid} staff member(s) have missing or expired DBS checks` });
+    if (policies < 5) actions.push({ priority: 'medium', text: `Add more policy documents (currently ${policies}) to strengthen compliance evidence` });
+    if (resCount === 0) actions.push({ priority: 'medium', text: 'No residents added — set up resident profiles to enable full compliance scoring' });
+    if (notes.count < 10) actions.push({ priority: 'low', text: 'Increase daily note frequency to demonstrate consistent care delivery' });
+
+    const actEl = document.getElementById('cqc-actions');
+    if (!actions.length) { actEl.innerHTML = '<div class="empty-state"><div class="emoji">🎉</div><p>No critical action items — great work!</p></div>'; return; }
+    actEl.innerHTML = actions.map(a => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+        <span class="badge badge-${a.priority === 'high' ? 'red' : a.priority === 'medium' ? 'amber' : 'blue'}">${a.priority}</span>
+        <span style="font-size:14px;color:var(--slate);">${a.text}</span>
+      </div>`).join('');
+  }
+
+  function calcSafe(openInc, dbsValid, staffCount) {
+    let score = 80;
+    score -= openInc * 5;
+    if (staffCount > 0) score -= Math.round(((staffCount - dbsValid) / staffCount) * 20);
+    return Math.max(0, Math.min(100, score));
+  }
+  function calcEffective(resCount, notesCount) {
+    if (resCount === 0) return 20;
+    const ratio = notesCount / resCount;
+    return Math.min(100, 50 + Math.round(ratio * 5));
+  }
+  function calcResponsive(openInc, docsCount) {
+    let score = 60 + Math.min(20, docsCount);
+    score -= openInc * 3;
+    return Math.max(0, Math.min(100, score));
+  }
+  function calcWellLed(policies, docsCount) {
+    return Math.min(100, 40 + policies * 8 + Math.min(20, docsCount));
+  }
+
+  // ── HELPERS ──
+  function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+  function formatDate(d) { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
+  function formatDateTime(d) { if (!d) return '—'; try { return new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }); } catch { return d; } }
+  function nextDay(d) { const nd = new Date(d); nd.setDate(nd.getDate() + 1); return nd.toISOString().split('T')[0]; }
+  function docIcon(cat) { return { policy: '📜', care_plan: '📋', form: '📝', risk_assessment: '⚠️', training: '📚' }[cat] || '📄'; }
+
+  function statusBadge(s) {
+    const map = { active: 'green', inactive: 'amber', suspended: 'red', discharged: 'blue', hospital: 'purple', open: 'red', investigating: 'amber', closed: 'green', current: 'green', under_review: 'amber', archived: 'blue' };
+    return `<span class="badge badge-${map[s] || 'blue'}">${s || '—'}</span>`;
+  }
+  function severityBadge(s) {
+    const map = { low: 'blue', medium: 'amber', high: 'red', critical: 'red' };
+    return `<span class="badge badge-${map[s] || 'blue'}">${s || '—'}</span>`;
+  }
+
+  // ── ENTER KEY LOGIN ──
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+
+  // ── INIT ──
+  checkSession();
+</script>
+</body>
+</html>
