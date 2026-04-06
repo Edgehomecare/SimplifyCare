@@ -1437,32 +1437,112 @@
 
   // ── CQC DASHBOARD ──
   async function loadCQC() {
+    document.getElementById('cqc-domains').innerHTML = '<div class="loading">Calculating scores...</div>';
+    document.getElementById('cqc-actions').innerHTML = '<div class="loading">Loading action items...</div>';
+
+    // ── Pull live data from Supabase ──
     const [residents, staff, incidents, notes, docs] = await Promise.all([
-      db.from('residents').select('id', { count: 'exact' }),
+      db.from('residents').select('id, status', { count: 'exact' }),
       db.from('staff').select('id, dbs_expiry_date, status', { count: 'exact' }),
-      db.from('incidents').select('id, status', { count: 'exact' }),
+      db.from('incidents').select('id, status, severity', { count: 'exact' }),
       db.from('daily_notes').select('id', { count: 'exact' }),
       db.from('documents').select('id, category', { count: 'exact' })
     ]);
 
+    // Supabase numbers
     const resCount = residents.count || 0;
     const staffCount = staff.count || 0;
-    const openInc = (incidents.data || []).filter(i => i.status === 'open').length;
+    const allInc = incidents.data || [];
+    const openInc = allInc.filter(i => i.status === 'open').length;
+    const criticalInc = allInc.filter(i => i.severity === 'critical').length;
+    const notesCount = notes.count || 0;
     const docsCount = docs.count || 0;
-    const policies = (docs.data || []).filter(d => d.category === 'policy').length;
+    const supabasePolicies = (docs.data || []).filter(d => d.category === 'policy').length;
     const dbsValid = (staff.data || []).filter(s => s.dbs_expiry_date && new Date(s.dbs_expiry_date) > new Date()).length;
+    const dbsMissing = staffCount - dbsValid;
+
+    // ── Pull live data from Governance Hub (localStorage) ──
+    const govPolicies = govStore.policies.length;
+    const govPoliciesCurrent = govStore.policies.filter(p => p.status === 'Current').length;
+    const govPoliciesOverdue = govStore.policies.filter(p => p.status === 'Overdue' || p.status === 'Due for review').length;
+    const govAudits = govStore.audits.length;
+    const govAuditsGreen = govStore.audits.filter(a => a.rag === 'green').length;
+    const govOpenActions = govStore.actions.filter(a => a.status === 'Open' || a.status === 'In progress').length;
+    const govOverdueActions = govStore.actions.filter(a => { return a.status !== 'Completed' && a.due && new Date(a.due) < new Date(); }).length;
+    const govOpenComplaints = govStore.complaints.filter(c => c.status === 'Open' || c.status === 'Under investigation').length;
+    const govOpenSafeguarding = govStore.safeguarding.filter(s => s.status === 'Open' || s.status === 'Under investigation').length;
+    const govHighRisks = govStore.risks.filter(r => (parseInt(r.likelihood) * parseInt(r.impact)) >= 12).length;
+    const govSupervisions = govStore.supervisions.length;
+    const govMedAudits = govStore.medAudits.length;
+    const govMedErrors = govStore.medAudits.reduce((sum, m) => sum + (parseInt(m.errors) || 0), 0);
+    const govMeetings = govStore.meetings.length;
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const govKpisOnTarget = govStore.kpis.filter(k => k.month === thisMonth && parseFloat(k.actual) >= parseFloat(k.target)).length;
+    const govKpisTotal = govStore.kpis.filter(k => k.month === thisMonth).length;
+
+    const totalPolicies = supabasePolicies + govPolicies;
+
+    // ── Score each CQC domain ──
+
+    // SAFE: DBS, open incidents, safeguarding, med errors, high risks
+    let safeScore = 100;
+    if (staffCount > 0) safeScore -= Math.round((dbsMissing / staffCount) * 30);
+    safeScore -= openInc * 4;
+    safeScore -= criticalInc * 8;
+    safeScore -= govOpenSafeguarding * 10;
+    safeScore -= govHighRisks * 5;
+    safeScore -= govMedErrors * 3;
+    if (govMedAudits > 0) safeScore += 5; // reward for doing med audits
+    safeScore = Math.max(0, Math.min(100, safeScore));
+
+    // EFFECTIVE: care plans, notes per resident, audits, supervisions, KPIs
+    let effectiveScore = resCount > 0 ? 60 : 20;
+    if (resCount > 0) effectiveScore += Math.min(20, Math.round((notesCount / resCount) * 4));
+    if (govAudits > 0) effectiveScore += Math.min(10, govAuditsGreen * 3);
+    if (govSupervisions > 0) effectiveScore += Math.min(10, govSupervisions * 2);
+    effectiveScore = Math.max(0, Math.min(100, effectiveScore));
+
+    // CARING: resident profiles, daily notes, compliments
+    let caringScore = resCount > 0 ? 65 : 20;
+    caringScore += Math.min(15, govStore.compliments.length * 5);
+    caringScore += notesCount > 0 ? 10 : 0;
+    caringScore -= openInc * 2;
+    caringScore = Math.max(0, Math.min(100, caringScore));
+
+    // RESPONSIVE: complaints handled, open actions, docs
+    let responsiveScore = 70;
+    responsiveScore -= govOpenComplaints * 8;
+    responsiveScore -= govOverdueActions * 5;
+    responsiveScore += Math.min(15, docsCount * 2);
+    const resolvedComplaints = govStore.complaints.filter(c => c.status === 'Resolved').length;
+    responsiveScore += Math.min(10, resolvedComplaints * 3);
+    responsiveScore = Math.max(0, Math.min(100, responsiveScore));
+
+    // WELL-LED: policies, audits, meetings, actions resolved, KPIs, overdue policies
+    let wellLedScore = 40;
+    wellLedScore += Math.min(20, totalPolicies * 3);
+    wellLedScore += Math.min(10, govMeetings * 2);
+    wellLedScore += govAudits > 0 ? 10 : 0;
+    if (govKpisTotal > 0) wellLedScore += Math.round((govKpisOnTarget / govKpisTotal) * 10);
+    wellLedScore -= govPoliciesOverdue * 4;
+    wellLedScore -= govOpenActions * 2;
+    wellLedScore = Math.max(0, Math.min(100, wellLedScore));
 
     const domains = [
-      { label: 'Safe', emoji: '🛡️', color: '#ef4444', score: calcSafe(openInc, dbsValid, staffCount) },
-      { label: 'Effective', emoji: '🎯', color: '#10b981', score: calcEffective(resCount, notes.count) },
-      { label: 'Caring', emoji: '💚', color: '#8b5cf6', score: resCount > 0 ? 70 : 20 },
-      { label: 'Responsive', emoji: '⚡', color: '#f59e0b', score: calcResponsive(openInc, docsCount) },
-      { label: 'Well-Led', emoji: '🏆', color: '#3b82f6', score: calcWellLed(policies, docsCount) }
+      { label: 'Safe',      emoji: '🛡️', color: '#ef4444', score: safeScore },
+      { label: 'Effective', emoji: '🎯', color: '#10b981', score: effectiveScore },
+      { label: 'Caring',    emoji: '💚', color: '#8b5cf6', score: caringScore },
+      { label: 'Responsive',emoji: '⚡', color: '#f59e0b', score: responsiveScore },
+      { label: 'Well-Led',  emoji: '🏆', color: '#3b82f6', score: wellLedScore }
     ];
 
     const overall = Math.round(domains.reduce((a, b) => a + b.score, 0) / 5);
+    const ratingLabel = overall >= 80 ? '⭐ Outstanding' : overall >= 65 ? '✅ Good' : overall >= 45 ? '⚠️ Requires Improvement' : '❌ Inadequate';
+    const ratingColor = overall >= 80 ? 'var(--teal)' : overall >= 65 ? 'var(--green)' : overall >= 45 ? 'var(--amber)' : 'var(--red)';
+
     document.getElementById('cqc-overall').textContent = overall;
-    document.getElementById('cqc-rating').textContent = overall >= 80 ? 'Outstanding' : overall >= 65 ? 'Good' : overall >= 45 ? 'Requires Improvement' : 'Inadequate';
+    document.getElementById('cqc-rating').textContent = ratingLabel;
+    document.getElementById('cqc-rating').style.color = ratingColor;
 
     document.getElementById('cqc-domains').innerHTML = domains.map(d => `
       <div class="cqc-card">
@@ -1470,42 +1550,35 @@
         <div class="cqc-score" style="color:${d.color};">${d.score}</div>
         <div class="cqc-label">out of 100</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${d.score}%;background:${d.color};"></div></div>
+        <div style="font-size:11px;margin-top:8px;color:var(--muted);">${d.score >= 80 ? 'Outstanding' : d.score >= 65 ? 'Good' : d.score >= 45 ? 'Requires Improvement' : 'Inadequate'}</div>
       </div>`).join('');
 
+    // ── Build action items from real data ──
     const actions = [];
-    if (openInc > 0) actions.push({ priority: 'high', text: `${openInc} open incident(s) need to be reviewed and closed` });
-    if (dbsValid < staffCount) actions.push({ priority: 'high', text: `${staffCount - dbsValid} staff member(s) have missing or expired DBS checks` });
-    if (policies < 5) actions.push({ priority: 'medium', text: `Add more policy documents (currently ${policies}) to strengthen compliance evidence` });
-    if (resCount === 0) actions.push({ priority: 'medium', text: 'No residents added — set up resident profiles to enable full compliance scoring' });
-    if (notes.count < 10) actions.push({ priority: 'low', text: 'Increase daily note frequency to demonstrate consistent care delivery' });
+    if (criticalInc > 0) actions.push({ priority: 'high', text: `${criticalInc} critical incident(s) require urgent review` });
+    if (dbsMissing > 0) actions.push({ priority: 'high', text: `${dbsMissing} staff member(s) have missing or expired DBS checks` });
+    if (govOpenSafeguarding > 0) actions.push({ priority: 'high', text: `${govOpenSafeguarding} open safeguarding referral(s) need to be resolved` });
+    if (govOverdueActions > 0) actions.push({ priority: 'high', text: `${govOverdueActions} governance action(s) are overdue` });
+    if (openInc > 0) actions.push({ priority: 'medium', text: `${openInc} open incident(s) need to be reviewed and closed` });
+    if (govOpenComplaints > 0) actions.push({ priority: 'medium', text: `${govOpenComplaints} complaint(s) are still open — respond within statutory timeframe` });
+    if (govPoliciesOverdue > 0) actions.push({ priority: 'medium', text: `${govPoliciesOverdue} policy/policies are overdue for review` });
+    if (govHighRisks > 0) actions.push({ priority: 'medium', text: `${govHighRisks} high-risk item(s) on the risk register need mitigation plans` });
+    if (totalPolicies < 5) actions.push({ priority: 'medium', text: `Only ${totalPolicies} policies recorded — add core policies to strengthen evidence` });
+    if (govSupervisions === 0) actions.push({ priority: 'medium', text: 'No staff supervisions recorded — log regular supervisions to evidence Well-Led' });
+    if (govMeetings === 0) actions.push({ priority: 'low', text: 'No governance meeting minutes recorded — log meetings to demonstrate leadership oversight' });
+    if (resCount === 0) actions.push({ priority: 'low', text: 'No residents added — set up resident profiles to enable full compliance scoring' });
+    if (notesCount < 10) actions.push({ priority: 'low', text: 'Increase daily note frequency to demonstrate consistent care delivery' });
 
     const actEl = document.getElementById('cqc-actions');
-    if (!actions.length) { actEl.innerHTML = '<div class="empty-state"><div class="emoji">🎉</div><p>No critical action items — great work!</p></div>'; return; }
+    if (!actions.length) {
+      actEl.innerHTML = '<div class="empty-state"><div class="emoji">🎉</div><p>No action items — excellent compliance!</p></div>';
+      return;
+    }
     actEl.innerHTML = actions.map(a => `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
-        <span class="badge badge-${a.priority === 'high' ? 'red' : a.priority === 'medium' ? 'amber' : 'blue'}">${a.priority}</span>
+        <span class="badge badge-${a.priority === 'high' ? 'red' : a.priority === 'medium' ? 'amber' : 'blue'}" style="white-space:nowrap;">${a.priority}</span>
         <span style="font-size:14px;color:var(--slate);">${a.text}</span>
       </div>`).join('');
-  }
-
-  function calcSafe(openInc, dbsValid, staffCount) {
-    let score = 80;
-    score -= openInc * 5;
-    if (staffCount > 0) score -= Math.round(((staffCount - dbsValid) / staffCount) * 20);
-    return Math.max(0, Math.min(100, score));
-  }
-  function calcEffective(resCount, notesCount) {
-    if (resCount === 0) return 20;
-    const ratio = notesCount / resCount;
-    return Math.min(100, 50 + Math.round(ratio * 5));
-  }
-  function calcResponsive(openInc, docsCount) {
-    let score = 60 + Math.min(20, docsCount);
-    score -= openInc * 3;
-    return Math.max(0, Math.min(100, score));
-  }
-  function calcWellLed(policies, docsCount) {
-    return Math.min(100, 40 + policies * 8 + Math.min(20, docsCount));
   }
 
   // ── HELPERS ──
