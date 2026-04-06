@@ -420,7 +420,7 @@
           <div class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Staff Member</th><th>Training</th><th>Completed</th><th>Expiry</th><th>Status</th></tr></thead>
+                <thead><tr><th>Staff Member</th><th>Training</th><th>Category</th><th>Completed</th><th>Expiry</th><th>Status</th></tr></thead>
                 <tbody id="training-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
               </table>
             </div>
@@ -713,6 +713,57 @@
     <div id="vr-content"></div>
     <div class="form-actions" style="margin-top:24px;">
       <button class="btn btn-cancel" onclick="closeModal('view-resident-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW STAFF MODAL -->
+<div class="modal-overlay" id="view-staff-modal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h2 id="view-staff-title">Staff Profile</h2>
+      <button class="modal-close" onclick="closeModal('view-staff-modal')">✕</button>
+    </div>
+    <input type="hidden" id="vs-staff-id" />
+    <div id="vs-content"></div>
+    <div class="form-actions" style="margin-top:24px;">
+      <button class="btn btn-cancel" onclick="closeModal('view-staff-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TRAINING MODAL -->
+<div class="modal-overlay" id="training-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2>Add Training Record</h2>
+      <button class="modal-close" onclick="closeModal('training-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Training Name *</label><input id="t-name" placeholder="e.g. Moving & Handling, Safeguarding Adults" /></div>
+      <div class="form-group"><label>Category</label>
+        <select id="t-category">
+          <option>Mandatory</option>
+          <option>Safeguarding</option>
+          <option>Medication</option>
+          <option>Health & Safety</option>
+          <option>Dementia Care</option>
+          <option>First Aid</option>
+          <option>Infection Control</option>
+          <option>Mental Capacity</option>
+          <option>Fire Safety</option>
+          <option>Food Hygiene</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Training Provider</label><input id="t-provider" placeholder="e.g. Skills for Care" /></div>
+      <div class="form-group"><label>Date Completed *</label><input type="date" id="t-completed" /></div>
+      <div class="form-group"><label>Expiry Date</label><input type="date" id="t-expiry" /></div>
+      <div class="form-group full"><label>Notes</label><textarea id="t-notes" placeholder="Any additional notes..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('training-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveTraining()">Save Training</button>
     </div>
   </div>
 </div>
@@ -1380,9 +1431,17 @@
   }
 
   // ── STAFF ──
+  let allStaffList = [];
+
   async function loadStaff() {
     const { data } = await db.from('staff').select('*').order('last_name');
-    const list = data || [];
+    allStaffList = data || [];
+    renderStaffTable(allStaffList);
+    renderDBSTable(allStaffList);
+    await loadTrainingTable();
+  }
+
+  function renderStaffTable(list) {
     const tb = document.getElementById('staff-table');
     if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👤</div><p>No staff added yet</p></div></td></tr>'; return; }
     tb.innerHTML = list.map(s => `
@@ -1392,11 +1451,13 @@
         <td>${s.email || '—'}</td>
         <td>${s.phone || '—'}</td>
         <td>${statusBadge(s.status)}</td>
-        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;">View</button></td>
+        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewStaff('${s.id}')">View</button></td>
       </tr>`).join('');
+  }
 
-    // DBS tab
+  function renderDBSTable(list) {
     const dbs = document.getElementById('dbs-table');
+    if (!list.length) { dbs.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="emoji">🪪</div><p>No staff added yet</p></div></td></tr>'; return; }
     dbs.innerHTML = list.map(s => {
       const expiry = s.dbs_expiry_date;
       const expired = expiry && new Date(expiry) < new Date();
@@ -1408,7 +1469,165 @@
         <td>${expired ? '<span class="badge badge-red">Expired</span>' : expiry ? '<span class="badge badge-green">Valid</span>' : '<span class="badge badge-amber">Not set</span>'}</td>
       </tr>`;
     }).join('');
-    document.getElementById('training-table').innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="emoji">📚</div><p>Training records — add via staff profile</p></div></td></tr>';
+  }
+
+  async function loadTrainingTable() {
+    const { data } = await db.from('staff_training').select('*, staff(first_name, last_name)').order('expiry_date');
+    const list = data || [];
+    const tb = document.getElementById('training-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📚</div><p>No training records yet — click View on a staff member to add</p></div></td></tr>'; return; }
+    const today = new Date();
+    tb.innerHTML = list.map(t => {
+      const expiry = t.expiry_date ? new Date(t.expiry_date) : null;
+      const daysLeft = expiry ? Math.ceil((expiry - today) / 86400000) : null;
+      const statusBadgeHtml = !expiry ? '<span class="badge badge-blue">No expiry</span>'
+        : daysLeft < 0 ? '<span class="badge badge-red">Expired</span>'
+        : daysLeft <= 30 ? '<span class="badge badge-amber">Expiring soon</span>'
+        : '<span class="badge badge-green">Valid</span>';
+      const name = t.staff ? `${t.staff.first_name || ''} ${t.staff.last_name || ''}` : '—';
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td>${t.training_name || '—'}</td>
+        <td>${t.training_category || '—'}</td>
+        <td>${formatDate(t.completed_date)}</td>
+        <td>${formatDate(t.expiry_date)}</td>
+        <td>${statusBadgeHtml}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── VIEW STAFF PROFILE ──
+  async function viewStaff(id) {
+    const { data: s } = await db.from('staff').select('*').eq('id', id).single();
+    if (!s) { alert('Could not load staff profile.'); return; }
+    const { data: training } = await db.from('staff_training').select('*').eq('staff_id', id).order('expiry_date');
+
+    document.getElementById('view-staff-title').textContent = `${s.first_name || ''} ${s.last_name || ''}`;
+    document.getElementById('vs-staff-id').value = id;
+
+    const expiry = s.dbs_expiry_date;
+    const dbsExpired = expiry && new Date(expiry) < new Date();
+
+    document.getElementById('vs-content').innerHTML = `
+      <!-- Summary bar -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;">
+        <div style="background:var(--teal-light);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Role</div>
+          <div style="font-size:13px;font-weight:700;color:var(--teal-dark);margin-top:4px;">${s.role || '—'}</div>
+        </div>
+        <div style="background:#ede9fe;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;">Type</div>
+          <div style="font-size:13px;font-weight:700;color:#7c3aed;margin-top:4px;">${s.employment_type || '—'}</div>
+        </div>
+        <div style="background:${dbsExpired ? '#fee2e2' : expiry ? '#dcfce7' : '#fef3c7'};border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:${dbsExpired ? '#dc2626' : expiry ? '#15803d' : '#92400e'};text-transform:uppercase;letter-spacing:.5px;">DBS</div>
+          <div style="font-size:13px;font-weight:700;color:${dbsExpired ? '#dc2626' : expiry ? '#15803d' : '#92400e'};margin-top:4px;">${dbsExpired ? 'Expired' : expiry ? 'Valid' : 'Not set'}</div>
+        </div>
+        <div style="background:${s.status === 'active' ? '#dcfce7' : '#fee2e2'};border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:${s.status === 'active' ? '#15803d' : '#dc2626'};text-transform:uppercase;letter-spacing:.5px;">Status</div>
+          <div style="font-size:13px;font-weight:700;color:${s.status === 'active' ? '#15803d' : '#dc2626'};margin-top:4px;">${s.status || '—'}</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="profile-tabs" style="margin-bottom:20px;">
+        <div class="profile-tab active" onclick="switchProfileTab(this,'vs-details')">👤 Details</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-dbs')">🪪 DBS</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-training')">📚 Training</div>
+      </div>
+
+      <!-- DETAILS -->
+      <div id="vs-details" class="tab-panel active">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Full Name', (s.first_name||'') + ' ' + (s.last_name||''))}
+          ${vrField('Role', s.role)}
+          ${vrField('Employment Type', s.employment_type)}
+          ${vrField('Start Date', formatDate(s.start_date))}
+          ${vrField('Email', s.email)}
+          ${vrField('Phone', s.phone)}
+          ${vrField('NI Number', s.ni_number)}
+          ${vrField('Status', s.status)}
+        </div>
+      </div>
+
+      <!-- DBS -->
+      <div id="vs-dbs" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('DBS Certificate Number', s.dbs_number)}
+          ${vrField('Issue Date', formatDate(s.dbs_issue_date))}
+          ${vrField('Expiry Date', formatDate(s.dbs_expiry_date))}
+          ${vrField('DBS Status', dbsExpired ? 'EXPIRED — renew immediately' : expiry ? 'Valid' : 'Not recorded')}
+        </div>
+      </div>
+
+      <!-- TRAINING -->
+      <div id="vs-training" class="tab-panel">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+          <button class="btn-add" onclick="openModal('training-modal')">+ Add Training</button>
+        </div>
+        <div id="vs-training-list">
+          ${renderStaffTrainingList(training || [])}
+        </div>
+      </div>
+    `;
+
+    openModal('view-staff-modal');
+  }
+
+  function renderStaffTrainingList(list) {
+    if (!list.length) return '<div class="empty-state"><div class="emoji">📚</div><p>No training records yet for this staff member</p></div>';
+    const today = new Date();
+    return list.map(t => {
+      const expiry = t.expiry_date ? new Date(t.expiry_date) : null;
+      const daysLeft = expiry ? Math.ceil((expiry - today) / 86400000) : null;
+      const badge = !expiry ? '<span class="badge badge-blue">No expiry</span>'
+        : daysLeft < 0 ? '<span class="badge badge-red">Expired</span>'
+        : daysLeft <= 30 ? `<span class="badge badge-amber">Expires in ${daysLeft}d</span>`
+        : `<span class="badge badge-green">Valid · ${daysLeft}d left</span>`;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">${t.training_name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${t.training_category || ''} · Completed: ${formatDate(t.completed_date)} · Expires: ${formatDate(t.expiry_date)}</div>
+          ${t.provider ? `<div style="font-size:12px;color:var(--muted);">Provider: ${t.provider}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${badge}
+          <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteTraining('${t.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function saveTraining() {
+    const staffId = document.getElementById('vs-staff-id').value;
+    const name = document.getElementById('t-name').value.trim();
+    if (!name) { alert('Please enter the training name.'); return; }
+    const payload = {
+      staff_id: staffId,
+      training_name: name,
+      training_category: document.getElementById('t-category').value,
+      completed_date: document.getElementById('t-completed').value,
+      expiry_date: document.getElementById('t-expiry').value || null,
+      provider: document.getElementById('t-provider').value,
+      notes: document.getElementById('t-notes').value
+    };
+    const { error } = await db.from('staff_training').insert([payload]);
+    if (error) { alert('Error: ' + error.message); return; }
+    closeModal('training-modal');
+    ['t-name','t-completed','t-expiry','t-provider','t-notes'].forEach(id => document.getElementById(id).value = '');
+    // Refresh training list inside staff modal
+    const { data: training } = await db.from('staff_training').select('*').eq('staff_id', staffId).order('expiry_date');
+    document.getElementById('vs-training-list').innerHTML = renderStaffTrainingList(training || []);
+    loadTrainingTable();
+  }
+
+  async function deleteTraining(id) {
+    if (!confirm('Delete this training record?')) return;
+    await db.from('staff_training').delete().eq('id', id);
+    const staffId = document.getElementById('vs-staff-id').value;
+    const { data: training } = await db.from('staff_training').select('*').eq('staff_id', staffId).order('expiry_date');
+    document.getElementById('vs-training-list').innerHTML = renderStaffTrainingList(training || []);
+    loadTrainingTable();
   }
 
   async function saveStaff() {
