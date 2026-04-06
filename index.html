@@ -703,6 +703,20 @@
   </div>
 </div>
 
+<!-- VIEW RESIDENT MODAL -->
+<div class="modal-overlay" id="view-resident-modal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h2 id="view-resident-title">Resident Profile</h2>
+      <button class="modal-close" onclick="closeModal('view-resident-modal')">✕</button>
+    </div>
+    <div id="vr-content"></div>
+    <div class="form-actions" style="margin-top:24px;">
+      <button class="btn btn-cancel" onclick="closeModal('view-resident-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ GOVERNANCE MODALS ═══════════ -->
 <div id="policy-modal" class="modal-overlay"><div class="modal">
   <div class="modal-header"><h2>Add policy / procedure</h2><button class="modal-close" onclick="closeGovModal('policy-modal')">✕</button></div>
@@ -1263,7 +1277,107 @@
     loadResidents();
   }
 
-  function viewResident(id) { alert('Full resident profile view — coming in next update!'); }
+  async function viewResident(id) {
+    const { data: r, error } = await db.from('residents').select('*').eq('id', id).single();
+    if (error || !r) { alert('Could not load resident profile.'); return; }
+
+    document.getElementById('view-resident-title').textContent = `${r.first_name || ''} ${r.last_name || ''}`;
+
+    const age = r.date_of_birth ? Math.floor((new Date() - new Date(r.date_of_birth)) / 31557600000) + ' yrs' : '—';
+
+    document.getElementById('vr-content').innerHTML = `
+      <!-- Quick summary bar -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;">
+        <div style="background:var(--teal-light);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Age</div>
+          <div style="font-size:20px;font-weight:700;color:var(--teal-dark);margin-top:4px;">${age}</div>
+        </div>
+        <div style="background:#ede9fe;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;">Room</div>
+          <div style="font-size:20px;font-weight:700;color:#7c3aed;margin-top:4px;">${r.room || '—'}</div>
+        </div>
+        <div style="background:#fef3c7;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;">Key Worker</div>
+          <div style="font-size:14px;font-weight:700;color:#92400e;margin-top:4px;">${r.key_worker || '—'}</div>
+        </div>
+        <div style="background:${r.status === 'active' ? '#dcfce7' : '#fee2e2'};border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:${r.status === 'active' ? '#15803d' : '#dc2626'};text-transform:uppercase;letter-spacing:.5px;">Status</div>
+          <div style="font-size:14px;font-weight:700;color:${r.status === 'active' ? '#15803d' : '#dc2626'};margin-top:4px;">${r.status || '—'}</div>
+        </div>
+      </div>
+
+      <!-- Profile tabs -->
+      <div class="profile-tabs" style="margin-bottom:20px;">
+        <div class="profile-tab active" onclick="switchProfileTab(this,'vr-personal')">👤 Personal</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-care')">🏥 Care Needs</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-medical')">💊 Medical</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-contacts')">📞 Contacts</div>
+      </div>
+
+      <!-- PERSONAL -->
+      <div id="vr-personal" class="tab-panel active">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrField('Full Name', (r.first_name || '') + ' ' + (r.last_name || ''))}
+          ${vrField('Date of Birth', formatDate(r.date_of_birth) + (r.date_of_birth ? ' (' + age + ')' : ''))}
+          ${vrField('Gender', r.gender)}
+          ${vrField('Move-in Date', formatDate(r.move_in_date))}
+          ${vrField('Room / Address', r.room)}
+          ${vrField('Key Worker', r.key_worker)}
+          ${vrFieldFull('Likes & Preferences', r.likes_preferences)}
+        </div>
+      </div>
+
+      <!-- CARE NEEDS -->
+      <div id="vr-care" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrFieldFull('Care Needs Summary', r.care_needs)}
+          ${vrFieldFull('Mobility', r.mobility)}
+          ${vrFieldFull('Personal Care', r.personal_care)}
+          ${vrField('Communication Needs', r.communication_needs)}
+          ${vrField('Dietary Requirements', r.dietary_requirements)}
+        </div>
+      </div>
+
+      <!-- MEDICAL -->
+      <div id="vr-medical" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrFieldFull('Medical Conditions', r.medical_conditions)}
+          ${vrFieldFull('Current Medications', r.medications)}
+          ${vrField('GP Name', r.gp_name)}
+          ${vrField('GP Phone', r.gp_phone)}
+          ${vrField('Allergies', r.allergies)}
+          ${vrField('DNR / DNAR', r.dnr_status)}
+        </div>
+      </div>
+
+      <!-- CONTACTS -->
+      <div id="vr-contacts" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrField('Next of Kin', r.nok_name)}
+          ${vrField('Relationship', r.nok_relationship)}
+          ${vrField('NOK Phone', r.nok_phone)}
+          ${vrField('NOK Email', r.nok_email)}
+          ${vrField('Power of Attorney', r.power_of_attorney)}
+          ${vrFieldFull('Social Worker', r.social_worker)}
+        </div>
+      </div>
+    `;
+
+    openModal('view-resident-modal');
+  }
+
+  function vrField(label, value) {
+    return `<div style="background:var(--bg);border-radius:8px;padding:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${label}</div>
+      <div style="font-size:14px;color:var(--navy);font-weight:500;">${value || '—'}</div>
+    </div>`;
+  }
+  function vrFieldFull(label, value) {
+    return `<div style="grid-column:1/-1;background:var(--bg);border-radius:8px;padding:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${label}</div>
+      <div style="font-size:14px;color:var(--navy);font-weight:500;white-space:pre-wrap;">${value || '—'}</div>
+    </div>`;
+  }
 
   // ── STAFF ──
   async function loadStaff() {
