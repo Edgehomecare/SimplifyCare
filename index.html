@@ -965,8 +965,8 @@
       <h2 id="resident-modal-title">Add Resident</h2>
       <button class="modal-close" onclick="closeModal('resident-modal')">✕</button>
     </div>
+    <input type="hidden" id="r-edit-id" />
     <div class="profile-tabs">
-      <div class="profile-tab active" onclick="switchProfileTab(this,'rt-personal')">Personal</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-care')">Care Needs</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-medical')">Medical</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-contacts')">Contacts</div>
@@ -1028,35 +1028,207 @@
 
 <!-- STAFF MODAL -->
 <div class="modal-overlay" id="staff-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:780px;">
     <div class="modal-header">
       <h2 id="staff-modal-title">Add Staff Member</h2>
       <button class="modal-close" onclick="closeModal('staff-modal')">✕</button>
     </div>
-    <div class="form-grid">
-      <div class="form-group"><label>First Name *</label><input id="s-firstname" placeholder="First name" /></div>
-      <div class="form-group"><label>Last Name *</label><input id="s-lastname" placeholder="Last name" /></div>
-      <div class="form-group"><label>Role *</label>
-        <select id="s-role">
-          <option value="">Select role</option>
-          <option>Care Worker</option><option>Senior Care Worker</option><option>Care Coordinator</option>
-          <option>Registered Manager</option><option>Deputy Manager</option><option>Administrator</option><option>Driver</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Employment Type</label>
-        <select id="s-emptype"><option>Full-time</option><option>Part-time</option><option>Bank</option><option>Agency</option></select>
-      </div>
-      <div class="form-group"><label>Email</label><input type="email" id="s-email" placeholder="Email address" /></div>
-      <div class="form-group"><label>Phone</label><input id="s-phone" placeholder="Phone number" /></div>
-      <div class="form-group"><label>Start Date</label><input type="date" id="s-startdate" /></div>
-      <div class="form-group"><label>Status</label>
-        <select id="s-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select>
-      </div>
-      <div class="form-group"><label>DBS Number</label><input id="s-dbs-number" placeholder="DBS certificate number" /></div>
-      <div class="form-group"><label>DBS Issue Date</label><input type="date" id="s-dbs-date" /></div>
-      <div class="form-group"><label>DBS Expiry Date</label><input type="date" id="s-dbs-expiry" /></div>
-      <div class="form-group"><label>NI Number</label><input id="s-ni" placeholder="National Insurance number" /></div>
+    <input type="hidden" id="s-edit-id" />
+    <!-- HR Tabs -->
+    <div class="profile-tabs" style="flex-wrap:wrap;margin-bottom:20px;">
+      <div class="profile-tab active" onclick="switchProfileTab(this,'st-personal')">👤 Personal</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-employment')">💼 Employment</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-dbs')">🪪 DBS & RTW</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-refs')">📋 References</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-history')">🏢 Work History</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-quals')">🎓 Qualifications</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-health')">🏥 Health</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-recruitment')">📅 Recruitment</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'st-payroll')">💷 Payroll</div>
     </div>
+
+    <!-- PERSONAL -->
+    <div id="st-personal" class="tab-panel active">
+      <div class="form-grid">
+        <div class="form-group"><label>First Name *</label><input id="s-firstname" placeholder="First name" /></div>
+        <div class="form-group"><label>Last Name *</label><input id="s-lastname" placeholder="Last name" /></div>
+        <div class="form-group"><label>Middle Name</label><input id="s-middlename" placeholder="Middle name" /></div>
+        <div class="form-group"><label>Preferred Name</label><input id="s-preferredname" placeholder="Preferred name" /></div>
+        <div class="form-group"><label>Date of Birth</label><input type="date" id="s-dob" /></div>
+        <div class="form-group"><label>Gender</label>
+          <select id="s-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option></select>
+        </div>
+        <div class="form-group"><label>Ethnicity</label><input id="s-ethnicity" placeholder="Ethnicity" /></div>
+        <div class="form-group"><label>Nationality</label><input id="s-nationality" placeholder="Nationality" /></div>
+        <div class="form-group"><label>Email</label><input type="email" id="s-email" placeholder="Email address" /></div>
+        <div class="form-group"><label>Phone</label><input id="s-phone" placeholder="Phone number" /></div>
+        <div class="form-group full"><label>Home Address</label><textarea id="s-address" placeholder="Full home address"></textarea></div>
+        <div class="form-group"><label>Emergency Contact Name</label><input id="s-ec-name" placeholder="Name" /></div>
+        <div class="form-group"><label>Relationship</label><input id="s-ec-rel" placeholder="e.g. Spouse, Parent" /></div>
+        <div class="form-group"><label>Emergency Contact Phone</label><input id="s-ec-phone" placeholder="Phone number" /></div>
+        <div class="form-group"><label>NI Number</label><input id="s-ni" placeholder="National Insurance number" /></div>
+      </div>
+    </div>
+
+    <!-- EMPLOYMENT -->
+    <div id="st-employment" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>Role *</label>
+          <select id="s-role"><option value="">Select role</option><option>Care Worker</option><option>Senior Care Worker</option><option>Care Coordinator</option><option>Registered Manager</option><option>Deputy Manager</option><option>Administrator</option><option>Driver</option></select>
+        </div>
+        <div class="form-group"><label>Employment Type</label>
+          <select id="s-emptype"><option>Full-time</option><option>Part-time</option><option>Bank</option><option>Agency</option></select>
+        </div>
+        <div class="form-group"><label>Start Date</label><input type="date" id="s-startdate" /></div>
+        <div class="form-group"><label>Contracted Hours</label><input id="s-contracted-hours" placeholder="e.g. 37.5" /></div>
+        <div class="form-group"><label>Status</label>
+          <select id="s-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select>
+        </div>
+        <div class="form-group"><label>Hourly Rate (£)</label><input id="s-hourly-rate" placeholder="e.g. 11.50" /></div>
+      </div>
+    </div>
+
+    <!-- DBS & RIGHT TO WORK -->
+    <div id="st-dbs" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>DBS Number</label><input id="s-dbs-number" placeholder="DBS certificate number" /></div>
+        <div class="form-group"><label>DBS Issue Date</label><input type="date" id="s-dbs-date" /></div>
+        <div class="form-group"><label>DBS Expiry Date</label><input type="date" id="s-dbs-expiry" /></div>
+        <div class="form-group"><label>Barred List Checked?</label>
+          <select id="s-barred"><option value="">Select</option><option>Yes</option><option>No</option></select>
+        </div>
+        <div class="form-group"><label>Barred List Check Date</label><input type="date" id="s-barred-date" /></div>
+        <div class="form-group"><label>Barred List Checked By</label><input id="s-barred-by" placeholder="Name" /></div>
+        <div class="form-group"><label>Right to Work</label>
+          <select id="s-rtw"><option value="">Select</option><option>UK/Irish citizen</option><option>EU Settled Status</option><option>Visa</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label>RTW Expiry</label><input type="date" id="s-rtw-expiry" /></div>
+        <div class="form-group"><label>Passport Number</label><input id="s-passport" placeholder="Passport number" /></div>
+        <div class="form-group"><label>Passport Expiry</label><input type="date" id="s-passport-expiry" /></div>
+        <div class="form-group"><label>Visa Type</label><input id="s-visa-type" placeholder="Visa type if applicable" /></div>
+        <div class="form-group"><label>Visa Expiry</label><input type="date" id="s-visa-expiry" /></div>
+        <div class="form-group"><label>Identity Verified By</label><input id="s-id-verified-by" placeholder="Name of verifier" /></div>
+        <div class="form-group"><label>Identity Verified Date</label><input type="date" id="s-id-verified-date" /></div>
+        <div class="form-group"><label>Proof of Address Verified?</label>
+          <select id="s-poa-verified"><option value="">Select</option><option>Yes</option><option>No</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCES -->
+    <div id="st-refs" class="tab-panel">
+      <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Reference 1</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Name</label><input id="s-ref1-name" placeholder="Referee name" /></div>
+        <div class="form-group"><label>Organisation</label><input id="s-ref1-org" placeholder="Organisation" /></div>
+        <div class="form-group"><label>Relationship</label><input id="s-ref1-rel" placeholder="e.g. Line Manager" /></div>
+        <div class="form-group"><label>Phone</label><input id="s-ref1-phone" placeholder="Phone" /></div>
+        <div class="form-group"><label>Email</label><input id="s-ref1-email" placeholder="Email" /></div>
+        <div class="form-group"><label>Date Received</label><input type="date" id="s-ref1-date" /></div>
+        <div class="form-group"><label>Satisfactory?</label>
+          <select id="s-ref1-sat"><option value="">Select</option><option>Yes</option><option>No</option><option>Pending</option></select>
+        </div>
+        <div class="form-group full"><label>Notes</label><textarea id="s-ref1-notes" placeholder="Reference notes"></textarea></div>
+      </div>
+      <div style="font-weight:700;font-size:13px;color:var(--teal);margin:16px 0 12px;">Reference 2</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Name</label><input id="s-ref2-name" placeholder="Referee name" /></div>
+        <div class="form-group"><label>Organisation</label><input id="s-ref2-org" placeholder="Organisation" /></div>
+        <div class="form-group"><label>Relationship</label><input id="s-ref2-rel" placeholder="e.g. Line Manager" /></div>
+        <div class="form-group"><label>Phone</label><input id="s-ref2-phone" placeholder="Phone" /></div>
+        <div class="form-group"><label>Email</label><input id="s-ref2-email" placeholder="Email" /></div>
+        <div class="form-group"><label>Date Received</label><input type="date" id="s-ref2-date" /></div>
+        <div class="form-group"><label>Satisfactory?</label>
+          <select id="s-ref2-sat"><option value="">Select</option><option>Yes</option><option>No</option><option>Pending</option></select>
+        </div>
+        <div class="form-group full"><label>Notes</label><textarea id="s-ref2-notes" placeholder="Reference notes"></textarea></div>
+      </div>
+    </div>
+
+    <!-- WORK HISTORY -->
+    <div id="st-history" class="tab-panel">
+      ${[1,2,3].map(n => `
+      <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Previous Employer ${n}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Employer</label><input id="s-emp${n}-employer" placeholder="Employer name" /></div>
+        <div class="form-group"><label>Role</label><input id="s-emp${n}-role" placeholder="Job title" /></div>
+        <div class="form-group"><label>Start Date</label><input type="date" id="s-emp${n}-start" /></div>
+        <div class="form-group"><label>End Date</label><input type="date" id="s-emp${n}-end" /></div>
+        <div class="form-group"><label>Reason for Leaving</label><input id="s-emp${n}-reason" placeholder="Reason for leaving" /></div>
+        <div class="form-group"><label>Employment Verified?</label>
+          <select id="s-emp${n}-verified"><option value="">Select</option><option>Yes</option><option>No</option><option>Pending</option></select>
+        </div>
+      </div>`).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">')}
+      <div class="form-group full" style="margin-top:16px;"><label>Employment Gaps (explain any gaps)</label><textarea id="s-emp-gaps" placeholder="Explain any gaps in employment..."></textarea></div>
+    </div>
+
+    <!-- QUALIFICATIONS -->
+    <div id="st-quals" class="tab-panel">
+      ${[1,2,3].map(n => `
+      <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Qualification ${n}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Qualification Name</label><input id="s-qual${n}-name" placeholder="e.g. NVQ Level 2 Health & Social Care" /></div>
+        <div class="form-group"><label>Level</label><input id="s-qual${n}-level" placeholder="e.g. Level 2" /></div>
+        <div class="form-group"><label>Awarding Body</label><input id="s-qual${n}-body" placeholder="e.g. City & Guilds" /></div>
+        <div class="form-group"><label>Date Achieved</label><input type="date" id="s-qual${n}-date" /></div>
+      </div>`).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">')}
+      <div class="form-group full" style="margin-top:16px;"><label>Other Qualifications / Certificates</label><textarea id="s-other-quals" placeholder="List any other relevant qualifications..."></textarea></div>
+    </div>
+
+    <!-- HEALTH -->
+    <div id="st-health" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>Fit for Work?</label>
+          <select id="s-fit-work"><option value="">Select</option><option>Yes</option><option>No</option><option>With adjustments</option></select>
+        </div>
+        <div class="form-group"><label>Health Declaration Date</label><input type="date" id="s-health-date" /></div>
+        <div class="form-group"><label>Occupational Health Referral?</label>
+          <select id="s-oh-referral"><option value="">Select</option><option>Yes</option><option>No</option></select>
+        </div>
+        <div class="form-group"><label>Reasonable Adjustments Required?</label>
+          <select id="s-adjustments"><option value="">Select</option><option>Yes</option><option>No</option></select>
+        </div>
+        <div class="form-group full"><label>Adjustment Details</label><textarea id="s-adjustment-details" placeholder="Describe any reasonable adjustments required..."></textarea></div>
+        <div class="form-group"><label>Disciplinary Record Declared?</label>
+          <select id="s-disciplinary"><option value="">Select</option><option>Yes</option><option>No</option></select>
+        </div>
+        <div class="form-group full"><label>Disciplinary Details</label><textarea id="s-disciplinary-details" placeholder="Details if applicable..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- RECRUITMENT -->
+    <div id="st-recruitment" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>Application Received</label><input type="date" id="s-app-received" /></div>
+        <div class="form-group"><label>Interview Date</label><input type="date" id="s-interview-date" /></div>
+        <div class="form-group"><label>Interviewed By</label><input id="s-interviewed-by" placeholder="Name(s)" /></div>
+        <div class="form-group"><label>Offer Letter Sent</label><input type="date" id="s-offer-sent" /></div>
+        <div class="form-group"><label>Contract Signed</label><input type="date" id="s-contract-signed" /></div>
+        <div class="form-group"><label>Induction Completed</label><input type="date" id="s-induction-date" /></div>
+        <div class="form-group"><label>Induction Completed By</label><input id="s-induction-by" placeholder="Name" /></div>
+        <div class="form-group"><label>Probation Start</label><input type="date" id="s-probation-start" /></div>
+        <div class="form-group"><label>Probation End</label><input type="date" id="s-probation-end" /></div>
+        <div class="form-group"><label>Probation Outcome</label>
+          <select id="s-probation-outcome"><option value="">Select</option><option>Passed</option><option>Extended</option><option>Failed</option><option>Pending</option></select>
+        </div>
+        <div class="form-group full"><label>Probation Notes</label><textarea id="s-probation-notes" placeholder="Notes on probation period..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- PAYROLL -->
+    <div id="st-payroll" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group"><label>Bank Name</label><input id="s-bank-name" placeholder="e.g. Barclays" /></div>
+        <div class="form-group"><label>Account Name</label><input id="s-bank-account-name" placeholder="Account holder name" /></div>
+        <div class="form-group"><label>Account Number</label><input id="s-bank-account-number" placeholder="8-digit account number" /></div>
+        <div class="form-group"><label>Sort Code</label><input id="s-sort-code" placeholder="e.g. 20-00-00" /></div>
+        <div class="form-group"><label>Tax Code</label><input id="s-tax-code" placeholder="e.g. 1257L" /></div>
+        <div class="form-group"><label>Payment Method</label>
+          <select id="s-payment-method"><option value="">Select</option><option>BACS</option><option>Cash</option><option>Cheque</option></select>
+        </div>
+      </div>
+    </div>
+
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('staff-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveStaff()">Save Staff Member</button>
@@ -1071,6 +1243,7 @@
       <h2>Report Incident</h2>
       <button class="modal-close" onclick="closeModal('incident-modal')">✕</button>
     </div>
+    <input type="hidden" id="i-edit-id" />
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="i-date" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="i-time" /></div>
@@ -1110,6 +1283,7 @@
       <h2>Add Daily Note</h2>
       <button class="modal-close" onclick="closeModal('note-modal')">✕</button>
     </div>
+    <input type="hidden" id="n-edit-id" />
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="n-date" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="n-time" /></div>
@@ -1330,7 +1504,7 @@
 
   function renderResidents(list) {
     const tb = document.getElementById('residents-table');
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👥</div><p>No residents added yet</p></div></td></tr>'; return; }
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">👥</div><p>No residents added yet</p></div></td></tr>'; return; }
     tb.innerHTML = list.map(r => `
       <tr>
         <td><strong>${r.first_name || ''} ${r.last_name || ''}</strong></td>
@@ -1338,7 +1512,11 @@
         <td>${r.room || '—'}</td>
         <td>${r.key_worker || '—'}</td>
         <td>${statusBadge(r.status)}</td>
-        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewResident('${r.id}')">View</button></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewResident('${r.id}')">View</button>
+          <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editResident('${r.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteResident('${r.id}')">Delete</button>
+        </td>
       </tr>`).join('');
   }
 
@@ -1350,8 +1528,8 @@
   async function saveResident() {
     const payload = {
       first_name: val('r-firstname'), last_name: val('r-lastname'),
-      date_of_birth: val('r-dob'), gender: val('r-gender'),
-      room: val('r-room'), move_in_date: val('r-movein'),
+      date_of_birth: val('r-dob') || null, gender: val('r-gender'),
+      room: val('r-room'), move_in_date: val('r-movein') || null,
       key_worker: val('r-keyworker'), status: val('r-status'),
       likes_preferences: val('r-likes'), care_needs: val('r-care-needs'),
       mobility: val('r-mobility'), personal_care: val('r-personal-care'),
@@ -1364,9 +1542,61 @@
       power_of_attorney: val('r-poa'), social_worker: val('r-sw')
     };
     if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
-    const { error } = await db.from('residents').insert([payload]);
+    const editId = document.getElementById('r-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('residents').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('residents').insert([payload]));
+    }
     if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('r-edit-id').value = '';
+    document.getElementById('resident-modal-title').textContent = 'Add Resident';
     closeModal('resident-modal');
+    loadResidents();
+  }
+
+  async function editResident(id) {
+    const { data: r } = await db.from('residents').select('*').eq('id', id).single();
+    if (!r) return;
+    document.getElementById('resident-modal-title').textContent = 'Edit Resident';
+    document.getElementById('r-edit-id').value = id;
+    // Personal
+    document.getElementById('r-firstname').value = r.first_name || '';
+    document.getElementById('r-lastname').value = r.last_name || '';
+    document.getElementById('r-dob').value = r.date_of_birth || '';
+    document.getElementById('r-gender').value = r.gender || '';
+    document.getElementById('r-room').value = r.room || '';
+    document.getElementById('r-movein').value = r.move_in_date || '';
+    document.getElementById('r-keyworker').value = r.key_worker || '';
+    document.getElementById('r-status').value = r.status || 'active';
+    document.getElementById('r-likes').value = r.likes_preferences || '';
+    // Care
+    document.getElementById('r-care-needs').value = r.care_needs || '';
+    document.getElementById('r-mobility').value = r.mobility || '';
+    document.getElementById('r-personal-care').value = r.personal_care || '';
+    document.getElementById('r-communication').value = r.communication_needs || '';
+    document.getElementById('r-dietary').value = r.dietary_requirements || '';
+    // Medical
+    document.getElementById('r-conditions').value = r.medical_conditions || '';
+    document.getElementById('r-medications').value = r.medications || '';
+    document.getElementById('r-gp-name').value = r.gp_name || '';
+    document.getElementById('r-gp-phone').value = r.gp_phone || '';
+    document.getElementById('r-allergies').value = r.allergies || '';
+    document.getElementById('r-dnr').value = r.dnr_status || 'not_set';
+    // Contacts
+    document.getElementById('r-nok-name').value = r.nok_name || '';
+    document.getElementById('r-nok-rel').value = r.nok_relationship || '';
+    document.getElementById('r-nok-phone').value = r.nok_phone || '';
+    document.getElementById('r-nok-email').value = r.nok_email || '';
+    document.getElementById('r-poa').value = r.power_of_attorney || '';
+    document.getElementById('r-sw').value = r.social_worker || '';
+    openModal('resident-modal');
+  }
+
+  async function deleteResident(id) {
+    if (!confirm('Are you sure you want to delete this resident? This cannot be undone.')) return;
+    await db.from('residents').delete().eq('id', id);
     loadResidents();
   }
 
@@ -1493,7 +1723,11 @@
         <td>${s.email || '—'}</td>
         <td>${s.phone || '—'}</td>
         <td>${statusBadge(s.status)}</td>
-        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewStaff('${s.id}')">View</button></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="viewStaff('${s.id}')">View</button>
+          <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editStaff('${s.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteStaff('${s.id}')">Delete</button>
+        </td>
       </tr>`).join('');
   }
 
@@ -1576,33 +1810,154 @@
       </div>
 
       <!-- Tabs -->
-      <div class="profile-tabs" style="margin-bottom:20px;">
-        <div class="profile-tab active" onclick="switchProfileTab(this,'vs-details')">👤 Details</div>
-        <div class="profile-tab" onclick="switchProfileTab(this,'vs-dbs')">🪪 DBS</div>
+      <div class="profile-tabs" style="flex-wrap:wrap;margin-bottom:20px;">
+        <div class="profile-tab active" onclick="switchProfileTab(this,'vs-personal')">👤 Personal</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-employment')">💼 Employment</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-dbs')">🪪 DBS & RTW</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-refs')">📋 References</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-history')">🏢 Work History</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-quals')">🎓 Qualifications</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-health')">🏥 Health</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-recruitment')">📅 Recruitment</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vs-payroll')">💷 Payroll</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vs-training')">📚 Training</div>
       </div>
 
-      <!-- DETAILS -->
-      <div id="vs-details" class="tab-panel active">
+      <!-- PERSONAL -->
+      <div id="vs-personal" class="tab-panel active">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${vrField('Full Name', (s.first_name||'') + ' ' + (s.last_name||''))}
-          ${vrField('Role', s.role)}
-          ${vrField('Employment Type', s.employment_type)}
-          ${vrField('Start Date', formatDate(s.start_date))}
+          ${vrField('Full Name', [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' '))}
+          ${vrField('Preferred Name', s.preferred_name)}
+          ${vrField('Date of Birth', formatDate(s.date_of_birth))}
+          ${vrField('Gender', s.gender)}
+          ${vrField('Ethnicity', s.ethnicity)}
+          ${vrField('Nationality', s.nationality)}
           ${vrField('Email', s.email)}
           ${vrField('Phone', s.phone)}
           ${vrField('NI Number', s.ni_number)}
+          ${vrFieldFull('Home Address', s.home_address)}
+          ${vrField('Emergency Contact', s.emergency_contact_name)}
+          ${vrField('Relationship', s.emergency_contact_relationship)}
+          ${vrField('Emergency Phone', s.emergency_contact_phone)}
+        </div>
+      </div>
+
+      <!-- EMPLOYMENT -->
+      <div id="vs-employment" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Role', s.role)}
+          ${vrField('Employment Type', s.employment_type)}
+          ${vrField('Start Date', formatDate(s.start_date))}
+          ${vrField('Contracted Hours', s.contracted_hours)}
+          ${vrField('Hourly Rate', s.hourly_rate ? '£' + s.hourly_rate : '—')}
           ${vrField('Status', s.status)}
         </div>
       </div>
 
-      <!-- DBS -->
+      <!-- DBS & RTW -->
       <div id="vs-dbs" class="tab-panel">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${vrField('DBS Certificate Number', s.dbs_number)}
-          ${vrField('Issue Date', formatDate(s.dbs_issue_date))}
-          ${vrField('Expiry Date', formatDate(s.dbs_expiry_date))}
-          ${vrField('DBS Status', dbsExpired ? 'EXPIRED — renew immediately' : expiry ? 'Valid' : 'Not recorded')}
+          ${vrField('DBS Number', s.dbs_number)}
+          ${vrField('DBS Issue Date', formatDate(s.dbs_issue_date))}
+          ${vrField('DBS Expiry', formatDate(s.dbs_expiry_date))}
+          ${vrField('DBS Status', dbsExpired ? '⚠️ EXPIRED' : expiry ? '✅ Valid' : 'Not recorded')}
+          ${vrField('Barred List Checked', s.barred_list_checked)}
+          ${vrField('Barred List Check Date', formatDate(s.barred_list_checked_date))}
+          ${vrField('Checked By', s.barred_list_checked_by)}
+          ${vrField('Right to Work', s.right_to_work)}
+          ${vrField('RTW Expiry', formatDate(s.right_to_work_expiry))}
+          ${vrField('Passport Number', s.passport_number)}
+          ${vrField('Passport Expiry', formatDate(s.passport_expiry))}
+          ${vrField('Visa Type', s.visa_type)}
+          ${vrField('Visa Expiry', formatDate(s.visa_expiry))}
+          ${vrField('Identity Verified By', s.identity_verified_by)}
+          ${vrField('Identity Verified Date', formatDate(s.identity_verified_date))}
+          ${vrField('Proof of Address Verified', s.proof_of_address_verified)}
+        </div>
+      </div>
+
+      <!-- REFERENCES -->
+      <div id="vs-refs" class="tab-panel">
+        <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Reference 1</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          ${vrField('Name', s.ref1_name)} ${vrField('Organisation', s.ref1_organisation)}
+          ${vrField('Relationship', s.ref1_relationship)} ${vrField('Phone', s.ref1_phone)}
+          ${vrField('Email', s.ref1_email)} ${vrField('Date Received', formatDate(s.ref1_date_received))}
+          ${vrField('Satisfactory', s.ref1_satisfactory)} ${vrFieldFull('Notes', s.ref1_notes)}
+        </div>
+        <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Reference 2</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Name', s.ref2_name)} ${vrField('Organisation', s.ref2_organisation)}
+          ${vrField('Relationship', s.ref2_relationship)} ${vrField('Phone', s.ref2_phone)}
+          ${vrField('Email', s.ref2_email)} ${vrField('Date Received', formatDate(s.ref2_date_received))}
+          ${vrField('Satisfactory', s.ref2_satisfactory)} ${vrFieldFull('Notes', s.ref2_notes)}
+        </div>
+      </div>
+
+      <!-- WORK HISTORY -->
+      <div id="vs-history" class="tab-panel">
+        ${[1,2,3].map(n => `
+          <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Employer ${n}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            ${vrField('Employer', s[`emp${n}_employer`])} ${vrField('Role', s[`emp${n}_role`])}
+            ${vrField('Start', formatDate(s[`emp${n}_start`]))} ${vrField('End', formatDate(s[`emp${n}_end`]))}
+            ${vrField('Reason for Leaving', s[`emp${n}_leaving_reason`])} ${vrField('Verified', s[`emp${n}_verified`])}
+          </div>`).join('')}
+        ${vrFieldFull('Employment Gaps', s.employment_gaps)}
+      </div>
+
+      <!-- QUALIFICATIONS -->
+      <div id="vs-quals" class="tab-panel">
+        ${[1,2,3].map(n => `
+          <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Qualification ${n}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            ${vrField('Name', s[`qual${n}_name`])} ${vrField('Level', s[`qual${n}_level`])}
+            ${vrField('Awarding Body', s[`qual${n}_awarding_body`])} ${vrField('Date', formatDate(s[`qual${n}_date`]))}
+          </div>`).join('')}
+        ${vrFieldFull('Other Qualifications', s.other_qualifications)}
+      </div>
+
+      <!-- HEALTH -->
+      <div id="vs-health" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Fit for Work', s.fit_for_work)}
+          ${vrField('Health Declaration Date', formatDate(s.health_declaration_date))}
+          ${vrField('Occupational Health Referral', s.occupational_health_referral)}
+          ${vrField('Reasonable Adjustments', s.reasonable_adjustments)}
+          ${vrFieldFull('Adjustment Details', s.adjustments_details)}
+          ${vrField('Disciplinary Declared', s.disciplinary_declared)}
+          ${vrFieldFull('Disciplinary Details', s.disciplinary_details)}
+        </div>
+      </div>
+
+      <!-- RECRUITMENT -->
+      <div id="vs-recruitment" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Application Received', formatDate(s.application_received))}
+          ${vrField('Interview Date', formatDate(s.interview_date))}
+          ${vrField('Interviewed By', s.interviewed_by)}
+          ${vrField('Offer Letter Sent', formatDate(s.offer_letter_sent))}
+          ${vrField('Contract Signed', formatDate(s.contract_signed))}
+          ${vrField('Induction Completed', formatDate(s.induction_completed))}
+          ${vrField('Induction Completed By', s.induction_completed_by)}
+          ${vrField('Probation Start', formatDate(s.probation_start))}
+          ${vrField('Probation End', formatDate(s.probation_end))}
+          ${vrField('Probation Outcome', s.probation_outcome)}
+          ${vrFieldFull('Probation Notes', s.probation_notes)}
+        </div>
+      </div>
+
+      <!-- PAYROLL -->
+      <div id="vs-payroll" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${vrField('Bank Name', s.bank_name)}
+          ${vrField('Account Name', s.bank_account_name)}
+          ${vrField('Account Number', s.bank_account_number ? '****' + s.bank_account_number.slice(-4) : '—')}
+          ${vrField('Sort Code', s.bank_sort_code)}
+          ${vrField('Tax Code', s.tax_code)}
+          ${vrField('Payment Method', s.payment_method)}
+          ${vrField('Hourly Rate', s.hourly_rate ? '£' + s.hourly_rate : '—')}
+          ${vrField('Contracted Hours', s.contracted_hours)}
         </div>
       </div>
 
@@ -1678,17 +2033,175 @@
 
   async function saveStaff() {
     const payload = {
+      // Personal
       first_name: val('s-firstname'), last_name: val('s-lastname'),
-      role: val('s-role'), employment_type: val('s-emptype'),
+      middle_name: val('s-middlename'), preferred_name: val('s-preferredname'),
+      date_of_birth: val('s-dob') || null, gender: val('s-gender'),
+      ethnicity: val('s-ethnicity'), nationality: val('s-nationality'),
       email: val('s-email'), phone: val('s-phone'),
-      start_date: val('s-startdate'), status: val('s-status'),
-      dbs_number: val('s-dbs-number'), dbs_issue_date: val('s-dbs-date'),
-      dbs_expiry_date: val('s-dbs-expiry'), ni_number: val('s-ni')
+      home_address: val('s-address'), ni_number: val('s-ni'),
+      emergency_contact_name: val('s-ec-name'),
+      emergency_contact_relationship: val('s-ec-rel'),
+      emergency_contact_phone: val('s-ec-phone'),
+      // Employment
+      role: val('s-role'), employment_type: val('s-emptype'),
+      start_date: val('s-startdate') || null, status: val('s-status'),
+      contracted_hours: val('s-contracted-hours'), hourly_rate: val('s-hourly-rate'),
+      // DBS & RTW
+      dbs_number: val('s-dbs-number'),
+      dbs_issue_date: val('s-dbs-date') || null,
+      dbs_expiry_date: val('s-dbs-expiry') || null,
+      barred_list_checked: val('s-barred'),
+      barred_list_checked_date: val('s-barred-date') || null,
+      barred_list_checked_by: val('s-barred-by'),
+      right_to_work: val('s-rtw'),
+      right_to_work_expiry: val('s-rtw-expiry') || null,
+      passport_number: val('s-passport'),
+      passport_expiry: val('s-passport-expiry') || null,
+      visa_type: val('s-visa-type'),
+      visa_expiry: val('s-visa-expiry') || null,
+      identity_verified_by: val('s-id-verified-by'),
+      identity_verified_date: val('s-id-verified-date') || null,
+      proof_of_address_verified: val('s-poa-verified'),
+      // References
+      ref1_name: val('s-ref1-name'), ref1_organisation: val('s-ref1-org'),
+      ref1_relationship: val('s-ref1-rel'), ref1_phone: val('s-ref1-phone'),
+      ref1_email: val('s-ref1-email'), ref1_date_received: val('s-ref1-date') || null,
+      ref1_satisfactory: val('s-ref1-sat'), ref1_notes: val('s-ref1-notes'),
+      ref2_name: val('s-ref2-name'), ref2_organisation: val('s-ref2-org'),
+      ref2_relationship: val('s-ref2-rel'), ref2_phone: val('s-ref2-phone'),
+      ref2_email: val('s-ref2-email'), ref2_date_received: val('s-ref2-date') || null,
+      ref2_satisfactory: val('s-ref2-sat'), ref2_notes: val('s-ref2-notes'),
+      // Employment history
+      emp1_employer: val('s-emp1-employer'), emp1_role: val('s-emp1-role'),
+      emp1_start: val('s-emp1-start') || null, emp1_end: val('s-emp1-end') || null,
+      emp1_leaving_reason: val('s-emp1-reason'), emp1_verified: val('s-emp1-verified'),
+      emp2_employer: val('s-emp2-employer'), emp2_role: val('s-emp2-role'),
+      emp2_start: val('s-emp2-start') || null, emp2_end: val('s-emp2-end') || null,
+      emp2_leaving_reason: val('s-emp2-reason'), emp2_verified: val('s-emp2-verified'),
+      emp3_employer: val('s-emp3-employer'), emp3_role: val('s-emp3-role'),
+      emp3_start: val('s-emp3-start') || null, emp3_end: val('s-emp3-end') || null,
+      emp3_leaving_reason: val('s-emp3-reason'), emp3_verified: val('s-emp3-verified'),
+      employment_gaps: val('s-emp-gaps'),
+      // Qualifications
+      qual1_name: val('s-qual1-name'), qual1_level: val('s-qual1-level'),
+      qual1_awarding_body: val('s-qual1-body'), qual1_date: val('s-qual1-date') || null,
+      qual2_name: val('s-qual2-name'), qual2_level: val('s-qual2-level'),
+      qual2_awarding_body: val('s-qual2-body'), qual2_date: val('s-qual2-date') || null,
+      qual3_name: val('s-qual3-name'), qual3_level: val('s-qual3-level'),
+      qual3_awarding_body: val('s-qual3-body'), qual3_date: val('s-qual3-date') || null,
+      other_qualifications: val('s-other-quals'),
+      // Health
+      fit_for_work: val('s-fit-work'),
+      health_declaration_date: val('s-health-date') || null,
+      occupational_health_referral: val('s-oh-referral'),
+      reasonable_adjustments: val('s-adjustments'),
+      adjustments_details: val('s-adjustment-details'),
+      disciplinary_declared: val('s-disciplinary'),
+      disciplinary_details: val('s-disciplinary-details'),
+      // Recruitment
+      application_received: val('s-app-received') || null,
+      interview_date: val('s-interview-date') || null,
+      interviewed_by: val('s-interviewed-by'),
+      offer_letter_sent: val('s-offer-sent') || null,
+      contract_signed: val('s-contract-signed') || null,
+      induction_completed: val('s-induction-date') || null,
+      induction_completed_by: val('s-induction-by'),
+      probation_start: val('s-probation-start') || null,
+      probation_end: val('s-probation-end') || null,
+      probation_outcome: val('s-probation-outcome'),
+      probation_notes: val('s-probation-notes'),
+      // Payroll
+      bank_name: val('s-bank-name'),
+      bank_account_name: val('s-bank-account-name'),
+      bank_account_number: val('s-bank-account-number'),
+      bank_sort_code: val('s-sort-code'),
+      tax_code: val('s-tax-code'),
+      payment_method: val('s-payment-method')
     };
     if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
-    const { error } = await db.from('staff').insert([payload]);
+    const editId = document.getElementById('s-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('staff').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('staff').insert([payload]));
+    }
     if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('s-edit-id').value = '';
+    document.getElementById('staff-modal-title').textContent = 'Add Staff Member';
     closeModal('staff-modal');
+    loadStaff();
+  }
+
+  async function editStaff(id) {
+    const { data: s } = await db.from('staff').select('*').eq('id', id).single();
+    if (!s) return;
+    document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
+    document.getElementById('s-edit-id').value = id;
+    const sf = (field) => { const el = document.getElementById(field[0]); if (el) el.value = s[field[1]] || ''; };
+    // Personal
+    sf(['s-firstname','first_name']); sf(['s-lastname','last_name']);
+    sf(['s-middlename','middle_name']); sf(['s-preferredname','preferred_name']);
+    sf(['s-dob','date_of_birth']); sf(['s-gender','gender']);
+    sf(['s-ethnicity','ethnicity']); sf(['s-nationality','nationality']);
+    sf(['s-email','email']); sf(['s-phone','phone']);
+    sf(['s-address','home_address']); sf(['s-ni','ni_number']);
+    sf(['s-ec-name','emergency_contact_name']); sf(['s-ec-rel','emergency_contact_relationship']); sf(['s-ec-phone','emergency_contact_phone']);
+    // Employment
+    sf(['s-role','role']); sf(['s-emptype','employment_type']);
+    sf(['s-startdate','start_date']); sf(['s-status','status']);
+    sf(['s-contracted-hours','contracted_hours']); sf(['s-hourly-rate','hourly_rate']);
+    // DBS & RTW
+    sf(['s-dbs-number','dbs_number']); sf(['s-dbs-date','dbs_issue_date']); sf(['s-dbs-expiry','dbs_expiry_date']);
+    sf(['s-barred','barred_list_checked']); sf(['s-barred-date','barred_list_checked_date']); sf(['s-barred-by','barred_list_checked_by']);
+    sf(['s-rtw','right_to_work']); sf(['s-rtw-expiry','right_to_work_expiry']);
+    sf(['s-passport','passport_number']); sf(['s-passport-expiry','passport_expiry']);
+    sf(['s-visa-type','visa_type']); sf(['s-visa-expiry','visa_expiry']);
+    sf(['s-id-verified-by','identity_verified_by']); sf(['s-id-verified-date','identity_verified_date']);
+    sf(['s-poa-verified','proof_of_address_verified']);
+    // References
+    sf(['s-ref1-name','ref1_name']); sf(['s-ref1-org','ref1_organisation']); sf(['s-ref1-rel','ref1_relationship']);
+    sf(['s-ref1-phone','ref1_phone']); sf(['s-ref1-email','ref1_email']); sf(['s-ref1-date','ref1_date_received']);
+    sf(['s-ref1-sat','ref1_satisfactory']); sf(['s-ref1-notes','ref1_notes']);
+    sf(['s-ref2-name','ref2_name']); sf(['s-ref2-org','ref2_organisation']); sf(['s-ref2-rel','ref2_relationship']);
+    sf(['s-ref2-phone','ref2_phone']); sf(['s-ref2-email','ref2_email']); sf(['s-ref2-date','ref2_date_received']);
+    sf(['s-ref2-sat','ref2_satisfactory']); sf(['s-ref2-notes','ref2_notes']);
+    // Employment history
+    [1,2,3].forEach(n => {
+      sf([`s-emp${n}-employer`,`emp${n}_employer`]); sf([`s-emp${n}-role`,`emp${n}_role`]);
+      sf([`s-emp${n}-start`,`emp${n}_start`]); sf([`s-emp${n}-end`,`emp${n}_end`]);
+      sf([`s-emp${n}-reason`,`emp${n}_leaving_reason`]); sf([`s-emp${n}-verified`,`emp${n}_verified`]);
+    });
+    sf(['s-emp-gaps','employment_gaps']);
+    // Qualifications
+    [1,2,3].forEach(n => {
+      sf([`s-qual${n}-name`,`qual${n}_name`]); sf([`s-qual${n}-level`,`qual${n}_level`]);
+      sf([`s-qual${n}-body`,`qual${n}_awarding_body`]); sf([`s-qual${n}-date`,`qual${n}_date`]);
+    });
+    sf(['s-other-quals','other_qualifications']);
+    // Health
+    sf(['s-fit-work','fit_for_work']); sf(['s-health-date','health_declaration_date']);
+    sf(['s-oh-referral','occupational_health_referral']); sf(['s-adjustments','reasonable_adjustments']);
+    sf(['s-adjustment-details','adjustments_details']);
+    sf(['s-disciplinary','disciplinary_declared']); sf(['s-disciplinary-details','disciplinary_details']);
+    // Recruitment
+    sf(['s-app-received','application_received']); sf(['s-interview-date','interview_date']);
+    sf(['s-interviewed-by','interviewed_by']); sf(['s-offer-sent','offer_letter_sent']);
+    sf(['s-contract-signed','contract_signed']); sf(['s-induction-date','induction_completed']);
+    sf(['s-induction-by','induction_completed_by']); sf(['s-probation-start','probation_start']);
+    sf(['s-probation-end','probation_end']); sf(['s-probation-outcome','probation_outcome']);
+    sf(['s-probation-notes','probation_notes']);
+    // Payroll
+    sf(['s-bank-name','bank_name']); sf(['s-bank-account-name','bank_account_name']);
+    sf(['s-bank-account-number','bank_account_number']); sf(['s-sort-code','bank_sort_code']);
+    sf(['s-tax-code','tax_code']); sf(['s-payment-method','payment_method']);
+    openModal('staff-modal');
+  }
+
+  async function deleteStaff(id) {
+    if (!confirm('Are you sure you want to delete this staff member? This cannot be undone.')) return;
+    await db.from('staff').delete().eq('id', id);
     loadStaff();
   }
 
@@ -1706,7 +2219,10 @@
         <td>${severityBadge(i.severity)}</td>
         <td>${i.reported_by || '—'}</td>
         <td>${statusBadge(i.status)}</td>
-        <td><button class="btn btn-cancel" style="padding:5px 12px;font-size:12px;">View</button></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editIncident('${i.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteIncident('${i.id}')">Delete</button>
+        </td>
       </tr>`).join('');
   }
 
@@ -1719,9 +2235,39 @@
       cqc_notifiable: val('i-cqc'), status: val('i-status')
     };
     if (!payload.incident_date || !payload.incident_type) { alert('Please fill in date and incident type.'); return; }
-    const { error } = await db.from('incidents').insert([payload]);
+    const editId = document.getElementById('i-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('incidents').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('incidents').insert([payload]));
+    }
     if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('i-edit-id').value = '';
     closeModal('incident-modal');
+    loadIncidents();
+  }
+
+  async function editIncident(id) {
+    const { data: i } = await db.from('incidents').select('*').eq('id', id).single();
+    if (!i) return;
+    document.getElementById('i-edit-id').value = id;
+    document.getElementById('i-date').value = i.incident_date || '';
+    document.getElementById('i-time').value = i.incident_time || '';
+    document.getElementById('i-resident').value = i.resident_name || '';
+    document.getElementById('i-type').value = i.incident_type || '';
+    document.getElementById('i-severity').value = i.severity || 'low';
+    document.getElementById('i-reporter').value = i.reported_by || '';
+    document.getElementById('i-description').value = i.description || '';
+    document.getElementById('i-actions').value = i.immediate_actions || '';
+    document.getElementById('i-cqc').value = i.cqc_notifiable || 'no';
+    document.getElementById('i-status').value = i.status || 'open';
+    openModal('incident-modal');
+  }
+
+  async function deleteIncident(id) {
+    if (!confirm('Delete this incident report? This cannot be undone.')) return;
+    await db.from('incidents').delete().eq('id', id);
     loadIncidents();
   }
 
@@ -1750,7 +2296,10 @@
         <td><span class="badge badge-teal">${n.category || 'General'}</span></td>
         <td style="max-width:300px;">${(n.note || '').substring(0, 100)}${(n.note || '').length > 100 ? '...' : ''}</td>
         <td>${n.staff_name || '—'}</td>
-        <td><button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteNote('${n.id}')">Delete</button></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editNote('${n.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteNote('${n.id}')">Delete</button>
+        </td>
       </tr>`).join('');
   }
 
@@ -1766,10 +2315,30 @@
       note: val('n-note'), staff_name: val('n-staff')
     };
     if (!payload.resident_name || !payload.note) { alert('Please enter resident name and note.'); return; }
-    const { error } = await db.from('daily_notes').insert([payload]);
+    const editId = document.getElementById('n-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('daily_notes').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('daily_notes').insert([payload]));
+    }
     if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('n-edit-id').value = '';
     closeModal('note-modal');
     loadNotes();
+  }
+
+  async function editNote(id) {
+    const { data: n } = await db.from('daily_notes').select('*').eq('id', id).single();
+    if (!n) return;
+    document.getElementById('n-edit-id').value = id;
+    document.getElementById('n-date').value = n.note_date || '';
+    document.getElementById('n-time').value = n.note_time || '';
+    document.getElementById('n-resident').value = n.resident_name || '';
+    document.getElementById('n-category').value = n.category || 'General';
+    document.getElementById('n-note').value = n.note || '';
+    document.getElementById('n-staff').value = n.staff_name || '';
+    openModal('note-modal');
   }
 
   async function deleteNote(id) {
