@@ -303,6 +303,9 @@
         <div class="nav-item" onclick="showPage('documents')">
           <span class="icon">📁</span> Documents
         </div>
+        <div class="nav-item" onclick="showPage('hours')">
+          <span class="icon">⏱️</span> Hours & Payroll
+        </div>
         <div class="nav-section">Compliance</div>
         <div class="nav-item" onclick="showPage('cqc')">
           <span class="icon">✅</span> CQC Dashboard
@@ -534,6 +537,107 @@
         </div>
       </div>
 
+      <!-- HOURS & PAYROLL -->
+      <div class="page" id="page-hours">
+        <div class="page-header">
+          <h1>⏱️ Hours, Payroll &amp; Invoicing</h1>
+          <p>Log daily visits, track hours and generate monthly payroll and client invoices</p>
+        </div>
+
+        <!-- Sub tabs -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
+          <button class="gov-tab active" onclick="showHoursSection('visits',this)">📋 Daily Visit Log</button>
+          <button class="gov-tab" onclick="showHoursSection('client-rates',this)">👥 Client Rates</button>
+          <button class="gov-tab" onclick="showHoursSection('payroll',this)">💷 Monthly Payroll</button>
+          <button class="gov-tab" onclick="showHoursSection('invoicing',this)">💰 Monthly Invoicing</button>
+        </div>
+
+        <!-- DAILY VISIT LOG -->
+        <div id="hours-visits" class="gov-section active">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Daily Visit Log</div>
+              <button class="btn-add" onclick="openModal('visit-modal')">+ Log Visit</button>
+            </div>
+            <!-- Filter bar -->
+            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+              <input type="month" id="visits-month-filter" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="loadVisits()" />
+              <input type="text" id="visits-search" placeholder="Search client or staff..." style="flex:1;min-width:160px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" oninput="filterVisits(this.value)" />
+            </div>
+            <!-- Summary stats -->
+            <div class="stats-grid" style="margin-bottom:16px;" id="visits-stats">
+              <div class="stat-card teal"><div class="label">Total Hours</div><div class="value" id="vs-total-hours">—</div><div class="sub">This month</div></div>
+              <div class="stat-card blue"><div class="label">Total Visits</div><div class="value" id="vs-total-visits">—</div><div class="sub">This month</div></div>
+              <div class="stat-card amber"><div class="label">Total Mileage</div><div class="value" id="vs-total-miles">—</div><div class="sub">Miles this month</div></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Visit Type</th><th>Start</th><th>End</th><th>Hours</th><th>Miles</th><th>Notes</th><th></th></tr></thead>
+                <tbody id="visits-table"><tr><td colspan="10" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLIENT RATES -->
+        <div id="hours-client-rates" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Client Register &amp; Rates</div>
+              <button class="btn-add" onclick="openModal('client-rate-modal')">+ Add Client</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Client Name</th><th>Date of Birth</th><th>Next of Kin</th><th>Phone</th><th>Hourly Rate (£)</th><th>Mileage Rate (£)</th><th>Notes</th><th></th></tr></thead>
+                <tbody id="client-rates-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONTHLY PAYROLL -->
+        <div id="hours-payroll" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Monthly Payroll Summary</div>
+              <input type="month" id="payroll-month" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="renderPayroll()" />
+            </div>
+            <div class="stats-grid" style="margin-bottom:16px;">
+              <div class="stat-card teal"><div class="label">Total Pay</div><div class="value" id="payroll-total">—</div><div class="sub">This month</div></div>
+              <div class="stat-card blue"><div class="label">Total Hours</div><div class="value" id="payroll-hours">—</div><div class="sub">All staff</div></div>
+              <div class="stat-card amber"><div class="label">Mileage Pay</div><div class="value" id="payroll-mileage">—</div><div class="sub">This month</div></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Staff Member</th><th>Role</th><th>Total Hours</th><th>Pay Rate (£/hr)</th><th>Basic Pay (£)</th><th>Miles</th><th>Mileage Pay (£)</th><th>Total Pay (£)</th></tr></thead>
+                <tbody id="payroll-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONTHLY INVOICING -->
+        <div id="hours-invoicing" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:0;">Monthly Client Invoicing</div>
+              <input type="month" id="invoice-month" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="renderInvoicing()" />
+            </div>
+            <div class="stats-grid" style="margin-bottom:16px;">
+              <div class="stat-card green"><div class="label">Total Revenue</div><div class="value" id="invoice-total">—</div><div class="sub">This month</div></div>
+              <div class="stat-card teal"><div class="label">Clients Billed</div><div class="value" id="invoice-clients">—</div><div class="sub">This month</div></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Client</th><th>Total Hours</th><th>Hourly Rate (£)</th><th>Visit Charges (£)</th><th>Miles</th><th>Mileage (£)</th><th>Total Due (£)</th></tr></thead>
+                <tbody id="invoicing-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /hours page -->
+
       <!-- GOVERNANCE HUB -->
       <div class="page" id="page-governance">
         <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -764,6 +868,58 @@
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('training-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveTraining()">Save Training</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOG VISIT MODAL -->
+<div class="modal-overlay" id="visit-modal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h2 id="visit-modal-title">Log Visit</h2>
+      <button class="modal-close" onclick="closeModal('visit-modal')">✕</button>
+    </div>
+    <input type="hidden" id="v-edit-id" />
+    <div class="form-grid">
+      <div class="form-group"><label>Date *</label><input type="date" id="v-date" /></div>
+      <div class="form-group"><label>Visit Type</label>
+        <select id="v-type"><option>Regular Visit</option><option>Personal Care</option><option>Medication</option><option>Check-in</option><option>Night Care</option><option>Hospital Visit</option><option>Other</option></select>
+      </div>
+      <div class="form-group"><label>Client Name *</label><input id="v-client" placeholder="Client name" list="v-client-list" /><datalist id="v-client-list"></datalist></div>
+      <div class="form-group"><label>Staff Member *</label><input id="v-staff" placeholder="Staff name" list="v-staff-list" /><datalist id="v-staff-list"></datalist></div>
+      <div class="form-group"><label>Start Time *</label><input type="time" id="v-start" /></div>
+      <div class="form-group"><label>End Time *</label><input type="time" id="v-end" /></div>
+      <div class="form-group"><label>Hours</label><input id="v-hours" placeholder="Auto-calculated" readonly style="background:var(--bg);" /></div>
+      <div class="form-group"><label>Mileage (miles)</label><input type="number" id="v-miles" placeholder="0" min="0" step="0.1" /></div>
+      <div class="form-group full"><label>Notes</label><textarea id="v-notes" placeholder="Any notes about this visit..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('visit-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveVisit()">Save Visit</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENT RATE MODAL -->
+<div class="modal-overlay" id="client-rate-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2 id="client-rate-modal-title">Add Client</h2>
+      <button class="modal-close" onclick="closeModal('client-rate-modal')">✕</button>
+    </div>
+    <input type="hidden" id="cr-edit-id" />
+    <div class="form-grid">
+      <div class="form-group full"><label>Client Name *</label><input id="cr-name" placeholder="Full name" /></div>
+      <div class="form-group"><label>Date of Birth</label><input type="date" id="cr-dob" /></div>
+      <div class="form-group"><label>Next of Kin</label><input id="cr-nok" placeholder="Name & relationship" /></div>
+      <div class="form-group"><label>Phone</label><input id="cr-phone" placeholder="Contact number" /></div>
+      <div class="form-group"><label>Hourly Rate (£)</label><input type="number" id="cr-rate" placeholder="e.g. 25.00" step="0.01" /></div>
+      <div class="form-group"><label>Mileage Rate (£/mile)</label><input type="number" id="cr-mileage-rate" placeholder="e.g. 0.25" step="0.01" value="0.25" /></div>
+      <div class="form-group full"><label>Notes</label><textarea id="cr-notes" placeholder="Any notes about this client..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('client-rate-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveClientRate()">Save Client</button>
     </div>
   </div>
 </div>
@@ -1420,6 +1576,7 @@
     if (name === 'documents') loadDocuments();
     if (name === 'cqc') loadCQC();
     if (name === 'governance') initGovernance();
+    if (name === 'hours') initHours();
   }
 
   function switchTab(el, panelId) {
@@ -2590,7 +2747,369 @@
   }
 
   // ══════════════════════════════════════════════
-  // GOVERNANCE HUB
+  // HOURS, PAYROLL & INVOICING
+  // ══════════════════════════════════════════════
+  let allVisits = [];
+  let allClientRates = [];
+  let allStaffRates = [];
+
+  function showHoursSection(id, btn) {
+    document.querySelectorAll('#page-hours .gov-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#page-hours .gov-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('hours-' + id).classList.add('active');
+    btn.classList.add('active');
+    if (id === 'visits') loadVisits();
+    if (id === 'client-rates') loadClientRates();
+    if (id === 'payroll') { setHoursMonth('payroll-month'); renderPayroll(); }
+    if (id === 'invoicing') { setHoursMonth('invoice-month'); renderInvoicing(); }
+  }
+
+  function setHoursMonth(elId) {
+    const el = document.getElementById(elId);
+    if (!el.value) el.value = new Date().toISOString().slice(0, 7);
+  }
+
+  function initHours() {
+    setHoursMonth('visits-month-filter');
+    loadVisits();
+    loadClientRates();
+    loadStaffForHours();
+  }
+
+  // ── AUTO-CALCULATE HOURS ──
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'v-start' || e.target.id === 'v-end') {
+      const start = document.getElementById('v-start').value;
+      const end = document.getElementById('v-end').value;
+      if (start && end) {
+        const s = start.split(':').map(Number);
+        const en = end.split(':').map(Number);
+        let hrs = (en[0] * 60 + en[1] - (s[0] * 60 + s[1])) / 60;
+        if (hrs < 0) hrs += 24;
+        document.getElementById('v-hours').value = Math.round(hrs * 100) / 100;
+      }
+    }
+  });
+
+  // ── VISITS ──
+  async function loadVisits() {
+    const month = document.getElementById('visits-month-filter').value;
+    let query = db.from('visit_log').select('*').order('visit_date', { ascending: false });
+    if (month) {
+      const [y, m] = month.split('-');
+      const start = `${y}-${m}-01`;
+      const end = new Date(y, m, 0).toISOString().split('T')[0];
+      query = query.gte('visit_date', start).lte('visit_date', end);
+    }
+    const { data, error } = await query;
+    if (error) { console.error(error); return; }
+    allVisits = data || [];
+    renderVisitsTable(allVisits);
+    updateVisitStats(allVisits);
+    populateVisitDataLists();
+  }
+
+  function updateVisitStats(list) {
+    const totalHours = list.reduce((sum, v) => sum + (parseFloat(v.hours) || 0), 0);
+    const totalMiles = list.reduce((sum, v) => sum + (parseFloat(v.mileage) || 0), 0);
+    document.getElementById('vs-total-hours').textContent = Math.round(totalHours * 10) / 10;
+    document.getElementById('vs-total-visits').textContent = list.length;
+    document.getElementById('vs-total-miles').textContent = Math.round(totalMiles * 10) / 10;
+  }
+
+  function renderVisitsTable(list) {
+    const tb = document.getElementById('visits-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="emoji">📋</div><p>No visits logged yet</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(v => `
+      <tr>
+        <td>${formatDate(v.visit_date)}</td>
+        <td><strong>${v.client_name || '—'}</strong></td>
+        <td>${v.staff_name || '—'}</td>
+        <td><span class="badge badge-teal">${v.visit_type || '—'}</span></td>
+        <td>${v.start_time || '—'}</td>
+        <td>${v.end_time || '—'}</td>
+        <td><strong>${v.hours || '—'}</strong></td>
+        <td>${v.mileage || 0}</td>
+        <td style="font-size:12px;max-width:150px;">${v.notes || '—'}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-save" style="padding:4px 8px;font-size:11px;" onclick="editVisit('${v.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteVisit('${v.id}')">Del</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterVisits(q) {
+    const filtered = allVisits.filter(v =>
+      (v.client_name || '').toLowerCase().includes(q.toLowerCase()) ||
+      (v.staff_name || '').toLowerCase().includes(q.toLowerCase())
+    );
+    renderVisitsTable(filtered);
+    updateVisitStats(filtered);
+  }
+
+  async function populateVisitDataLists() {
+    const { data: clients } = await db.from('client_rates').select('client_name').order('client_name');
+    const { data: staff } = await db.from('staff').select('first_name, last_name').order('last_name');
+    const cl = document.getElementById('v-client-list');
+    const sl = document.getElementById('v-staff-list');
+    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.client_name}">`).join('');
+    if (sl && staff) sl.innerHTML = staff.map(s => `<option value="${s.first_name} ${s.last_name}">`).join('');
+  }
+
+  async function saveVisit() {
+    const client = document.getElementById('v-client').value.trim();
+    const staff = document.getElementById('v-staff').value.trim();
+    const date = document.getElementById('v-date').value;
+    if (!client || !staff || !date) { alert('Please fill in date, client and staff.'); return; }
+    const start = document.getElementById('v-start').value;
+    const end = document.getElementById('v-end').value;
+    let hours = parseFloat(document.getElementById('v-hours').value) || 0;
+    if (start && end && !hours) {
+      const s = start.split(':').map(Number);
+      const en = end.split(':').map(Number);
+      hours = Math.round(((en[0] * 60 + en[1] - (s[0] * 60 + s[1])) / 60) * 100) / 100;
+    }
+    const payload = {
+      visit_date: date, visit_type: document.getElementById('v-type').value,
+      client_name: client, staff_name: staff,
+      start_time: start, end_time: end,
+      hours: hours, mileage: parseFloat(document.getElementById('v-miles').value) || 0,
+      notes: document.getElementById('v-notes').value
+    };
+    const editId = document.getElementById('v-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('visit_log').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('visit_log').insert([payload]));
+    }
+    if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('v-edit-id').value = '';
+    document.getElementById('visit-modal-title').textContent = 'Log Visit';
+    ['v-date','v-client','v-staff','v-start','v-end','v-hours','v-miles','v-notes'].forEach(id => document.getElementById(id).value = '');
+    closeModal('visit-modal');
+    loadVisits();
+  }
+
+  async function editVisit(id) {
+    const { data: v } = await db.from('visit_log').select('*').eq('id', id).single();
+    if (!v) return;
+    document.getElementById('visit-modal-title').textContent = 'Edit Visit';
+    document.getElementById('v-edit-id').value = id;
+    document.getElementById('v-date').value = v.visit_date || '';
+    document.getElementById('v-type').value = v.visit_type || 'Regular Visit';
+    document.getElementById('v-client').value = v.client_name || '';
+    document.getElementById('v-staff').value = v.staff_name || '';
+    document.getElementById('v-start').value = v.start_time || '';
+    document.getElementById('v-end').value = v.end_time || '';
+    document.getElementById('v-hours').value = v.hours || '';
+    document.getElementById('v-miles').value = v.mileage || '';
+    document.getElementById('v-notes').value = v.notes || '';
+    openModal('visit-modal');
+  }
+
+  async function deleteVisit(id) {
+    if (!confirm('Delete this visit record?')) return;
+    await db.from('visit_log').delete().eq('id', id);
+    loadVisits();
+  }
+
+  // ── CLIENT RATES ──
+  async function loadClientRates() {
+    const { data, error } = await db.from('client_rates').select('*').order('client_name');
+    if (error) { console.error(error); return; }
+    allClientRates = data || [];
+    renderClientRates(allClientRates);
+  }
+
+  function renderClientRates(list) {
+    const tb = document.getElementById('client-rates-table');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="emoji">👥</div><p>No clients added yet</p></div></td></tr>'; return; }
+    tb.innerHTML = list.map(c => `
+      <tr>
+        <td><strong>${c.client_name || '—'}</strong></td>
+        <td>${formatDate(c.date_of_birth)}</td>
+        <td>${c.nok || '—'}</td>
+        <td>${c.phone || '—'}</td>
+        <td><strong>£${parseFloat(c.hourly_rate || 0).toFixed(2)}</strong></td>
+        <td>£${parseFloat(c.mileage_rate || 0.25).toFixed(2)}</td>
+        <td style="font-size:12px;">${c.notes || '—'}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-save" style="padding:4px 8px;font-size:11px;" onclick="editClientRate('${c.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteClientRate('${c.id}')">Del</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function saveClientRate() {
+    const name = document.getElementById('cr-name').value.trim();
+    if (!name) { alert('Please enter client name.'); return; }
+    const payload = {
+      client_name: name,
+      date_of_birth: document.getElementById('cr-dob').value || null,
+      nok: document.getElementById('cr-nok').value,
+      phone: document.getElementById('cr-phone').value,
+      hourly_rate: parseFloat(document.getElementById('cr-rate').value) || 0,
+      mileage_rate: parseFloat(document.getElementById('cr-mileage-rate').value) || 0.25,
+      notes: document.getElementById('cr-notes').value
+    };
+    const editId = document.getElementById('cr-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('client_rates').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('client_rates').insert([payload]));
+    }
+    if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('cr-edit-id').value = '';
+    document.getElementById('client-rate-modal-title').textContent = 'Add Client';
+    ['cr-name','cr-dob','cr-nok','cr-phone','cr-rate','cr-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('cr-mileage-rate').value = '0.25';
+    closeModal('client-rate-modal');
+    loadClientRates();
+  }
+
+  async function editClientRate(id) {
+    const { data: c } = await db.from('client_rates').select('*').eq('id', id).single();
+    if (!c) return;
+    document.getElementById('client-rate-modal-title').textContent = 'Edit Client';
+    document.getElementById('cr-edit-id').value = id;
+    document.getElementById('cr-name').value = c.client_name || '';
+    document.getElementById('cr-dob').value = c.date_of_birth || '';
+    document.getElementById('cr-nok').value = c.nok || '';
+    document.getElementById('cr-phone').value = c.phone || '';
+    document.getElementById('cr-rate').value = c.hourly_rate || '';
+    document.getElementById('cr-mileage-rate').value = c.mileage_rate || '0.25';
+    document.getElementById('cr-notes').value = c.notes || '';
+    openModal('client-rate-modal');
+  }
+
+  async function deleteClientRate(id) {
+    if (!confirm('Delete this client?')) return;
+    await db.from('client_rates').delete().eq('id', id);
+    loadClientRates();
+  }
+
+  // ── STAFF RATES (for payroll) ──
+  async function loadStaffForHours() {
+    const { data } = await db.from('staff').select('first_name, last_name, role, hourly_rate').order('last_name');
+    allStaffRates = data || [];
+  }
+
+  // ── MONTHLY PAYROLL ──
+  async function renderPayroll() {
+    const month = document.getElementById('payroll-month').value;
+    if (!month) return;
+    const [y, m] = month.split('-');
+    const start = `${y}-${m}-01`;
+    const end = new Date(y, m, 0).toISOString().split('T')[0];
+    const { data: visits } = await db.from('visit_log').select('*').gte('visit_date', start).lte('visit_date', end);
+    const { data: staffList } = await db.from('staff').select('first_name, last_name, role, hourly_rate').order('last_name');
+    const log = visits || [];
+    const staff = staffList || [];
+
+    // Group by staff
+    const staffMap = {};
+    log.forEach(v => {
+      const name = v.staff_name;
+      if (!staffMap[name]) staffMap[name] = { hours: 0, miles: 0 };
+      staffMap[name].hours += parseFloat(v.hours) || 0;
+      staffMap[name].miles += parseFloat(v.mileage) || 0;
+    });
+
+    let totalPay = 0, totalHours = 0, totalMileagePay = 0;
+    const tb = document.getElementById('payroll-table');
+
+    if (!Object.keys(staffMap).length) {
+      tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="emoji">💷</div><p>No visits logged for this month</p></div></td></tr>';
+      document.getElementById('payroll-total').textContent = '£0';
+      document.getElementById('payroll-hours').textContent = '0';
+      document.getElementById('payroll-mileage').textContent = '£0';
+      return;
+    }
+
+    tb.innerHTML = Object.entries(staffMap).map(([name, data]) => {
+      const staffInfo = staff.find(s => `${s.first_name} ${s.last_name}` === name);
+      const payRate = parseFloat(staffInfo?.hourly_rate) || 0;
+      const mileRate = 0.25;
+      const basicPay = Math.round(data.hours * payRate * 100) / 100;
+      const mileagePay = Math.round(data.miles * mileRate * 100) / 100;
+      const totalStaffPay = Math.round((basicPay + mileagePay) * 100) / 100;
+      totalPay += totalStaffPay;
+      totalHours += data.hours;
+      totalMileagePay += mileagePay;
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td>${staffInfo?.role || '—'}</td>
+        <td>${Math.round(data.hours * 10) / 10}</td>
+        <td>£${payRate.toFixed(2)}</td>
+        <td>£${basicPay.toFixed(2)}</td>
+        <td>${Math.round(data.miles * 10) / 10}</td>
+        <td>£${mileagePay.toFixed(2)}</td>
+        <td><strong>£${totalStaffPay.toFixed(2)}</strong></td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('payroll-total').textContent = '£' + totalPay.toFixed(2);
+    document.getElementById('payroll-hours').textContent = Math.round(totalHours * 10) / 10;
+    document.getElementById('payroll-mileage').textContent = '£' + totalMileagePay.toFixed(2);
+  }
+
+  // ── MONTHLY INVOICING ──
+  async function renderInvoicing() {
+    const month = document.getElementById('invoice-month').value;
+    if (!month) return;
+    const [y, m] = month.split('-');
+    const start = `${y}-${m}-01`;
+    const end = new Date(y, m, 0).toISOString().split('T')[0];
+    const { data: visits } = await db.from('visit_log').select('*').gte('visit_date', start).lte('visit_date', end);
+    const { data: clients } = await db.from('client_rates').select('*');
+    const log = visits || [];
+    const clientList = clients || [];
+
+    // Group by client
+    const clientMap = {};
+    log.forEach(v => {
+      const name = v.client_name;
+      if (!clientMap[name]) clientMap[name] = { hours: 0, miles: 0 };
+      clientMap[name].hours += parseFloat(v.hours) || 0;
+      clientMap[name].miles += parseFloat(v.mileage) || 0;
+    });
+
+    let totalRevenue = 0;
+    const tb = document.getElementById('invoicing-table');
+
+    if (!Object.keys(clientMap).length) {
+      tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">💰</div><p>No visits logged for this month</p></div></td></tr>';
+      document.getElementById('invoice-total').textContent = '£0';
+      document.getElementById('invoice-clients').textContent = '0';
+      return;
+    }
+
+    tb.innerHTML = Object.entries(clientMap).map(([name, data]) => {
+      const clientInfo = clientList.find(c => c.client_name === name);
+      const hourlyRate = parseFloat(clientInfo?.hourly_rate) || 0;
+      const mileRate = parseFloat(clientInfo?.mileage_rate) || 0.25;
+      const visitCharge = Math.round(data.hours * hourlyRate * 100) / 100;
+      const mileageCharge = Math.round(data.miles * mileRate * 100) / 100;
+      const totalDue = Math.round((visitCharge + mileageCharge) * 100) / 100;
+      totalRevenue += totalDue;
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td>${Math.round(data.hours * 10) / 10}</td>
+        <td>£${hourlyRate.toFixed(2)}</td>
+        <td>£${visitCharge.toFixed(2)}</td>
+        <td>${Math.round(data.miles * 10) / 10}</td>
+        <td>£${mileageCharge.toFixed(2)}</td>
+        <td><strong style="color:var(--teal);">£${totalDue.toFixed(2)}</strong></td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('invoice-total').textContent = '£' + totalRevenue.toFixed(2);
+    document.getElementById('invoice-clients').textContent = Object.keys(clientMap).length;
+  }
+
+  // ══════════════════════════════════════════════
   // ══════════════════════════════════════════════
   const govStore = {
     policies: JSON.parse(localStorage.getItem('gov_policies')||'[]'),
