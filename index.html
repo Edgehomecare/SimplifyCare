@@ -817,6 +817,7 @@
     <div id="vr-content"></div>
     <div class="form-actions" style="margin-top:24px;">
       <button class="btn btn-cancel" onclick="closeModal('view-resident-modal')">Close</button>
+      <button class="btn btn-save" style="background:var(--blue);" onclick="printCarePlan()">🖨️ Print Care Plan</button>
     </div>
   </div>
 </div>
@@ -1846,7 +1847,193 @@
     openModal('view-resident-modal');
   }
 
-  function vrField(label, value) {
+  function printCarePlan() {
+    const name = document.getElementById('view-resident-title').textContent;
+    const content = document.getElementById('vr-content');
+
+    // Extract all field values from the profile
+    const fields = {};
+    content.querySelectorAll('div[style*="background:var(--bg)"]').forEach(el => {
+      const label = el.querySelector('div:first-child')?.textContent?.trim();
+      const value = el.querySelector('div:last-child')?.textContent?.trim();
+      if (label && value) fields[label] = value;
+    });
+
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Care Plan — ${name}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #1a1a1a; background: white; }
+    .page { max-width: 210mm; margin: 0 auto; padding: 20mm 18mm; }
+
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 3px solid #0d9488; margin-bottom: 20px; }
+    .org-name { font-size: 15pt; font-weight: 700; color: #0d9488; }
+    .org-sub { font-size: 9pt; color: #666; margin-top: 2px; }
+    .doc-info { text-align: right; font-size: 9pt; color: #666; }
+    .doc-title { font-size: 18pt; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .doc-name { font-size: 13pt; color: #0d9488; font-weight: 600; }
+
+    /* Sections */
+    .section { margin-bottom: 18px; break-inside: avoid; }
+    .section-title { background: #0d9488; color: white; padding: 6px 12px; font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 4px; margin-bottom: 10px; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 7px 10px; }
+    .field-full { grid-column: 1 / -1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 7px 10px; }
+    .field-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .field-value { font-size: 10pt; color: #0f172a; font-weight: 500; min-height: 16px; }
+
+    /* Signature box */
+    .signature-section { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .sig-box { border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; }
+    .sig-label { font-size: 8pt; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 32px; }
+    .sig-line { border-top: 1px solid #94a3b8; margin-top: 8px; padding-top: 4px; font-size: 8pt; color: #64748b; }
+
+    /* Alert box */
+    .alert-box { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; font-size: 9pt; color: #92400e; }
+    .dnr-box { background: #fee2e2; border: 2px solid #ef4444; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; font-size: 10pt; font-weight: 700; color: #dc2626; text-align: center; }
+
+    /* Footer */
+    .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8; }
+
+    /* Review box */
+    .review-box { border: 2px dashed #0d9488; border-radius: 6px; padding: 12px; margin-top: 20px; }
+    .review-title { font-size: 9pt; font-weight: 700; color: #0d9488; margin-bottom: 8px; }
+    .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .review-field { border-bottom: 1px solid #cbd5e1; padding-bottom: 16px; }
+    .review-label { font-size: 8pt; color: #64748b; }
+
+    @media print {
+      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .page { padding: 10mm; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="org-name">Edge Homecare Services Ltd</div>
+      <div class="org-sub">Domiciliary Care Provider</div>
+    </div>
+    <div class="doc-info">
+      <div style="font-size:8pt;color:#94a3b8;">CONFIDENTIAL</div>
+      <div>Generated: ${today}</div>
+      <div>Document ref: CP-${Date.now().toString().slice(-6)}</div>
+    </div>
+  </div>
+
+  <div class="doc-title">Care Plan</div>
+  <div class="doc-name">${name}</div>
+  <div style="font-size:9pt;color:#64748b;margin-top:4px;margin-bottom:20px;">This care plan must be reviewed at least every 6 months or following a significant change in needs.</div>
+
+  ${fields['DNR / DNAR'] === 'Yes – DNR in place' ? '<div class="dnr-box">⚠️ DO NOT RESUSCITATE — DNR/DNAR ORDER IN PLACE</div>' : ''}
+  ${fields['Allergies'] && fields['Allergies'] !== '—' ? `<div class="alert-box">⚠️ KNOWN ALLERGIES: ${fields['Allergies']}</div>` : ''}
+
+  <!-- Personal Details -->
+  <div class="section">
+    <div class="section-title">👤 Personal Details</div>
+    <div class="field-grid">
+      <div class="field"><div class="field-label">Full Name</div><div class="field-value">${fields['Full Name'] || name}</div></div>
+      <div class="field"><div class="field-label">Date of Birth</div><div class="field-value">${fields['Date of Birth'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Gender</div><div class="field-value">${fields['Gender'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Room / Address</div><div class="field-value">${fields['Room / Address'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Key Worker</div><div class="field-value">${fields['Key Worker'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Move-in Date</div><div class="field-value">${fields['Move-in Date'] || '—'}</div></div>
+      ${fields['Likes & Preferences'] ? `<div class="field-full"><div class="field-label">Likes &amp; Preferences</div><div class="field-value">${fields['Likes & Preferences']}</div></div>` : ''}
+    </div>
+  </div>
+
+  <!-- Care Needs -->
+  <div class="section">
+    <div class="section-title">🏥 Care Needs &amp; Support</div>
+    <div class="field-grid">
+      ${fields['Care Needs Summary'] ? `<div class="field-full"><div class="field-label">Care Needs Summary</div><div class="field-value">${fields['Care Needs Summary']}</div></div>` : ''}
+      ${fields['Mobility'] ? `<div class="field-full"><div class="field-label">Mobility</div><div class="field-value">${fields['Mobility']}</div></div>` : ''}
+      ${fields['Personal Care'] ? `<div class="field-full"><div class="field-label">Personal Care</div><div class="field-value">${fields['Personal Care']}</div></div>` : ''}
+      <div class="field"><div class="field-label">Communication Needs</div><div class="field-value">${fields['Communication Needs'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Dietary Requirements</div><div class="field-value">${fields['Dietary Requirements'] || '—'}</div></div>
+    </div>
+  </div>
+
+  <!-- Medical -->
+  <div class="section">
+    <div class="section-title">💊 Medical Information</div>
+    <div class="field-grid">
+      ${fields['Medical Conditions'] ? `<div class="field-full"><div class="field-label">Medical Conditions</div><div class="field-value">${fields['Medical Conditions']}</div></div>` : ''}
+      ${fields['Current Medications'] ? `<div class="field-full"><div class="field-label">Current Medications</div><div class="field-value">${fields['Current Medications']}</div></div>` : ''}
+      <div class="field"><div class="field-label">GP Name</div><div class="field-value">${fields['GP Name'] || '—'}</div></div>
+      <div class="field"><div class="field-label">GP Phone</div><div class="field-value">${fields['GP Phone'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Allergies</div><div class="field-value">${fields['Allergies'] || '—'}</div></div>
+      <div class="field"><div class="field-label">DNR / DNAR Status</div><div class="field-value">${fields['DNR / DNAR'] || 'Not set'}</div></div>
+    </div>
+  </div>
+
+  <!-- Contacts -->
+  <div class="section">
+    <div class="section-title">📞 Emergency Contacts</div>
+    <div class="field-grid">
+      <div class="field"><div class="field-label">Next of Kin</div><div class="field-value">${fields['Next of Kin'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Relationship</div><div class="field-value">${fields['Relationship'] || '—'}</div></div>
+      <div class="field"><div class="field-label">NOK Phone</div><div class="field-value">${fields['NOK Phone'] || '—'}</div></div>
+      <div class="field"><div class="field-label">NOK Email</div><div class="field-value">${fields['NOK Email'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Power of Attorney</div><div class="field-value">${fields['Power of Attorney'] || '—'}</div></div>
+      <div class="field"><div class="field-label">Social Worker</div><div class="field-value">${fields['Social Worker'] || '—'}</div></div>
+    </div>
+  </div>
+
+  <!-- Signatures -->
+  <div class="signature-section">
+    <div class="sig-box">
+      <div class="sig-label">Care Plan completed by</div>
+      <div class="sig-line">Name &amp; Signature</div>
+      <div class="sig-line" style="margin-top:8px;">Date: _______________</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-label">Service user / representative agreement</div>
+      <div class="sig-line">Name &amp; Signature</div>
+      <div class="sig-line" style="margin-top:8px;">Date: _______________</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-label">Reviewed by (Manager)</div>
+      <div class="sig-line">Name &amp; Signature</div>
+      <div class="sig-line" style="margin-top:8px;">Date: _______________</div>
+    </div>
+  </div>
+
+  <!-- Review record -->
+  <div class="review-box">
+    <div class="review-title">📅 Care Plan Review Record</div>
+    <div class="review-grid">
+      ${[1,2,3,4].map(n => `
+      <div class="review-field">
+        <div class="review-label">Review ${n} — Date: _______________ &nbsp; Reviewed by: ___________________________</div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Edge Homecare Services Ltd — Confidential</span>
+    <span>${name} — Care Plan — Generated ${today}</span>
+    <span>Page 1 of 1</span>
+  </div>
+
+</div>
+<script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`);
+    printWindow.document.close();
+  }
     return `<div style="background:var(--bg);border-radius:8px;padding:12px;">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${label}</div>
       <div style="font-size:14px;color:var(--navy);font-weight:500;">${value || '—'}</div>
