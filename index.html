@@ -236,6 +236,37 @@
     .audit-row:last-child { border-bottom: none; }
     .score-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
 
+    /* ── ROTA ── */
+    .weekly-grid { display:grid; grid-template-columns:80px repeat(7,1fr); gap:1px; background:var(--border); border-radius:10px; overflow:hidden; min-width:700px; }
+    .rota-header { background:var(--navy); color:white; padding:10px 8px; text-align:center; font-size:12px; font-weight:700; }
+    .rota-header.today { background:var(--teal); }
+    .rota-time-col { background:var(--bg); padding:8px; font-size:11px; color:var(--muted); text-align:right; font-weight:600; display:flex; align-items:center; justify-content:flex-end; }
+    .rota-cell { background:white; padding:4px; min-height:80px; vertical-align:top; }
+    .rota-cell.today-col { background:#f0fdf9; }
+    .shift-card { border-radius:6px; padding:5px 7px; margin-bottom:3px; font-size:11px; cursor:pointer; transition:opacity .15s; }
+    .shift-card:hover { opacity:.85; }
+    .shift-card.scheduled { background:#dbeafe; border-left:3px solid #3b82f6; color:#1e40af; }
+    .shift-card.completed { background:#dcfce7; border-left:3px solid #10b981; color:#065f46; }
+    .shift-card.cancelled { background:#fee2e2; border-left:3px solid #ef4444; color:#991b1b; text-decoration:line-through; }
+    .shift-card.leave { background:#fef3c7; border-left:3px solid #f59e0b; color:#92400e; }
+    .shift-staff { font-weight:700; font-size:11px; }
+    .shift-detail { font-size:10px; opacity:.85; margin-top:1px; }
+
+    /* Monthly calendar */
+    .monthly-cal { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border); border-radius:10px; overflow:hidden; }
+    .cal-day-header { background:var(--navy); color:white; padding:8px; text-align:center; font-size:11px; font-weight:700; }
+    .cal-day { background:white; min-height:90px; padding:4px; vertical-align:top; }
+    .cal-day.other-month { background:#f8fafc; }
+    .cal-day.today-day { background:#f0fdf9; }
+    .cal-date { font-size:11px; font-weight:700; color:var(--muted); margin-bottom:3px; }
+    .cal-date.today-date { background:var(--teal); color:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
+    .cal-shift { border-radius:3px; padding:2px 5px; font-size:10px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .cal-shift.scheduled { background:#dbeafe; color:#1e40af; }
+    .cal-shift.completed { background:#dcfce7; color:#065f46; }
+    .cal-shift.cancelled { background:#fee2e2; color:#991b1b; }
+    .cal-shift.leave { background:#fef3c7; color:#92400e; }
+    .cal-more { font-size:10px; color:var(--muted); cursor:pointer; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
@@ -299,6 +330,9 @@
         <div class="nav-section">Organisation</div>
         <div class="nav-item" onclick="showPage('staff')">
           <span class="icon">👤</span> Staff
+        </div>
+        <div class="nav-item" onclick="showPage('rota')">
+          <span class="icon">🗓️</span> Staff Rota
         </div>
         <div class="nav-item" onclick="showPage('documents')">
           <span class="icon">📁</span> Documents
@@ -536,6 +570,57 @@
           <div id="cqc-actions"><div class="loading">Calculating...</div></div>
         </div>
       </div>
+
+      <!-- STAFF ROTA -->
+      <div class="page" id="page-rota">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1>🗓️ Staff Rota</h1>
+            <p>Schedule shifts, view weekly and monthly rotas</p>
+          </div>
+          <button class="btn-add" onclick="openModal('shift-modal')">+ Add Shift</button>
+        </div>
+
+        <!-- Rota Sub-Nav -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
+          <button class="gov-tab active" onclick="showRotaView('weekly',this)">📅 Weekly View</button>
+          <button class="gov-tab" onclick="showRotaView('monthly',this)">🗓️ Monthly View</button>
+          <button class="gov-tab" onclick="showRotaView('list',this)">📋 List View</button>
+        </div>
+
+        <!-- Week navigator -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;" id="rota-nav">
+          <button class="btn btn-cancel" style="padding:8px 16px;" onclick="rotaNavigate(-1)">← Previous</button>
+          <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--navy);" id="rota-period-label">Loading...</div>
+          <button class="btn btn-cancel" style="padding:8px 16px;" onclick="rotaNavigate(1)">Next →</button>
+          <button class="btn btn-cancel" style="padding:8px 16px;margin-left:auto;" onclick="rotaGoToToday()">Today</button>
+        </div>
+
+        <!-- WEEKLY VIEW -->
+        <div id="rota-weekly" class="gov-section active">
+          <div style="overflow-x:auto;">
+            <div id="weekly-grid"></div>
+          </div>
+        </div>
+
+        <!-- MONTHLY VIEW -->
+        <div id="rota-monthly" class="gov-section">
+          <div id="monthly-grid"></div>
+        </div>
+
+        <!-- LIST VIEW -->
+        <div id="rota-list" class="gov-section">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Day</th><th>Staff</th><th>Client</th><th>Visit Type</th><th>Start</th><th>End</th><th>Hours</th><th>Notes</th><th></th></tr></thead>
+                <tbody id="rota-list-table"><tr><td colspan="10" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /rota page -->
 
       <!-- HOURS & PAYROLL -->
       <div class="page" id="page-hours">
@@ -921,6 +1006,51 @@
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('client-rate-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveClientRate()">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHIFT MODAL -->
+<div class="modal-overlay" id="shift-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2 id="shift-modal-title">Add Shift</h2>
+      <button class="modal-close" onclick="closeModal('shift-modal')">✕</button>
+    </div>
+    <input type="hidden" id="sh-edit-id" />
+    <div class="form-grid">
+      <div class="form-group"><label>Date *</label><input type="date" id="sh-date" /></div>
+      <div class="form-group"><label>Visit Type</label>
+        <select id="sh-type">
+          <option>Regular Visit</option><option>Personal Care</option><option>Medication</option>
+          <option>Check-in</option><option>Night Care</option><option>Hospital Visit</option>
+          <option>Day Off</option><option>Annual Leave</option><option>Sick Leave</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Staff Member *</label>
+        <input id="sh-staff" placeholder="Staff name" list="sh-staff-list" />
+        <datalist id="sh-staff-list"></datalist>
+      </div>
+      <div class="form-group"><label>Client</label>
+        <input id="sh-client" placeholder="Client name (if applicable)" list="sh-client-list" />
+        <datalist id="sh-client-list"></datalist>
+      </div>
+      <div class="form-group"><label>Start Time</label><input type="time" id="sh-start" /></div>
+      <div class="form-group"><label>End Time</label><input type="time" id="sh-end" /></div>
+      <div class="form-group"><label>Hours</label><input id="sh-hours" placeholder="Auto-calculated" readonly style="background:var(--bg);" /></div>
+      <div class="form-group"><label>Status</label>
+        <select id="sh-status">
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="leave">Leave</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Notes</label><textarea id="sh-notes" placeholder="Any notes about this shift..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('shift-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveShift()">Save Shift</button>
     </div>
   </div>
 </div>
@@ -1578,6 +1708,7 @@
     if (name === 'cqc') loadCQC();
     if (name === 'governance') initGovernance();
     if (name === 'hours') initHours();
+    if (name === 'rota') initRota();
   }
 
   function switchTab(el, panelId) {
@@ -2937,7 +3068,349 @@
   }
 
   // ══════════════════════════════════════════════
-  // HOURS, PAYROLL & INVOICING
+  // STAFF ROTA
+  // ══════════════════════════════════════════════
+  let rotaView = 'weekly';
+  let rotaCurrentDate = new Date();
+  let allShifts = [];
+
+  function showRotaView(view, btn) {
+    rotaView = view;
+    document.querySelectorAll('#page-rota .gov-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#page-rota .gov-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('rota-' + view).classList.add('active');
+    btn.classList.add('active');
+    renderRota();
+  }
+
+  function rotaNavigate(dir) {
+    if (rotaView === 'weekly') {
+      rotaCurrentDate.setDate(rotaCurrentDate.getDate() + (dir * 7));
+    } else {
+      rotaCurrentDate.setMonth(rotaCurrentDate.getMonth() + dir);
+    }
+    renderRota();
+  }
+
+  function rotaGoToToday() {
+    rotaCurrentDate = new Date();
+    renderRota();
+  }
+
+  async function initRota() {
+    rotaCurrentDate = new Date();
+    await loadShifts();
+    await populateRotaDataLists();
+    document.getElementById('sh-date').value = new Date().toISOString().split('T')[0];
+  }
+
+  async function loadShifts() {
+    // Load shifts for a 3-month window for efficiency
+    const start = new Date(rotaCurrentDate);
+    start.setMonth(start.getMonth() - 1);
+    const end = new Date(rotaCurrentDate);
+    end.setMonth(end.getMonth() + 2);
+    const { data, error } = await db.from('rota_shifts')
+      .select('*')
+      .gte('shift_date', start.toISOString().split('T')[0])
+      .lte('shift_date', end.toISOString().split('T')[0])
+      .order('shift_date').order('start_time');
+    if (error) { console.error('Rota load error:', error); return; }
+    allShifts = data || [];
+    renderRota();
+  }
+
+  function renderRota() {
+    if (rotaView === 'weekly') renderWeekly();
+    else if (rotaView === 'monthly') renderMonthly();
+    else renderRotaList();
+  }
+
+  // ── WEEKLY VIEW ──
+  function renderWeekly() {
+    const monday = getMonday(rotaCurrentDate);
+    const days = Array.from({length:7}, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // Update period label
+    const endDay = days[6];
+    document.getElementById('rota-period-label').textContent =
+      `${monday.getDate()} ${monthNames[monday.getMonth()]} — ${endDay.getDate()} ${monthNames[endDay.getMonth()]} ${endDay.getFullYear()}`;
+
+    // Get unique staff for this week
+    const weekStart = monday.toISOString().split('T')[0];
+    const weekEnd = days[6].toISOString().split('T')[0];
+    const weekShifts = allShifts.filter(s => s.shift_date >= weekStart && s.shift_date <= weekEnd);
+    const staffNames = [...new Set(weekShifts.map(s => s.staff_name))].sort();
+
+    if (!staffNames.length) {
+      document.getElementById('weekly-grid').innerHTML = `
+        <div class="card" style="text-align:center;padding:48px;">
+          <div style="font-size:40px;margin-bottom:12px;">🗓️</div>
+          <p style="color:var(--muted);">No shifts scheduled for this week</p>
+          <button class="btn-add" style="margin-top:16px;" onclick="openModal('shift-modal')">+ Add First Shift</button>
+        </div>`;
+      return;
+    }
+
+    let html = `<div class="weekly-grid" style="grid-template-columns:120px repeat(7,1fr);">`;
+
+    // Header row
+    html += `<div class="rota-header" style="background:var(--slate);">Staff</div>`;
+    days.forEach((d, i) => {
+      const ds = d.toISOString().split('T')[0];
+      const isToday = ds === todayStr;
+      html += `<div class="rota-header ${isToday ? 'today' : ''}">
+        ${dayNames[i]}<br><span style="font-size:14px;font-weight:400;">${d.getDate()}</span>
+      </div>`;
+    });
+
+    // Staff rows
+    staffNames.forEach(staff => {
+      html += `<div style="background:var(--bg);padding:8px;font-size:12px;font-weight:700;color:var(--navy);display:flex;align-items:flex-start;border-bottom:1px solid var(--border);">${staff}</div>`;
+      days.forEach(d => {
+        const ds = d.toISOString().split('T')[0];
+        const isToday = ds === todayStr;
+        const dayShifts = allShifts.filter(s => s.shift_date === ds && s.staff_name === staff);
+        html += `<div class="rota-cell ${isToday ? 'today-col' : ''}" style="border-bottom:1px solid var(--border);">`;
+        dayShifts.forEach(s => {
+          html += `<div class="shift-card ${s.status || 'scheduled'}" onclick="editShift('${s.id}')">
+            <div class="shift-staff">${s.start_time ? s.start_time.slice(0,5) : ''}${s.end_time ? '–'+s.end_time.slice(0,5) : ''}</div>
+            ${s.client_name ? `<div class="shift-detail">👤 ${s.client_name}</div>` : ''}
+            <div class="shift-detail">📋 ${s.visit_type || ''}</div>
+            ${s.hours ? `<div class="shift-detail">⏱ ${s.hours}h</div>` : ''}
+          </div>`;
+        });
+        html += `<div style="text-align:center;margin-top:4px;">
+          <button onclick="openShiftForDate('${ds}','${staff}')" style="background:none;border:1px dashed var(--border);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer;">+ Add</button>
+        </div>`;
+        html += `</div>`;
+      });
+    });
+
+    // Empty rows for adding new staff
+    html += `<div style="background:var(--bg);padding:8px;font-size:11px;color:var(--muted);display:flex;align-items:center;border-bottom:1px solid var(--border);">Other staff</div>`;
+    days.forEach(d => {
+      const ds = d.toISOString().split('T')[0];
+      html += `<div class="rota-cell" style="border-bottom:1px solid var(--border);">
+        <div style="text-align:center;margin-top:8px;">
+          <button onclick="openShiftForDate('${ds}','')" style="background:none;border:1px dashed var(--border);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer;">+ Add</button>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+    document.getElementById('weekly-grid').innerHTML = html;
+  }
+
+  // ── MONTHLY VIEW ──
+  function renderMonthly() {
+    const year = rotaCurrentDate.getFullYear();
+    const month = rotaCurrentDate.getMonth();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+    document.getElementById('rota-period-label').textContent = `${monthNames[month]} ${year}`;
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDow = (firstDay.getDay() + 6) % 7; // Mon=0
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    let html = `<div class="monthly-cal">`;
+    dayNames.forEach(d => { html += `<div class="cal-day-header">${d}</div>`; });
+
+    // Blank cells before first day
+    for (let i = 0; i < startDow; i++) {
+      html += `<div class="cal-day other-month"></div>`;
+    }
+
+    // Day cells
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const d = new Date(year, month, day);
+      const ds = d.toISOString().split('T')[0];
+      const isToday = ds === todayStr;
+      const dayShifts = allShifts.filter(s => s.shift_date === ds);
+      const showMax = 3;
+
+      html += `<div class="cal-day ${isToday ? 'today-day' : ''}">
+        <div class="cal-date ${isToday ? 'today-date' : ''}">${day}</div>`;
+
+      dayShifts.slice(0, showMax).forEach(s => {
+        html += `<div class="cal-shift ${s.status || 'scheduled'}" onclick="editShift('${s.id}')" title="${s.staff_name} — ${s.client_name || ''} — ${s.visit_type || ''}">
+          <strong>${s.staff_name ? s.staff_name.split(' ')[0] : ''}</strong>${s.client_name ? ' · ' + s.client_name.split(' ')[0] : ''}
+        </div>`;
+      });
+
+      if (dayShifts.length > showMax) {
+        html += `<div class="cal-more">+${dayShifts.length - showMax} more</div>`;
+      }
+
+      html += `<div style="text-align:center;margin-top:2px;">
+        <button onclick="openShiftForDate('${ds}','')" style="background:none;border:none;font-size:14px;color:var(--border);cursor:pointer;line-height:1;">+</button>
+      </div>`;
+      html += `</div>`;
+    }
+
+    // Fill remaining cells
+    const totalCells = startDow + lastDay.getDate();
+    const remainder = totalCells % 7;
+    if (remainder > 0) {
+      for (let i = 0; i < 7 - remainder; i++) {
+        html += `<div class="cal-day other-month"></div>`;
+      }
+    }
+
+    html += `</div>`;
+    document.getElementById('monthly-grid').innerHTML = html;
+  }
+
+  // ── LIST VIEW ──
+  function renderRotaList() {
+    const month = rotaCurrentDate.toISOString().slice(0, 7);
+    document.getElementById('rota-period-label').textContent = new Date(rotaCurrentDate).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const monthShifts = allShifts.filter(s => s.shift_date && s.shift_date.startsWith(month));
+    const tb = document.getElementById('rota-list-table');
+    if (!monthShifts.length) {
+      tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="emoji">🗓️</div><p>No shifts this month</p></div></td></tr>';
+      return;
+    }
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    tb.innerHTML = monthShifts.map(s => {
+      const d = new Date(s.shift_date);
+      const statusColor = { scheduled: 'badge-blue', completed: 'badge-green', cancelled: 'badge-red', leave: 'badge-amber' };
+      return `<tr>
+        <td>${formatDate(s.shift_date)}</td>
+        <td>${days[d.getDay()]}</td>
+        <td><strong>${s.staff_name || '—'}</strong></td>
+        <td>${s.client_name || '—'}</td>
+        <td><span class="badge badge-teal">${s.visit_type || '—'}</span></td>
+        <td>${s.start_time ? s.start_time.slice(0,5) : '—'}</td>
+        <td>${s.end_time ? s.end_time.slice(0,5) : '—'}</td>
+        <td><strong>${s.hours || '—'}</strong></td>
+        <td style="font-size:12px;">${s.notes || '—'}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-save" style="padding:4px 8px;font-size:11px;" onclick="editShift('${s.id}')">Edit</button>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteShift('${s.id}')">Del</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── SHIFT CRUD ──
+  function openShiftForDate(date, staff) {
+    document.getElementById('sh-date').value = date;
+    document.getElementById('sh-staff').value = staff || '';
+    document.getElementById('sh-edit-id').value = '';
+    document.getElementById('shift-modal-title').textContent = 'Add Shift';
+    openModal('shift-modal');
+  }
+
+  async function saveShift() {
+    const staff = document.getElementById('sh-staff').value.trim();
+    const date = document.getElementById('sh-date').value;
+    if (!staff || !date) { alert('Please enter date and staff member.'); return; }
+    const start = document.getElementById('sh-start').value;
+    const end = document.getElementById('sh-end').value;
+    let hours = 0;
+    if (start && end) {
+      const s = start.split(':').map(Number);
+      const en = end.split(':').map(Number);
+      hours = Math.round(((en[0]*60+en[1]) - (s[0]*60+s[1])) / 60 * 100) / 100;
+      if (hours < 0) hours += 24;
+      document.getElementById('sh-hours').value = hours;
+    }
+    const payload = {
+      shift_date: date,
+      staff_name: staff,
+      client_name: document.getElementById('sh-client').value,
+      visit_type: document.getElementById('sh-type').value,
+      start_time: start || null,
+      end_time: end || null,
+      hours: hours || null,
+      status: document.getElementById('sh-status').value,
+      notes: document.getElementById('sh-notes').value
+    };
+    const editId = document.getElementById('sh-edit-id').value;
+    let error;
+    if (editId) {
+      ({ error } = await db.from('rota_shifts').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await db.from('rota_shifts').insert([payload]));
+    }
+    if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('sh-edit-id').value = '';
+    document.getElementById('shift-modal-title').textContent = 'Add Shift';
+    ['sh-date','sh-staff','sh-client','sh-start','sh-end','sh-hours','sh-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('sh-status').value = 'scheduled';
+    closeModal('shift-modal');
+    await loadShifts();
+  }
+
+  async function editShift(id) {
+    const { data: s } = await db.from('rota_shifts').select('*').eq('id', id).single();
+    if (!s) return;
+    document.getElementById('shift-modal-title').textContent = 'Edit Shift';
+    document.getElementById('sh-edit-id').value = id;
+    document.getElementById('sh-date').value = s.shift_date || '';
+    document.getElementById('sh-staff').value = s.staff_name || '';
+    document.getElementById('sh-client').value = s.client_name || '';
+    document.getElementById('sh-type').value = s.visit_type || 'Regular Visit';
+    document.getElementById('sh-start').value = s.start_time ? s.start_time.slice(0,5) : '';
+    document.getElementById('sh-end').value = s.end_time ? s.end_time.slice(0,5) : '';
+    document.getElementById('sh-hours').value = s.hours || '';
+    document.getElementById('sh-status').value = s.status || 'scheduled';
+    document.getElementById('sh-notes').value = s.notes || '';
+    openModal('shift-modal');
+  }
+
+  async function deleteShift(id) {
+    if (!confirm('Delete this shift?')) return;
+    await db.from('rota_shifts').delete().eq('id', id);
+    await loadShifts();
+  }
+
+  async function populateRotaDataLists() {
+    const { data: staff } = await db.from('staff').select('first_name, last_name').order('last_name');
+    const { data: clients } = await db.from('client_rates').select('client_name').order('client_name');
+    const sl = document.getElementById('sh-staff-list');
+    const cl = document.getElementById('sh-client-list');
+    if (sl && staff) sl.innerHTML = staff.map(s => `<option value="${s.first_name} ${s.last_name}">`).join('');
+    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.client_name}">`).join('');
+  }
+
+  // Auto-calculate hours in shift modal
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'sh-start' || e.target.id === 'sh-end') {
+      const start = document.getElementById('sh-start').value;
+      const end = document.getElementById('sh-end').value;
+      if (start && end) {
+        const s = start.split(':').map(Number);
+        const en = end.split(':').map(Number);
+        let hrs = ((en[0]*60+en[1]) - (s[0]*60+s[1])) / 60;
+        if (hrs < 0) hrs += 24;
+        document.getElementById('sh-hours').value = Math.round(hrs * 100) / 100;
+      }
+    }
+  });
+
+  function getMonday(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  // ══════════════════════════════════════════════
   // ══════════════════════════════════════════════
   let allVisits = [];
   let allClientRates = [];
