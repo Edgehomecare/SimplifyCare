@@ -3865,7 +3865,7 @@
     document.getElementById('sh-status').value = 'scheduled';
     closeModal('shift-modal');
     await loadShifts();
-  }
+  },
 
   async function editShift(id) {
     const { data: s } = await db.from('rota_shifts').select('*').eq('id', id).single();
