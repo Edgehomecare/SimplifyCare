@@ -472,8 +472,7 @@
           <div>
             <h1>Residents</h1>
             <p>Manage service user profiles and care plans</p>
-          </div>
-          <button class="btn-add" onclick="openModal('resident-modal')">+ Add Resident</button>
+          </div><button class="btn-add" onclick="openNewResidentModal()">+ Add Resident</button>
         </div>
         <div class="search-bar">
           <input type="text" placeholder="Search residents..." oninput="filterResidents(this.value)" />
@@ -563,8 +562,7 @@
           <div>
             <h1>Daily Notes</h1>
             <p>Care observations and daily records</p>
-          </div>
-          <button class="btn-add" onclick="openModal('note-modal')">+ Add Note</button>
+          </div>onclick="openNewNoteModal()">+ Add Note
         </div>
         <div class="search-bar">
           <input type="date" id="notes-date-filter" onchange="loadNotes()" style="max-width:200px;" />
@@ -4444,7 +4442,33 @@
 
   // ══════════════════════════════════════════════
 
-  // ── ENTER KEY LOGIN ──
+  // ── ENTER KEY LOGIN ──function openNewResidentModal() {
+    document.getElementById('resident-modal-title').textContent = 'Add Resident';
+    document.getElementById('r-edit-id').value = '';
+    ['r-firstname','r-lastname','r-dob','r-room','r-movein','r-keyworker',
+     'r-likes','r-care-needs','r-mobility','r-personal-care','r-communication',
+     'r-dietary','r-conditions','r-medications','r-gp-name','r-gp-phone',
+     'r-allergies','r-nok-name','r-nok-rel','r-nok-phone','r-nok-email',
+     'r-poa','r-sw'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('r-gender').value = '';
+    document.getElementById('r-status').value = 'active';
+    document.getElementById('r-dnr').value = 'not_set';
+    const modal = document.getElementById('resident-modal');
+    modal.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+    modal.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('rt-personal').classList.add('active');
+    openModal('resident-modal');
+  }
+
+  function openNewNoteModal() {
+    document.getElementById('n-edit-id').value = '';
+    const now = new Date();
+    document.getElementById('n-date').value = now.toISOString().split('T')[0];
+    document.getElementById('n-time').value = now.toTimeString().slice(0,5);
+    ['n-resident','n-note','n-staff'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('n-category').value = 'General';
+    openModal('note-modal');
+  }
   try {
     document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
   } catch(e) { console.warn('login-password listener:', e); }
@@ -4454,3 +4478,5 @@
 </script>
 </body>
 </html>
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
