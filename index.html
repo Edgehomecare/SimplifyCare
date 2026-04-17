@@ -2332,7 +2332,7 @@
 
   // ── VIEW STAFF PROFILE ──
   async function viewStaff(id) {
-    const { data: s } = await db.from('staff').select('*').eq('id', id).single();
+    const { data: s } = await db.from('staff_full').select('*').eq('id', id).single();
     if (!s) { alert('Could not load staff profile.'); return; }
     const { data: training } = await db.from('staff_training').select('*').eq('staff_id', id).order('expiry_date');
 
@@ -2600,7 +2600,6 @@
       // Employment
       role: val('s-role'), employment_type: val('s-emptype'),
       start_date: val('s-startdate') || null, status: val('s-status'),
-      contracted_hours: val('s-contracted-hours'), hourly_rate: val('s-hourly-rate'),
       // DBS & RTW
       dbs_number: val('s-dbs-number'),
       dbs_issue_date: val('s-dbs-date') || null,
@@ -2610,8 +2609,6 @@
       barred_list_checked_by: val('s-barred-by'),
       right_to_work: val('s-rtw'),
       right_to_work_expiry: val('s-rtw-expiry') || null,
-      passport_number: val('s-passport'),
-      passport_expiry: val('s-passport-expiry') || null,
       visa_type: val('s-visa-type'),
       visa_expiry: val('s-visa-expiry') || null,
       identity_verified_by: val('s-id-verified-by'),
@@ -2665,23 +2662,42 @@
       probation_end: val('s-probation-end') || null,
       probation_outcome: val('s-probation-outcome'),
       probation_notes: val('s-probation-notes'),
-      // Payroll
+    };
+    // Sensitive fields saved to separate staff_sensitive table for data protection
+    const sensitivePayload = {
+      ni_number: val('s-ni'),
+      passport_number: val('s-passport'),
+      passport_expiry: val('s-passport-expiry') || null,
       bank_name: val('s-bank-name'),
       bank_account_name: val('s-bank-account-name'),
       bank_account_number: val('s-bank-account-number'),
       bank_sort_code: val('s-sort-code'),
       tax_code: val('s-tax-code'),
-      payment_method: val('s-payment-method')
+      payment_method: val('s-payment-method'),
+      hourly_rate: val('s-hourly-rate'),
+      contracted_hours: val('s-contracted-hours')
     };
     if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
     const editId = document.getElementById('s-edit-id').value;
-    let error;
+    let error, staffId;
     if (editId) {
       ({ error } = await db.from('staff').update(payload).eq('id', editId));
+      staffId = editId;
     } else {
-      ({ error } = await db.from('staff').insert([payload]));
+      const { data: newStaff, error: insErr } = await db.from('staff').insert([payload]).select('id').single();
+      error = insErr;
+      staffId = newStaff?.id;
     }
     if (error) { alert('Error: ' + error.message); return; }
+    // Save sensitive data to staff_sensitive table
+    if (staffId) {
+      const { data: existing } = await db.from('staff_sensitive').select('id').eq('staff_id', staffId).maybeSingle();
+      if (existing) {
+        await db.from('staff_sensitive').update(sensitivePayload).eq('staff_id', staffId);
+      } else {
+        await db.from('staff_sensitive').insert([{ staff_id: staffId, ...sensitivePayload }]);
+      }
+    }
     document.getElementById('s-edit-id').value = '';
     document.getElementById('staff-modal-title').textContent = 'Add Staff Member';
     closeModal('staff-modal');
@@ -2689,7 +2705,7 @@
   }
 
   async function editStaff(id) {
-    const { data: s } = await db.from('staff').select('*').eq('id', id).single();
+    const { data: s } = await db.from('staff_full').select('*').eq('id', id).single();
     if (!s) return;
     document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
     document.getElementById('s-edit-id').value = id;
@@ -4170,7 +4186,7 @@
 
   // ── STAFF RATES (for payroll) ──
   async function loadStaffForHours() {
-    const { data } = await db.from('staff').select('first_name, last_name, role, hourly_rate').order('last_name');
+    const { data } = await db.from('staff_full').select('first_name, last_name, role, hourly_rate').order('last_name');
     allStaffRates = data || [];
   }
 
@@ -4182,7 +4198,7 @@
     const start = `${y}-${m}-01`;
     const end = new Date(y, m, 0).toISOString().split('T')[0];
     const { data: visits } = await db.from('visit_log').select('*').gte('visit_date', start).lte('visit_date', end);
-    const { data: staffList } = await db.from('staff').select('first_name, last_name, role, hourly_rate').order('last_name');
+    const { data: staffList } = await db.from('staff_full').select('first_name, last_name, role, hourly_rate').order('last_name');
     const log = visits || [];
     const staff = staffList || [];
 
