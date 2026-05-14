@@ -2707,7 +2707,24 @@
       hourly_rate: val('s-hourly-rate'),
       contracted_hours: val('s-contracted-hours')
     };
-    if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
+    if 
+      // Handle ID document upload to private bucket
+    const idFileInput = document.getElementById('s-id-doc-file');
+    const idFile = idFileInput?.files[0];
+    if (idFile) {
+      if (idFile.size > 10485760) { alert('ID document must be 10MB or smaller.'); return; }
+      const editId = document.getElementById('s-edit-id').value;
+      const safeName = idFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const idPath = `${editId || 'new'}/${Date.now()}_${safeName}`;
+      const { data: idUpData, error: idUpErr } = await db.storage
+        .from('staff-id-documents')
+        .upload(idPath, idFile, { upsert: true });
+      if (idUpErr) { alert('ID document upload failed: ' + idUpErr.message); return; }
+      payload.id_document_path = idPath;
+      payload.id_document_uploaded_at = new Date().toISOString();
+      payload.id_document_uploaded_by = currentUser?.email || 'unknown';
+    }
+    
     const editId = document.getElementById('s-edit-id').value;
     let error, staffId;
     if (editId) {
