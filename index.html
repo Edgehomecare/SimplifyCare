@@ -2620,7 +2620,10 @@
       date_of_birth: val('s-dob') || null, gender: val('s-gender'),
       ethnicity: val('s-ethnicity'), nationality: val('s-nationality'),
       email: val('s-email'), phone: val('s-phone'),
-      home_address: val('s-address'), ni_number: val('s-ni'),
+     id_document_type: val('s-id-doc-type') || null,
+      id_document_expiry: val('s-id-doc-expiry') || null,
+      id_document_notes: val('s-id-doc-notes'),
+      
       emergency_contact_name: val('s-ec-name'),
       emergency_contact_relationship: val('s-ec-rel'),
       emergency_contact_phone: val('s-ec-phone'),
