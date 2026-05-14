@@ -1456,7 +1456,34 @@
         <div class="form-group"><label>Passport Number</label><input id="s-passport" placeholder="Passport number" /></div>
         <div class="form-group"><label>Passport Expiry</label><input type="date" id="s-passport-expiry" /></div>
         <div class="form-group"><label>Visa Type</label><input id="s-visa-type" placeholder="Visa type if applicable" /></div>
-        <div class="form-group"><label>Visa Expiry</label><input type="date" id="s-visa-expiry" /></div>
+        <div class="form-group"><label>Visa Expiry</label><input type="date" id="s-visa-expiry" /></div
+                                                                                                    <!-- ID DOCUMENT UPLOAD -->
+        <div class="form-group full" style="margin-top:8px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+          <label style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px;">🪪 Identity Document on File</label>
+          <div class="form-grid" style="margin-top:8px;">
+            <div class="form-group"><label>Document Type</label>
+              <select id="s-id-doc-type">
+                <option value="">— None on file —</option>
+                <option value="passport">Passport</option>
+                <option value="driving_licence">Driving Licence</option>
+                <option value="brp">Biometric Residence Permit (BRP)</option>
+                <option value="national_id">National ID Card</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Document Expiry Date</label><input type="date" id="s-id-doc-expiry" /></div>
+            <div class="form-group full"><label>Upload Document</label>
+              <div style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:white;" onclick="document.getElementById('s-id-doc-file').click()">
+                <div style="font-size:22px;">🔒</div>
+                <div id="s-id-doc-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload ID document (PDF or image)</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Stored in private encrypted bucket · 10MB max</div>
+                <input type="file" id="s-id-doc-file" accept="image/jpeg,image/png,image/heic,application/pdf" style="display:none;" onchange="document.getElementById('s-id-doc-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+              </div>
+              <div id="s-id-doc-existing" style="display:none;margin-top:8px;padding:8px 12px;background:#dcfce7;border-radius:6px;font-size:12px;color:#15803d;"></div>
+            </div>
+            <div class="form-group full"><label>ID Document Notes</label><textarea id="s-id-doc-notes" placeholder="Any notes about the ID document on file..."></textarea></div>
+          </div>
+        </div>
         <div class="form-group"><label>Identity Verified By</label><input id="s-id-verified-by" placeholder="Name of verifier" /></div>
         <div class="form-group"><label>Identity Verified Date</label><input type="date" id="s-id-verified-date" /></div>
         <div class="form-group"><label>Proof of Address Verified?</label>
