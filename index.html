@@ -811,6 +811,7 @@
           <button class="gov-tab" onclick="showGovSection('risks',this)">Risk register</button>
           <button class="gov-tab" onclick="showGovSection('safeguarding',this)">Safeguarding</button>
           <button class="gov-tab" onclick="showGovSection('meetings',this)">Meeting minutes</button>
+          <button class="gov-tab" onclick="showGovSection('wellled',this)">Well-Led log</button>
         </div>
 
         <!-- OVERVIEW -->
@@ -946,6 +947,25 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Meeting minutes</div><button class="btn-add" onclick="openGovModal('meeting-modal')">+ Add minutes</button></div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Meeting type</th><th>Chair</th><th>Attendees</th><th>Key decisions</th><th>Actions arising</th><th>Next meeting</th></tr></thead>
             <tbody id="meeting-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- WELL-LED LOG -->
+        <div id="gov-wellled" class="gov-section">
+          <div class="card" style="background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);border-left:4px solid var(--blue);">
+            <div class="card-title" style="color:var(--blue);">🏆 Well-Led Domain — Leadership &amp; Governance</div>
+            <p style="font-size:13px;color:var(--slate);margin-top:6px;line-height:1.55;">Record evidence against the CQC Well-Led quality statements. Use this log to demonstrate shared direction &amp; culture, capable leadership, governance &amp; management arrangements, freedom to speak up, workforce equality, learning &amp; improvement and partnerships with others.</p>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card teal"><div class="label">Evidence entries</div><div class="value" id="wl-total">0</div><div class="sub">total logged</div></div>
+            <div class="stat-card amber"><div class="label">Open actions</div><div class="value" id="wl-open">0</div><div class="sub">awaiting completion</div></div>
+            <div class="stat-card green"><div class="label">Completed</div><div class="value" id="wl-done">0</div><div class="sub">evidenced &amp; closed</div></div>
+            <div class="stat-card"><div class="label">This quarter</div><div class="value" id="wl-quarter">0</div><div class="sub">recent activity</div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Well-Led evidence log</div><button class="btn-add" onclick="openGovModal('wellled-modal')">+ Add entry</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Quality statement</th><th>Evidence / activity</th><th>Source</th><th>Owner</th><th>Outcome / impact</th><th>Next review</th><th>Status</th><th></th></tr></thead>
+            <tbody id="wellled-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No Well-Led entries recorded yet</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -1304,6 +1324,54 @@
     </div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('meeting-modal')">Cancel</button><button class="btn btn-save" onclick="saveMeeting()">Save minutes</button></div>
+</div></div>
+
+<!-- WELL-LED LOG MODAL -->
+<div id="wellled-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Add Well-Led evidence entry</h2><button class="modal-close" onclick="closeGovModal('wellled-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Date *</label><input type="date" id="wl-date" /></div>
+    <div class="form-group"><label>Quality statement</label>
+      <select id="wl-statement">
+        <option>Shared direction &amp; culture</option>
+        <option>Capable, compassionate &amp; inclusive leaders</option>
+        <option>Freedom to speak up</option>
+        <option>Workforce equality, diversity &amp; inclusion</option>
+        <option>Governance, management &amp; sustainability</option>
+        <option>Partnerships &amp; communities</option>
+        <option>Learning, improvement &amp; innovation</option>
+        <option>Environmental sustainability — net zero</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Source of evidence</label>
+      <select id="wl-source">
+        <option>Governance meeting</option>
+        <option>Audit</option>
+        <option>Staff survey / feedback</option>
+        <option>Resident / family feedback</option>
+        <option>Supervision</option>
+        <option>Training / development</option>
+        <option>Policy review</option>
+        <option>Whistleblowing / speak up</option>
+        <option>Partner agency</option>
+        <option>Inspection / external review</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Owner (responsible leader)</label><input id="wl-owner" placeholder="e.g. Registered Manager" /></div>
+    <div class="form-group"><label>Next review date</label><input type="date" id="wl-next" /></div>
+    <div class="form-group"><label>Status</label>
+      <select id="wl-status">
+        <option>Open</option>
+        <option>In progress</option>
+        <option>Completed</option>
+      </select>
+    </div>
+    <div class="form-group full"><label>Evidence / leadership activity *</label><textarea id="wl-evidence" placeholder="Describe the leadership or governance activity (e.g. monthly governance meeting held, whistleblowing policy reviewed, staff listening session)..."></textarea></div>
+    <div class="form-group full"><label>Outcome / impact</label><textarea id="wl-outcome" placeholder="What improved as a result? How is this evidenced?"></textarea></div>
+    <div class="form-group full"><label>Learning &amp; improvement</label><textarea id="wl-learning" placeholder="Lessons learned, changes embedded, how this will be sustained..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('wellled-modal')">Cancel</button><button class="btn btn-save" onclick="saveWellLed()">Save entry</button></div>
 </div></div>
 
 <!-- ═══════════════ MODALS ═══════════════ -->
@@ -4364,6 +4432,7 @@
     risks: JSON.parse(localStorage.getItem('gov_risks')||'[]'),
     safeguarding: JSON.parse(localStorage.getItem('gov_safeguarding')||'[]'),
     meetings: JSON.parse(localStorage.getItem('gov_meetings')||'[]'),
+    wellled: JSON.parse(localStorage.getItem('gov_wellled')||'[]'),
   };
   function govSave(key){ localStorage.setItem('gov_'+key, JSON.stringify(govStore[key])); }
 
@@ -4495,6 +4564,49 @@
   }
   function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
 
+  // Well-Led log (CQC Leadership & Governance)
+  function saveWellLed(){
+    const date=document.getElementById('wl-date').value;
+    const evidence=document.getElementById('wl-evidence').value.trim();
+    if(!date){alert('Please enter the date');return;}
+    if(!evidence){alert('Please describe the evidence or leadership activity');return;}
+    govStore.wellled.push({
+      id:Date.now(),
+      date,
+      statement:document.getElementById('wl-statement').value,
+      source:document.getElementById('wl-source').value,
+      owner:document.getElementById('wl-owner').value,
+      next:document.getElementById('wl-next').value,
+      status:document.getElementById('wl-status').value,
+      evidence,
+      outcome:document.getElementById('wl-outcome').value,
+      learning:document.getElementById('wl-learning').value
+    });
+    govSave('wellled'); closeGovModal('wellled-modal'); renderGovWellLed();
+    ['wl-date','wl-owner','wl-next','wl-evidence','wl-outcome','wl-learning'].forEach(id=>document.getElementById(id).value='');
+  }
+  function renderGovWellLed(){
+    const list=govStore.wellled||[];
+    const thisQuarter=(()=>{ const d=new Date(); const qStart=new Date(d.getFullYear(), Math.floor(d.getMonth()/3)*3, 1); return list.filter(w=>w.date && new Date(w.date)>=qStart).length; })();
+    document.getElementById('wl-total').textContent=list.length;
+    document.getElementById('wl-open').textContent=list.filter(w=>w.status==='Open'||w.status==='In progress').length;
+    document.getElementById('wl-done').textContent=list.filter(w=>w.status==='Completed').length;
+    document.getElementById('wl-quarter').textContent=thisQuarter;
+    const tb=document.getElementById('wellled-table');
+    if(!list.length){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No Well-Led entries recorded yet</td></tr>'; return; }
+    tb.innerHTML=[...list].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(w=>`<tr>
+      <td>${govFmtDate(w.date)}</td>
+      <td><span class="badge badge-blue">${w.statement||'—'}</span></td>
+      <td style="max-width:260px;font-size:13px;"><strong>${w.evidence}</strong>${w.learning?`<br><span style="font-size:12px;color:var(--muted);">Learning: ${w.learning}</span>`:''}</td>
+      <td style="font-size:12px;">${w.source||'—'}</td>
+      <td>${w.owner||'—'}</td>
+      <td style="font-size:12px;max-width:200px;">${w.outcome||'—'}</td>
+      <td>${govFmtDate(w.next)}</td>
+      <td>${govStatusBadge(w.status)}</td>
+      <td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('wellled',${w.id},renderGovWellLed)">Delete</button></td>
+    </tr>`).join('');
+  }
+
   // Init governance
   function initGovernance(){
     initGovKPIMonth();
@@ -4503,6 +4615,7 @@
     renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
     renderGovComplaints(); renderGovMed(); renderGovSupervisions();
     renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
+    renderGovWellLed();
   }
 
   // ══════════════════════════════════════════════
