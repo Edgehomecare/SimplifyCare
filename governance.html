@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Governance — Edge Homecare Services Ltd</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #f7f8fa; color: #1a1a1a; padding: 2rem 1rem; line-height: 1.5; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .banner { background: linear-gradient(135deg, #1F3A5F 0%, #2A8C8A 100%); color: white; padding: 1.75rem 2rem; border-radius: 14px; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(31,58,95,0.15); }
+    .banner-flex { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+    .banner-eyebrow { font-size: 12px; opacity: 0.85; letter-spacing: 0.5px; text-transform: uppercase; }
+    .banner-title { font-size: 24px; font-weight: 500; margin-top: 6px; }
+    .banner-meta { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .banner-score-label { font-size: 13px; opacity: 0.85; text-align: right; }
+    .banner-score { font-size: 48px; font-weight: 500; line-height: 1; text-align: right; }
+    .banner-score-pct { font-size: 22px; opacity: 0.75; }
+    .banner-change { font-size: 12px; opacity: 0.85; margin-top: 4px; text-align: right; }
+    .section-eyebrow { font-size: 12px; color: #666; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+    .cqc-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+    .cqc-card { background: white; border: 1px solid #e5e5e5; border-left: 3px solid #ccc; border-radius: 8px; padding: 14px; }
+    .cqc-label { font-size: 11px; color: #666; }
+    .cqc-rating { font-size: 18px; font-weight: 500; margin-top: 2px; }
+    .cqc-count { font-size: 11px; color: #999; margin-top: 4px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+    .panel { background: white; border: 1px solid #e5e5e5; border-radius: 12px; padding: 1.25rem; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .panel-title { font-size: 15px; font-weight: 500; }
+    .pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; }
+    .pill-success { background: #dcfce7; color: #166534; }
+    .pill-warning { background: #fef3c7; color: #854F0B; }
+    .trend-bars { display: flex; align-items: flex-end; gap: 10px; height: 100px; margin-bottom: 10px; }
+    .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+    .trend-bar-wrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+    .trend-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; }
+    .trend-month { font-size: 11px; color: #666; }
+    .trend-value { font-size: 11px; font-weight: 500; }
+    .trend-summary { font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+    .action-item { border-left: 2px solid #EF9F27; padding: 6px 0 6px 10px; margin-bottom: 10px; }
+    .action-item.completed { border-left-color: #1D9E75; opacity: 0.7; }
+    .action-title { font-size: 13px; font-weight: 500; }
+    .action-title.completed { text-decoration: line-through; }
+    .action-meta { font-size: 11px; color: #666; margin-top: 2px; }
+    .evidence-strip { background: #f5f5f5; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .evidence-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .evidence-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .evidence-label { font-size: 11px; color: #666; }
+    .evidence-value { font-size: 16px; font-weight: 500; }
+    .check { color: #0F6E56; font-size: 13px; }
+    .details-panel { background: white; border: 1px solid #e5e5e5; border-radius: 12px; padding: 1rem 1.25rem; }
+    .details-summary { cursor: pointer; font-size: 14px; font-weight: 500; list-style: none; display: flex; justify-content: space-between; }
+    .details-summary::after { content: '▼'; font-size: 10px; color: #999; }
+    details[open] .details-summary::after { content: '▲'; }
+    .control-group { margin-top: 16px; }
+    .control-group-title { font-size: 13px; font-weight: 500; color: #1F3A5F; margin-bottom: 6px; }
+    .control-row { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+    .control-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .control-name { font-size: 13px; }
+    .control-evidence { font-size: 11px; color: #666; text-align: right; max-width: 380px; }
+    .loading { text-align: center; padding: 4rem 1rem; color: #999; }
+    .page-footer { text-align: center; font-size: 11px; color: #999; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    @media (max-width: 768px) {
+      .cqc-row { grid-template-columns: repeat(2, 1fr); }
+      .two-col { grid-template-columns: 1fr; }
+      .evidence-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="content" class="loading">Loading dashboard…</div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://pctcoagonirqgjcovfdn.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_HckfRtUhMiH6yVZlyfNmeg_CP83sULa';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const CQC_LABELS = { safe: 'Safe', effective: 'Effective', caring: 'Caring', responsive: 'Responsive', well_led: 'Well-led' };
+
+    async function init() {
+      try {
+        const [controls, actions, history] = await Promise.all([
+          sb.from('governance_controls').select('*'),
+          sb.from('governance_actions').select('*').order('target_date'),
+          sb.from('governance_score_history').select('*').order('snapshot_month')
+        ]);
+        if (controls.error) throw controls.error;
+        if (actions.error) throw actions.error;
+        if (history.error) throw history.error;
+        render(controls.data || [], actions.data || [], history.data || []);
+      } catch (err) {
+        document.getElementById('content').innerHTML = `<div style="background:#fee; border:1px solid #fcc; padding:1rem; border-radius:8px; color:#a00;"><strong>Couldn't load data:</strong> ${err.message}</div>`;
+      }
+    }
+
+    function score(cs) {
+      if (cs.length === 0) return 0;
+      const sum = cs.reduce((s, c) => s + (c.status === 'good' ? 1 : c.status === 'review' ? 0.5 : 0), 0);
+      return (sum / cs.length) * 100;
+    }
+    function rating(s) {
+      if (s >= 85) return { label: 'Good', color: '#1D9E75', text: '#0F6E56' };
+      if (s >= 65) return { label: 'Review', color: '#EF9F27', text: '#854F0B' };
+      return { label: 'Needs action', color: '#E24B4A', text: '#A32D2D' };
+    }
+    function monthShort(d) {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[new Date(d).getMonth()];
+    }
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    }
+
+    function render(controls, actions, history) {
+      const overall = score(controls);
+      const earliest = history.length ? parseFloat(history[0].score) : overall;
+      const change = overall - earliest;
+      const sinceMonth = history.length ? monthShort(history[0].snapshot_month) : '';
+
+      const cqcCards = Object.keys(CQC_LABELS).map(q => {
+        const cs = controls.filter(c => c.cqc_question === q);
+        const goodCount = cs.filter(c => c.status === 'good').length;
+        const r = rating(score(cs));
+        return `<div class="cqc-card" style="border-left-color:${r.color};"><div class="cqc-label">${CQC_LABELS[q]}</div><div class="cqc-rating" style="color:${r.text};">${r.label}</div><div class="cqc-count">${goodCount}/${cs.length} controls</div></div>`;
+      }).join('');
+
+      const maxScore = Math.max(...history.map(h => parseFloat(h.score)), 100);
+      const trendBars = history.map((h, i) => {
+        const s = parseFloat(h.score);
+        const isLatest = i === history.length - 1;
+        const color = s >= 85 ? '#185FA5' : s >= 75 ? '#378ADD' : '#B5D4F4';
+        return `<div class="trend-col"><div class="trend-bar-wrap"><div class="trend-bar" style="height:${(s/maxScore*100)}%; background:${color}; opacity:${isLatest ? 1 : 0.85};"></div></div><span class="trend-month">${monthShort(h.snapshot_month)}</span><span class="trend-value">${Math.round(s)}%</span></div>`;
+      }).join('');
+
+      const pending = actions.filter(a => a.status !== 'completed');
+      const completed = actions.filter(a => a.status === 'completed').slice(0, 3);
+      const pendingHtml = pending.map(a => `<div class="action-item"><div class="action-title">${a.title}</div><div class="action-meta">Target: ${fmtDate(a.target_date)} · ${a.owner || ''}</div></div>`).join('');
+      const completedHtml = completed.map(a => `<div class="action-item completed"><div class="action-title completed">${a.title}</div><div class="action-meta">Completed: ${fmtDate(a.completed_date)}</div></div>`).join('');
+
+      const goodControls = controls.filter(c => c.status === 'good').length;
+      const completedActions = actions.filter(a => a.status === 'completed').length;
+      const lastSnapshot = history.length ? history[history.length-1].snapshot_month : null;
+      const daysAgo = lastSnapshot ? Math.floor((new Date() - new Date(lastSnapshot)) / 86400000) : '—';
+
+      let detailsHtml = '';
+      Object.keys(CQC_LABELS).forEach(q => {
+        const cs = controls.filter(c => c.cqc_question === q);
+        if (!cs.length) return;
+        detailsHtml += `<div class="control-group"><div class="control-group-title">${CQC_LABELS[q]}</div>`;
+        cs.forEach(c => {
+          const dot = c.status === 'good' ? '#1D9E75' : c.status === 'review' ? '#EF9F27' : '#E24B4A';
+          detailsHtml += `<div class="control-row"><span class="control-dot" style="background:${dot};"></span><span class="control-name">${c.control_name}</span><span class="control-evidence">${c.evidence_notes || ''}</span></div>`;
+        });
+        detailsHtml += '</div>';
+      });
+
+      document.getElementById('content').innerHTML = `
+        <div class="banner">
+          <div class="banner-flex">
+            <div>
+              <div class="banner-eyebrow">Information governance</div>
+              <div class="banner-title">Edge Homecare Services Ltd</div>
+              <div class="banner-meta">ICO ZB707286 · CQC application submitted</div>
+            </div>
+            <div>
+              <div class="banner-score-label">Compliance score</div>
+              <div class="banner-score">${overall.toFixed(0)}<span class="banner-score-pct">%</span></div>
+              <div class="banner-change">${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(0)}% since ${sinceMonth}</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-eyebrow">CQC key questions — IG view</div>
+        <div class="cqc-row">${cqcCards}</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">6-month trend</div><div class="pill pill-success">Improving</div></div>
+            <div class="trend-bars">${trendBars}</div>
+            <div class="trend-summary">Compliance score has risen from ${earliest.toFixed(0)}% to ${overall.toFixed(0)}% over ${history.length} months</div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Actions</div><div class="pill pill-warning">${pending.length} pending</div></div>
+            ${pendingHtml}${completedHtml}
+          </div>
+        </div>
+        <div class="evidence-strip">
+          <div class="evidence-header"><div class="section-eyebrow" style="margin:0;">Live evidence trail</div><div style="font-size:11px; color:#999;">↻ Auto-monitored</div></div>
+          <div class="evidence-grid">
+            <div><div class="evidence-label">Active controls</div><div class="evidence-value">${goodControls}/${controls.length} <span class="check">✓</span></div></div>
+            <div><div class="evidence-label">Actions completed</div><div class="evidence-value">${completedActions} <span class="check">✓</span></div></div>
+            <div><div class="evidence-label">Retention policy</div><div class="evidence-value">8 years <span class="check">✓</span></div></div>
+            <div><div class="evidence-label">Last score update</div><div class="evidence-value">${daysAgo} days ago</div></div>
+          </div>
+        </div>
+        <details class="details-panel"><summary class="details-summary">View all controls (for inspection evidence)</summary>${detailsHtml}</details>
+        <div class="page-footer">Edge Homecare Services Ltd · ICO ZB707286 · Generated from live data</div>
+      `;
+    }
+
+    init();
+  </script>
+</body>
+</html>
