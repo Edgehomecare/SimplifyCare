@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<!-- saved from url=(0051)file:///C:/Users/User/Downloads/command-centre.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Centre — Edge Homecare Services Ltd</title>
+  <link href="./Command Centre — Edge Homecare Services Ltd_files/css2" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1F3A5F;
+      --teal: #2A8C8A;
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --faint: #9ca3af;
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-bg: #dcfce7;
+      --amber: #EF9F27;
+      --amber-dark: #854F0B;
+      --amber-bg: #fef3c7;
+      --red: #E24B4A;
+      --red-dark: #A32D2D;
+      --red-bg: #fee2e2;
+      --blue: #185FA5;
+      --blue-light: #B5D4F4;
+      --blue-bg: #e6f1fb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem 1rem;
+      line-height: 1.5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
+      color: white;
+      padding: 1.5rem 1.75rem;
+      border-radius: 14px;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 4px 16px rgba(31, 58, 95, 0.15);
+    }
+    .hero-flex { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+    .hero-eyebrow { font-size: 12px; opacity: 0.85; letter-spacing: 0.5px; text-transform: uppercase; }
+    .hero-title { font-size: 26px; font-weight: 500; margin-top: 4px; }
+    .hero-summary { font-size: 13px; opacity: 0.9; margin-top: 6px; }
+    .hero-right { text-align: right; }
+    .hero-right .label { font-size: 12px; opacity: 0.85; }
+    .hero-right .value { font-size: 26px; font-weight: 500; line-height: 1.1; margin-top: 2px; }
+    .hero-right .sub { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+
+    /* KPI ROW */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .kpi-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 600;
+      margin-top: 4px;
+      color: var(--navy);
+    }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .kpi-sub.good { color: var(--green-dark); }
+    .kpi-sub.warn { color: var(--amber-dark); }
+
+    /* ATTENTION */
+    .attention {
+      background: var(--amber-bg);
+      border-left: 3px solid var(--amber);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 1.25rem;
+    }
+    .attention.all-clear {
+      background: var(--green-bg);
+      border-left-color: var(--green);
+    }
+    .attention-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--amber-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .attention.all-clear .attention-title { color: var(--green-dark); }
+    .attention-list { font-size: 13px; color: #633806; line-height: 1.7; }
+    .attention.all-clear .attention-list { color: var(--green-dark); }
+
+    /* TWO-COLUMN LAYOUT */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 1.25rem;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .panel-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .panel-meta { font-size: 11px; color: var(--muted); }
+    .panel-link { font-size: 12px; color: var(--blue); text-decoration: none; }
+    .panel-link:hover { text-decoration: underline; }
+
+    /* ROWS */
+    .row {
+      display: grid;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+    }
+    .row:last-child { border-bottom: none; }
+    .row-name { font-weight: 500; }
+    .row-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+    /* SCHEDULE */
+    .schedule .row { grid-template-columns: 60px 1fr auto; }
+    .schedule .time { color: var(--muted); font-size: 12px; font-weight: 500; }
+    .schedule .row.next { background: #F0FDF4; margin-left: -8px; margin-right: -8px; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+    .schedule .row.next .time { color: var(--blue); }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge-next { background: var(--blue-light); color: var(--blue); }
+    .badge-new { background: var(--blue-bg); color: var(--blue); }
+    .badge-done { color: var(--green-dark); font-size: 11px; }
+    .badge-pending { color: var(--muted); font-size: 11px; }
+    .badge-review { color: var(--amber-dark); font-size: 11px; }
+
+    /* CLIENT STATUS */
+    .clients .row { grid-template-columns: 1fr auto auto; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.stable { background: var(--green); }
+    .dot.review { background: var(--amber); }
+    .dot.attention { background: var(--red); }
+
+    /* COMPLIANCE */
+    .compliance-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .comp-card {
+      background: #f9fafb;
+      border-left: 3px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .comp-card.good { border-left-color: var(--green); }
+    .comp-card.review { border-left-color: var(--amber); }
+    .comp-card.attention { border-left-color: var(--red); }
+    .comp-label { font-size: 10px; color: var(--muted); }
+    .comp-rating { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .comp-rating.good { color: var(--green-dark); }
+    .comp-rating.review { color: var(--amber-dark); }
+    .comp-rating.attention { color: var(--red-dark); }
+    .compliance-summary {
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+
+    /* FINANCIAL */
+    .financial {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .financial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .financial-eyebrow { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .financial-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .fin-label { font-size: 11px; color: var(--muted); }
+    .fin-value { font-size: 18px; font-weight: 600; color: var(--navy); margin-top: 2px; }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--faint);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--muted);
+    }
+
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--faint);
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--blue); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .kpi-row { grid-template-columns: repeat(3, 1fr); }
+      .two-col { grid-template-columns: 1fr; }
+      .compliance-grid { grid-template-columns: repeat(2, 1fr); }
+      .financial-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="content" class="loading">
+        <div class="hero">
+          <div class="hero-flex">
+            <div>
+              <div class="hero-eyebrow">Tuesday, 7 July 2026</div>
+              <div class="hero-title">Good morning, Edge</div>
+              <div class="hero-summary">
+                0 clients receiving care today ·
+                0 visits scheduled ·
+                1 item needs your attention
+              </div>
+            </div>
+            <div class="hero-right">
+              <div class="label">Business health</div>
+              <div class="value">Attention needed <span style="color:#FFD57A;">!</span></div>
+              <div class="sub">CQC ready · IG 96%</div>
+            </div>
+          </div>
+        </div><div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Active clients</div>
+          <div class="kpi-value">0</div>
+          <div class="kpi-sub ">0 total</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Staff on shift</div>
+          <div class="kpi-value">0</div>
+          <div class="kpi-sub ">of 0 active</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Care hours today</div>
+          <div class="kpi-value">0.0</div>
+          <div class="kpi-sub ">across 0 visits</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Open incidents</div>
+          <div class="kpi-value">0</div>
+          <div class="kpi-sub good">All clear</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">MTD hours</div>
+          <div class="kpi-value">0</div>
+          <div class="kpi-sub ">July</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">IG score</div>
+          <div class="kpi-value">96%</div>
+          <div class="kpi-sub good">Improving</div>
+        </div></div>
+          <div class="attention">
+            <div class="attention-title">⚠ Needs your attention today</div>
+            <div class="attention-list">
+              <div>• 13 governance action(s) overdue</div>
+            </div>
+          </div><div class="two-col"><div class="panel schedule">
+        <div class="panel-header">
+          <div class="panel-title">Today's schedule</div>
+          <div class="panel-meta">0 visits</div>
+        </div><div class="empty">No visits scheduled for today.<br>Set up shifts in the Rota section of SimplifyCare.</div></div><div class="panel clients">
+        <div class="panel-header">
+          <div class="panel-title">Client status</div>
+          <div class="panel-meta">0 active</div>
+        </div><div class="empty">No active clients yet.<br>Add clients in SimplifyCare and they'll appear here.</div></div></div><div class="two-col"><div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Compliance snapshot</div>
+          <a class="panel-link" href="file:///C:/Users/User/Downloads/governance.html" target="_blank">Full dashboard →</a>
+        </div><div class="compliance-grid">
+            <div class="comp-card good">
+              <div class="comp-label">Safe</div>
+              <div class="comp-rating good">Good</div>
+            </div>
+            <div class="comp-card good">
+              <div class="comp-label">Effective</div>
+              <div class="comp-rating good">Good</div>
+            </div>
+            <div class="comp-card good">
+              <div class="comp-label">Caring</div>
+              <div class="comp-rating good">Good</div>
+            </div>
+            <div class="comp-card good">
+              <div class="comp-label">Responsive</div>
+              <div class="comp-rating good">Good</div>
+            </div>
+            <div class="comp-card good">
+              <div class="comp-label">Well-led</div>
+              <div class="comp-rating good">Good</div>
+            </div></div><div class="compliance-summary">
+          41 of 45 controls active · 17 pending actions · Overall IG score 96%
+        </div></div><div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Staff status</div>
+          <div class="panel-meta">0 active</div>
+        </div><div class="empty">No staff records yet.<br>Add staff in SimplifyCare and they'll appear here.</div></div></div>
+        <div class="financial">
+          <div class="financial-header">
+            <div class="financial-eyebrow">This month at a glance — July 2026</div>
+          </div>
+          <div class="financial-grid">
+            <div>
+              <div class="fin-label">Hours delivered</div>
+              <div class="fin-value">0.0</div>
+            </div>
+            <div>
+              <div class="fin-label">Revenue to date</div>
+              <div class="fin-value">£0</div>
+            </div>
+            <div>
+              <div class="fin-label">Active clients</div>
+              <div class="fin-value">0</div>
+            </div>
+            <div>
+              <div class="fin-label">Visits logged</div>
+              <div class="fin-value">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          Edge Homecare Services Ltd · ICO ZB707286 · Live data from Supabase<br>
+          <a href="file:///C:/">Back to SimplifyCare</a> · <a href="file:///C:/governance.html">Governance dashboard</a>
+        </div></div>
+  </div>
+
+  <script src="./Command Centre — Edge Homecare Services Ltd_files/supabase-js@2"></script>
+  <script>
+    // ─── CONFIG ─────────────────────────────────────
+    const SUPABASE_URL = 'https://pctcoagonirqgjcovfdn.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_HckfRtUhMiH6yVZlyfNmeg_CP83sULa';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ─── UTILITIES ──────────────────────────────────
+    const CQC_LABELS = { safe: 'Safe', effective: 'Effective', caring: 'Caring', responsive: 'Responsive', well_led: 'Well-led' };
+
+    function greeting() {
+      const h = new Date().getHours();
+      if (h < 12) return 'Good morning';
+      if (h < 17) return 'Good afternoon';
+      return 'Good evening';
+    }
+
+    function todayString() {
+      return new Date().toLocaleDateString('en-GB', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+    }
+
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function scorePct(controls) {
+      if (!controls || controls.length === 0) return null;
+      const sum = controls.reduce((s, c) =>
+        s + (c.status === 'good' ? 1 : c.status === 'review' ? 0.5 : 0), 0);
+      return (sum / controls.length) * 100;
+    }
+
+    function ratingFromScore(pct) {
+      if (pct == null) return { label: '—', cls: '' };
+      if (pct >= 85) return { label: 'Good', cls: 'good' };
+      if (pct >= 65) return { label: 'Review', cls: 'review' };
+      return { label: 'Action', cls: 'attention' };
+    }
+
+    // Safely fetch from a table. Returns [] on error rather than crashing.
+    async function safeSelect(table, select = '*', orderBy = null) {
+      try {
+        let q = sb.from(table).select(select);
+        if (orderBy) q = q.order(orderBy);
+        const { data, error } = await q;
+        if (error) { console.warn(`Table ${table} unavailable:`, error.message); return null; }
+        return data || [];
+      } catch (e) {
+        console.warn(`Table ${table} exception:`, e.message);
+        return null;
+      }
+    }
+
+    // ─── INIT ───────────────────────────────────────
+    async function init() {
+      const [
+        clients,
+        staff,
+        incidents,
+        controls,
+        actions,
+        history,
+        shifts,
+        visits,
+        clientRates
+      ] = await Promise.all([
+        safeSelect('residents', 'id, first_name, last_name, status, key_worker, care_needs, likes_preferences, created_at'),
+        safeSelect('staff', 'id, first_name, last_name, role, status, dbs_expiry_date'),
+        safeSelect('incidents', 'id, status, severity, incident_date'),
+        safeSelect('governance_controls', 'cqc_question, status'),
+        safeSelect('governance_actions', 'title, status, target_date, owner, completed_date', 'target_date'),
+        safeSelect('governance_score_history', 'snapshot_month, score', 'snapshot_month'),
+        safeSelect('rota_shifts', 'shift_date, start_time, end_time, staff_name, client_name, visit_type, status'),
+        safeSelect('visit_log', 'visit_date, hours, client_name'),
+        safeSelect('client_rates', 'client_name, hourly_rate')
+      ]);
+
+      render({
+        clients: clients || [],
+        staff: staff || [],
+        incidents: incidents || [],
+        controls: controls || [],
+        actions: actions || [],
+        history: history || [],
+        shifts: shifts || [],
+        visits: visits || [],
+        clientRates: clientRates || []
+      });
+    }
+
+    // ─── RENDER ─────────────────────────────────────
+    function render(d) {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const thisMonth = todayIso.slice(0, 7);
+      const activeClients = d.clients.filter(c => c.status === 'active');
+      const activeStaff = d.staff.filter(s => s.status === 'active');
+      const openIncidents = d.incidents.filter(i => i.status === 'open');
+
+      // Today's shifts
+      const todayShifts = d.shifts.filter(s => s.shift_date === todayIso)
+        .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+
+      // Staff on shift today (distinct names in today's shifts)
+      const onShiftNames = new Set(todayShifts.filter(s => s.staff_name).map(s => s.staff_name));
+
+      // Care hours today (from rota shifts, sum of hours where computed)
+      const hoursToday = todayShifts.reduce((sum, s) => {
+        if (s.start_time && s.end_time) {
+          const [sh, sm] = s.start_time.split(':').map(Number);
+          const [eh, em] = s.end_time.split(':').map(Number);
+          let hrs = (eh * 60 + em - sh * 60 - sm) / 60;
+          if (hrs < 0) hrs += 24;
+          return sum + hrs;
+        }
+        return sum;
+      }, 0);
+
+      // MTD revenue estimate
+      const monthVisits = d.visits.filter(v => v.visit_date && v.visit_date.startsWith(thisMonth));
+      const revenue = monthVisits.reduce((sum, v) => {
+        const rate = d.clientRates.find(cr => cr.client_name === v.client_name);
+        const hrs = parseFloat(v.hours || 0);
+        const r = parseFloat(rate?.hourly_rate || 0);
+        return sum + hrs * r;
+      }, 0);
+      const monthHours = monthVisits.reduce((sum, v) => sum + parseFloat(v.hours || 0), 0);
+
+      // Compliance score
+      const overallPct = scorePct(d.controls);
+      const overallStr = overallPct != null ? Math.round(overallPct) : '—';
+
+      // Attention items
+      const attention = [];
+      const criticalInc = openIncidents.filter(i => i.severity === 'critical' || i.severity === 'high');
+      if (criticalInc.length) attention.push(`${criticalInc.length} critical/high-severity incident(s) open`);
+      const overdueActions = d.actions.filter(a => a.status !== 'completed' && a.target_date && new Date(a.target_date) < new Date());
+      if (overdueActions.length) attention.push(`${overdueActions.length} governance action(s) overdue`);
+      const dbsExpiringSoon = d.staff.filter(s => {
+        if (!s.dbs_expiry_date) return false;
+        const days = Math.ceil((new Date(s.dbs_expiry_date) - new Date()) / 86400000);
+        return days >= 0 && days <= 30;
+      });
+      if (dbsExpiringSoon.length) attention.push(`${dbsExpiringSoon.length} DBS certificate(s) expiring within 30 days`);
+      const dbsExpired = d.staff.filter(s => s.dbs_expiry_date && new Date(s.dbs_expiry_date) < new Date());
+      if (dbsExpired.length) attention.push(`${dbsExpired.length} DBS certificate(s) EXPIRED — action urgently`);
+
+      // Business health
+      const health = attention.length === 0
+        ? { label: 'Good', icon: '✓', color: '#9FE1CB' }
+        : attention.length <= 2
+        ? { label: 'Attention needed', icon: '!', color: '#FFD57A' }
+        : { label: 'Action required', icon: '⚠', color: '#FF8B8A' };
+
+      // Build HTML
+      let html = '';
+
+      // ─── HERO ─────────────────────────
+      html += `
+        <div class="hero">
+          <div class="hero-flex">
+            <div>
+              <div class="hero-eyebrow">${todayString()}</div>
+              <div class="hero-title">${greeting()}, Edge</div>
+              <div class="hero-summary">
+                ${activeClients.length} client${activeClients.length === 1 ? '' : 's'} receiving care today ·
+                ${todayShifts.length} visit${todayShifts.length === 1 ? '' : 's'} scheduled ·
+                ${attention.length === 0 ? 'nothing needs your attention right now' : `${attention.length} item${attention.length === 1 ? '' : 's'} need${attention.length === 1 ? 's' : ''} your attention`}
+              </div>
+            </div>
+            <div class="hero-right">
+              <div class="label">Business health</div>
+              <div class="value">${health.label} <span style="color:${health.color};">${health.icon}</span></div>
+              <div class="sub">CQC ready · IG ${overallStr}${overallPct != null ? '%' : ''}</div>
+            </div>
+          </div>
+        </div>`;
+
+      // ─── KPI ROW ──────────────────────
+      html += '<div class="kpi-row">';
+
+      const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+      const newThisMonth = d.clients.filter(c => c.created_at && new Date(c.created_at) > monthAgo).length;
+      html += kpiCard('Active clients', activeClients.length, newThisMonth > 0 ? `+${newThisMonth} this month` : `${d.clients.length} total`);
+
+      html += kpiCard('Staff on shift', onShiftNames.size, `of ${activeStaff.length} active`);
+
+      html += kpiCard('Care hours today', hoursToday.toFixed(1), `across ${todayShifts.length} visit${todayShifts.length === 1 ? '' : 's'}`);
+
+      html += kpiCard('Open incidents', openIncidents.length,
+        openIncidents.length === 0 ? 'All clear' : `${criticalInc.length} critical`,
+        openIncidents.length === 0 ? 'good' : (criticalInc.length ? 'warn' : ''));
+
+      html += kpiCard('MTD hours', monthHours.toFixed(0), revenue > 0 ? `£${revenue.toFixed(0)} revenue` : `${new Date().toLocaleDateString('en-GB', { month: 'long' })}`);
+
+      html += kpiCard('IG score', overallPct != null ? `${overallStr}%` : '—', 'Improving', 'good');
+
+      html += '</div>';
+
+      // ─── ATTENTION ────────────────────
+      if (attention.length === 0) {
+        html += `
+          <div class="attention all-clear">
+            <div class="attention-title">✓ Everything is in order</div>
+            <div class="attention-list">No overdue actions, no open critical incidents, and all staff compliance is current. Enjoy your day.</div>
+          </div>`;
+      } else {
+        html += `
+          <div class="attention">
+            <div class="attention-title">⚠ Needs your attention today</div>
+            <div class="attention-list">
+              ${attention.map(a => `<div>• ${a}</div>`).join('')}
+            </div>
+          </div>`;
+      }
+
+      // ─── SCHEDULE + CLIENTS ───────────
+      html += '<div class="two-col">';
+
+      // Today's schedule
+      html += `<div class="panel schedule">
+        <div class="panel-header">
+          <div class="panel-title">Today's schedule</div>
+          <div class="panel-meta">${todayShifts.length} visit${todayShifts.length === 1 ? '' : 's'}</div>
+        </div>`;
+      if (todayShifts.length === 0) {
+        html += `<div class="empty">No visits scheduled for today.<br>Set up shifts in the Rota section of SimplifyCare.</div>`;
+      } else {
+        const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+        const nextShift = todayShifts.find(s => {
+          if (!s.start_time) return false;
+          const [h, m] = s.start_time.split(':').map(Number);
+          return h * 60 + m >= nowMinutes;
+        });
+        const visibleShifts = todayShifts.slice(0, 5);
+        visibleShifts.forEach(s => {
+          const isNext = nextShift && s === nextShift;
+          const time = s.start_time ? s.start_time.slice(0, 5) : '—';
+          const clientName = s.client_name || 'Unassigned';
+          const staffName = s.staff_name || '—';
+          const visitType = s.visit_type || 'Visit';
+          const statusMarker = s.status === 'completed' ? '<span class="badge-done">✓ Done</span>'
+            : isNext ? '<span class="badge badge-next">Next</span>'
+            : '<span class="badge-pending">Scheduled</span>';
+          html += `
+            <div class="row ${isNext ? 'next' : ''}">
+              <span class="time">${time}</span>
+              <div>
+                <div class="row-name">${clientName}</div>
+                <div class="row-sub">${visitType} · ${staffName}</div>
+              </div>
+              ${statusMarker}
+            </div>`;
+        });
+        if (todayShifts.length > 5) {
+          html += `<div class="empty" style="padding-top:12px;">+ ${todayShifts.length - 5} more visits later today</div>`;
+        }
+      }
+      html += '</div>';
+
+      // Client status
+      html += `<div class="panel clients">
+        <div class="panel-header">
+          <div class="panel-title">Client status</div>
+          <div class="panel-meta">${activeClients.length} active</div>
+        </div>`;
+      if (activeClients.length === 0) {
+        html += `<div class="empty">No active clients yet.<br>Add clients in SimplifyCare and they'll appear here.</div>`;
+      } else {
+        activeClients.slice(0, 8).forEach(c => {
+          const name = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+          const isNew = c.created_at && (new Date() - new Date(c.created_at)) < 30 * 86400000;
+          const kw = c.key_worker ? `Key worker: ${c.key_worker}` : 'No key worker assigned';
+          html += `
+            <div class="row">
+              <div>
+                <div class="row-name">${name} ${isNew ? '<span class="badge badge-new">New</span>' : ''}</div>
+                <div class="row-sub">${kw}</div>
+              </div>
+              <span class="dot stable" title="Stable"></span>
+              <span class="badge-done" style="color:var(--muted);">Active</span>
+            </div>`;
+        });
+        if (activeClients.length > 8) {
+          html += `<div class="empty" style="padding-top:12px;">+ ${activeClients.length - 8} more clients</div>`;
+        }
+      }
+      html += '</div>';
+
+      html += '</div>'; // end two-col
+
+      // ─── COMPLIANCE + STAFF ───────────
+      html += '<div class="two-col">';
+
+      // Compliance snapshot
+      html += `<div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Compliance snapshot</div>
+          <a class="panel-link" href="governance.html" target="_blank">Full dashboard →</a>
+        </div>`;
+      if (d.controls.length === 0) {
+        html += `<div class="empty">Governance data not yet available.<br>Once the governance tables are populated, the CQC five-questions status will appear here.</div>`;
+      } else {
+        html += '<div class="compliance-grid">';
+        Object.keys(CQC_LABELS).forEach(q => {
+          const cs = d.controls.filter(c => c.cqc_question === q);
+          const pct = scorePct(cs);
+          const r = ratingFromScore(pct);
+          html += `
+            <div class="comp-card ${r.cls}">
+              <div class="comp-label">${CQC_LABELS[q]}</div>
+              <div class="comp-rating ${r.cls}">${r.label}</div>
+            </div>`;
+        });
+        html += '</div>';
+        const goodControls = d.controls.filter(c => c.status === 'good').length;
+        const pendingCount = d.actions.filter(a => a.status !== 'completed').length;
+        html += `<div class="compliance-summary">
+          ${goodControls} of ${d.controls.length} controls active · ${pendingCount} pending action${pendingCount === 1 ? '' : 's'} · Overall IG score ${overallStr}${overallPct != null ? '%' : ''}
+        </div>`;
+      }
+      html += '</div>';
+
+      // Staff status
+      html += `<div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Staff status</div>
+          <div class="panel-meta">${activeStaff.length} active</div>
+        </div>`;
+      if (activeStaff.length === 0) {
+        html += `<div class="empty">No staff records yet.<br>Add staff in SimplifyCare and they'll appear here.</div>`;
+      } else {
+        activeStaff.slice(0, 5).forEach(s => {
+          const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
+          const role = s.role || 'Staff member';
+          const isOnShift = onShiftNames.has(name);
+          const marker = isOnShift ? '<span class="badge-done">On shift</span>' : '<span class="badge-pending">Available</span>';
+          html += `
+            <div class="row" style="grid-template-columns: 1fr auto;">
+              <div>
+                <div class="row-name">${name}</div>
+                <div class="row-sub">${role}</div>
+              </div>
+              ${marker}
+            </div>`;
+        });
+        if (dbsExpiringSoon.length > 0) {
+          html += `<div class="row" style="grid-template-columns: 1fr auto;">
+            <div class="row-sub" style="color:var(--amber-dark);">⚠ ${dbsExpiringSoon.length} DBS renewal${dbsExpiringSoon.length === 1 ? '' : 's'} due within 30 days</div>
+            <span></span>
+          </div>`;
+        }
+      }
+      html += '</div>';
+
+      html += '</div>'; // end two-col
+
+      // ─── FINANCIAL ────────────────────
+      html += `
+        <div class="financial">
+          <div class="financial-header">
+            <div class="financial-eyebrow">This month at a glance — ${new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</div>
+          </div>
+          <div class="financial-grid">
+            <div>
+              <div class="fin-label">Hours delivered</div>
+              <div class="fin-value">${monthHours.toFixed(1)}</div>
+            </div>
+            <div>
+              <div class="fin-label">Revenue to date</div>
+              <div class="fin-value">£${revenue.toFixed(0)}</div>
+            </div>
+            <div>
+              <div class="fin-label">Active clients</div>
+              <div class="fin-value">${activeClients.length}</div>
+            </div>
+            <div>
+              <div class="fin-label">Visits logged</div>
+              <div class="fin-value">${monthVisits.length}</div>
+            </div>
+          </div>
+        </div>`;
+
+      // ─── FOOTER ──────────────────────
+      html += `
+        <div class="footer">
+          Edge Homecare Services Ltd · ICO ZB707286 · Live data from Supabase<br>
+          <a href="/">Back to SimplifyCare</a> · <a href="/governance.html">Governance dashboard</a>
+        </div>`;
+
+      document.getElementById('content').innerHTML = html;
+    }
+
+    function kpiCard(label, value, sub, subCls) {
+      return `
+        <div class="kpi-card">
+          <div class="kpi-label">${label}</div>
+          <div class="kpi-value">${value}</div>
+          <div class="kpi-sub ${subCls || ''}">${sub}</div>
+        </div>`;
+    }
+
+    init().catch(err => {
+      document.getElementById('content').innerHTML = `
+        <div style="background:#fee; border:1px solid #fcc; padding:1rem; border-radius:8px; color:#a00;">
+          <strong>Couldn't load your command centre:</strong> ${err.message}<br>
+          <br>Please check your internet connection and refresh.
+        </div>`;
+      console.error(err);
+    });
+  </script>
+
+
+</body></html>
