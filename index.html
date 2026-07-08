@@ -2979,7 +2979,7 @@
     const el = document.getElementById(elId);
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="emoji">📁</div><p>No documents in this category</p></div>'; return; }
     el.innerHTML = list.map(d => `
-      <div class="doc-card" onclick="${d.document_url ? `window.open('${d.document_url}','_blank')` : 'alert(\"No file attached to this document.\")'}">
+      <div class="doc-card" onclick="${d.document_url ? `openDocumentFile('${d.id}')` : 'alert(\"No file attached to this document.\")'}">
         <div class="doc-icon">${docIcon(d.category)}</div>
         <div class="doc-name">${d.document_name || 'Untitled'}</div>
         <div class="doc-meta">${d.version ? 'v' + d.version : ''} ${formatDate(d.review_date) !== '—' ? '· Review: ' + formatDate(d.review_date) : ''}</div>
@@ -3001,6 +3001,7 @@
     saveBtn.disabled = true;
 
     let fileUrl = val('d-url');
+    let filePath = null;
 
     // Handle file upload if a file was selected
     const fileInput = document.getElementById('d-file');
@@ -3008,7 +3009,7 @@
     if (file) {
       const category = val('d-category');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const filePath = `${category}/${Date.now()}_${safeName}`;
+      filePath = `${category}/${Date.now()}_${safeName}`;
       const { data: uploadData, error: uploadError } = await db.storage
         .from('documents')
         .upload(filePath, file, { upsert: true });
@@ -3018,8 +3019,7 @@
         saveBtn.disabled = false;
         return;
       }
-      const { data: urlData } = db.storage.from('documents').getPublicUrl(filePath);
-      fileUrl = urlData.publicUrl;
+      fileUrl = filePath;
     }
 
     const payload = {
@@ -3043,6 +3043,21 @@
     fileInput.value = '';
     document.getElementById('d-file-label').textContent = 'Choose file...';
     loadDocuments();
+  }
+
+  async function openDocumentFile(id) {
+    const { data: doc, error: fetchError } = await db.from('documents').select('document_url').eq('id', id).single();
+    if (fetchError || !doc || !doc.document_url) { alert('No file attached to this document.'); return; }
+    const url = doc.document_url;
+    if (/^https?:\/\//i.test(url)) {
+      // A manually pasted external link — open directly
+      window.open(url, '_blank');
+      return;
+    }
+    // An uploaded file — stored as a path, needs a fresh signed URL
+    const { data, error } = await db.storage.from('documents').createSignedUrl(url, 60);
+    if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
+    window.open(data.signedUrl, '_blank');
   }
 
   // ── CQC DASHBOARD ──
@@ -4417,19 +4432,26 @@
   async function savePolicy(){
     const name=document.getElementById('pol-name').value.trim();
     if(!name){alert('Please enter a policy name');return;}
-    let fileUrl = '';
+    let filePath = '';
     const file = document.getElementById('pol-file').files[0];
     if (file) {
-      const path = `policies/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
-      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+      filePath = `policies/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
+      if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,fileUrl});
+    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,filePath});
     govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies();
     ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('pol-file').value=''; document.getElementById('pol-file-label').textContent='Click to upload policy document';
   }
-  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.fileUrl?`<a href="${p.fileUrl}" target="_blank" style="color:var(--teal);font-size:12px;">📎 Open</a>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
+  async function openPolicyFile(id){
+    const p = govStore.policies.find(x=>x.id===id);
+    if (!p || !p.filePath) { alert('No file attached to this policy.'); return; }
+    const { data, error } = await db.storage.from('documents').createSignedUrl(p.filePath, 60);
+    if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
 
   // KPIs
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
