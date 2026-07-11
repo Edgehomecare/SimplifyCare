@@ -4069,6 +4069,9 @@
     ['sh-date','sh-staff','sh-client','sh-start','sh-end','sh-hours','sh-notes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('sh-status').value = 'scheduled';
     closeModal('shift-modal');
+    // Jump the rota view to the shift's date so a newly added shift is always visible right away,
+    // even if it's outside the week/month currently being viewed.
+    rotaCurrentDate = new Date(payload.shift_date + 'T00:00:00');
     await loadShifts();
   }
 
