@@ -2988,7 +2988,18 @@
           ${statusBadge(d.status)}
           ${d.document_url ? '<span style="font-size:11px;color:var(--teal);">📎 File attached</span>' : '<span style="font-size:11px;color:var(--muted);">No file</span>'}
         </div>
+        <button class="btn btn-danger" style="margin-top:10px;padding:4px 10px;font-size:12px;width:100%;" onclick="event.stopPropagation(); deleteDocument('${d.id}', '${(d.document_url || '').replace(/'/g, "\\'")}')">Delete</button>
       </div>`).join('');
+  }
+
+  async function deleteDocument(id, filePath) {
+    if (!confirm('Delete this document? This cannot be undone.')) return;
+    if (filePath) {
+      await db.storage.from('documents').remove([filePath]);
+    }
+    const { error } = await db.from('documents').delete().eq('id', id);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    loadDocuments();
   }
 
   async function saveDocument() {
