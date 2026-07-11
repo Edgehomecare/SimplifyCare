@@ -1815,6 +1815,16 @@
   let allResidents = [];
   let allNotes = [];
 
+  // Returns a date as YYYY-MM-DD using the browser's LOCAL calendar date,
+  // instead of toISOString() which converts to UTC and can shift the date
+  // backward by a day during British Summer Time (or any UTC+ offset).
+  function localISODate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   // ── AUTH ──
   async function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
@@ -1906,7 +1916,7 @@
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     document.querySelector('#page-dashboard .page-header h1').textContent = `${greeting} 👋`;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = localISODate(new Date());
     const [residents, staff, incidents, notes, docs] = await Promise.all([
       db.from('residents').select('id', { count: 'exact' }).eq('status', 'active'),
       db.from('staff').select('id', { count: 'exact' }).eq('status', 'active'),
@@ -2999,7 +3009,7 @@
   // ── DAILY NOTES ──
   function setTodayDate() {
     const el = document.getElementById('notes-date-filter');
-    if (!el.value) el.value = new Date().toISOString().split('T')[0];
+    if (!el.value) el.value = localISODate(new Date());
   }
 
   async function loadNotes() {
@@ -3334,7 +3344,7 @@
   function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
   function formatDate(d) { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
   function formatDateTime(d) { if (!d) return '—'; try { return new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }); } catch { return d; } }
-  function nextDay(d) { const nd = new Date(d); nd.setDate(nd.getDate() + 1); return nd.toISOString().split('T')[0]; }
+  function nextDay(d) { const nd = new Date(d); nd.setDate(nd.getDate() + 1); return localISODate(nd); }
   function docIcon(cat) { return { policy: '📜', care_plan: '📋', form: '📝', risk_assessment: '⚠️', training: '📚' }[cat] || '📄'; }
 
   function statusBadge(s) {
@@ -3391,7 +3401,7 @@
       Promise.resolve(govStore.supervisions),
       Promise.resolve(govStore.medAudits),
       Promise.resolve(govStore.kpis),
-      db.from('rota_shifts').select('id, shift_date, status').gte('shift_date', today.toISOString().split('T')[0]).lte('shift_date', new Date(today.getTime() + 7*86400000).toISOString().split('T')[0])
+      db.from('rota_shifts').select('id, shift_date, status').gte('shift_date', localISODate(today)).lte('shift_date', localISODate(new Date(today.getTime() + 7*86400000)))
     ]);
 
     const staffList = staff.data || [];
@@ -3400,7 +3410,7 @@
     const notesCount = notes.data?.length || 0;
     const shiftsData = shifts.data || [];
 
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = localISODate(today);
     const thisMonth = today.toISOString().slice(0,7);
     const thisYear = today.getFullYear();
 
@@ -3819,7 +3829,7 @@
     rotaCurrentDate = new Date();
     await loadShifts();
     await populateRotaDataLists();
-    document.getElementById('sh-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('sh-date').value = localISODate(new Date());
   }
 
   async function loadShifts() {
@@ -3830,8 +3840,8 @@
     end.setMonth(end.getMonth() + 2);
     const { data, error } = await db.from('rota_shifts')
       .select('*')
-      .gte('shift_date', start.toISOString().split('T')[0])
-      .lte('shift_date', end.toISOString().split('T')[0])
+      .gte('shift_date', localISODate(start))
+      .lte('shift_date', localISODate(end))
       .order('shift_date').order('start_time');
     if (error) { console.error('Rota load error:', error); return; }
     allShifts = data || [];
@@ -3853,7 +3863,7 @@
       return d;
     });
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = localISODate(new Date());
     const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -3863,8 +3873,8 @@
       `${monday.getDate()} ${monthNames[monday.getMonth()]} — ${endDay.getDate()} ${monthNames[endDay.getMonth()]} ${endDay.getFullYear()}`;
 
     // Get unique staff for this week
-    const weekStart = monday.toISOString().split('T')[0];
-    const weekEnd = days[6].toISOString().split('T')[0];
+    const weekStart = localISODate(monday);
+    const weekEnd = localISODate(days[6]);
     const weekShifts = allShifts.filter(s => s.shift_date >= weekStart && s.shift_date <= weekEnd);
     const staffNames = [...new Set(weekShifts.map(s => s.staff_name))].sort();
 
@@ -3883,7 +3893,7 @@
     // Header row
     html += `<div class="rota-header" style="background:var(--slate);">Staff</div>`;
     days.forEach((d, i) => {
-      const ds = d.toISOString().split('T')[0];
+      const ds = localISODate(d);
       const isToday = ds === todayStr;
       html += `<div class="rota-header ${isToday ? 'today' : ''}">
         ${dayNames[i]}<br><span style="font-size:14px;font-weight:400;">${d.getDate()}</span>
@@ -3894,7 +3904,7 @@
     staffNames.forEach(staff => {
       html += `<div style="background:var(--bg);padding:8px;font-size:12px;font-weight:700;color:var(--navy);display:flex;align-items:flex-start;border-bottom:1px solid var(--border);">${staff}</div>`;
       days.forEach(d => {
-        const ds = d.toISOString().split('T')[0];
+        const ds = localISODate(d);
         const isToday = ds === todayStr;
         const dayShifts = allShifts.filter(s => s.shift_date === ds && s.staff_name === staff);
         html += `<div class="rota-cell ${isToday ? 'today-col' : ''}" style="border-bottom:1px solid var(--border);">`;
@@ -3916,7 +3926,7 @@
     // Empty rows for adding new staff
     html += `<div style="background:var(--bg);padding:8px;font-size:11px;color:var(--muted);display:flex;align-items:center;border-bottom:1px solid var(--border);">Other staff</div>`;
     days.forEach(d => {
-      const ds = d.toISOString().split('T')[0];
+      const ds = localISODate(d);
       html += `<div class="rota-cell" style="border-bottom:1px solid var(--border);">
         <div style="text-align:center;margin-top:8px;">
           <button onclick="openShiftForDate('${ds}','')" style="background:none;border:1px dashed var(--border);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--muted);cursor:pointer;">+ Add</button>
@@ -3940,7 +3950,7 @@
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDow = (firstDay.getDay() + 6) % 7; // Mon=0
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = localISODate(new Date());
 
     let html = `<div class="monthly-cal">`;
     dayNames.forEach(d => { html += `<div class="cal-day-header">${d}</div>`; });
@@ -3953,7 +3963,7 @@
     // Day cells
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const d = new Date(year, month, day);
-      const ds = d.toISOString().split('T')[0];
+      const ds = localISODate(d);
       const isToday = ds === todayStr;
       const dayShifts = allShifts.filter(s => s.shift_date === ds);
       const showMax = 3;
@@ -4182,7 +4192,7 @@
     if (month) {
       const [y, m] = month.split('-');
       const start = `${y}-${m}-01`;
-      const end = new Date(y, m, 0).toISOString().split('T')[0];
+      const end = localISODate(new Date(y, m, 0));
       query = query.gte('visit_date', start).lte('visit_date', end);
     }
     const { data, error } = await query;
@@ -4386,7 +4396,7 @@
     if (!month) return;
     const [y, m] = month.split('-');
     const start = `${y}-${m}-01`;
-    const end = new Date(y, m, 0).toISOString().split('T')[0];
+    const end = localISODate(new Date(y, m, 0));
     const { data: visits } = await db.from('visit_log').select('*').gte('visit_date', start).lte('visit_date', end);
     const { data: staffList } = await db.from('staff_full').select('first_name, last_name, role, hourly_rate').order('last_name');
     const log = visits || [];
@@ -4445,7 +4455,7 @@
     if (!month) return;
     const [y, m] = month.split('-');
     const start = `${y}-${m}-01`;
-    const end = new Date(y, m, 0).toISOString().split('T')[0];
+    const end = localISODate(new Date(y, m, 0));
     const { data: visits } = await db.from('visit_log').select('*').gte('visit_date', start).lte('visit_date', end);
     const { data: clients } = await db.from('client_rates').select('*');
     const log = visits || [];
