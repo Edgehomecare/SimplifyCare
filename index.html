@@ -1571,6 +1571,16 @@
         <div class="form-group"><label>Level</label><input id="s-qual1-level" placeholder="e.g. Level 2" /></div>
         <div class="form-group"><label>Awarding Body</label><input id="s-qual1-body" placeholder="e.g. City & Guilds" /></div>
         <div class="form-group"><label>Date Achieved</label><input type="date" id="s-qual1-date" /></div>
+        <div class="form-group full" style="margin-top:4px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+          <label style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px;">🎓 Certificate</label>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:white;margin-top:8px;" onclick="document.getElementById('s-qual1-cert-file').click()">
+            <div style="font-size:22px;">📄</div>
+            <div id="s-qual1-cert-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload certificate (PDF or image)</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Stored in private encrypted bucket · 10MB max</div>
+            <input type="file" id="s-qual1-cert-file" accept="image/jpeg,image/png,image/heic,application/pdf" style="display:none;" onchange="document.getElementById('s-qual1-cert-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+          </div>
+          <div id="s-qual1-cert-existing" style="display:none;margin-top:8px;padding:8px 12px;background:#dcfce7;border-radius:6px;font-size:12px;color:#15803d;"></div>
+        </div>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
       <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Qualification 2</div>
@@ -1579,6 +1589,16 @@
         <div class="form-group"><label>Level</label><input id="s-qual2-level" placeholder="e.g. Level 2" /></div>
         <div class="form-group"><label>Awarding Body</label><input id="s-qual2-body" placeholder="e.g. City & Guilds" /></div>
         <div class="form-group"><label>Date Achieved</label><input type="date" id="s-qual2-date" /></div>
+        <div class="form-group full" style="margin-top:4px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+          <label style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px;">🎓 Certificate</label>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:white;margin-top:8px;" onclick="document.getElementById('s-qual2-cert-file').click()">
+            <div style="font-size:22px;">📄</div>
+            <div id="s-qual2-cert-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload certificate (PDF or image)</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Stored in private encrypted bucket · 10MB max</div>
+            <input type="file" id="s-qual2-cert-file" accept="image/jpeg,image/png,image/heic,application/pdf" style="display:none;" onchange="document.getElementById('s-qual2-cert-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+          </div>
+          <div id="s-qual2-cert-existing" style="display:none;margin-top:8px;padding:8px 12px;background:#dcfce7;border-radius:6px;font-size:12px;color:#15803d;"></div>
+        </div>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
       <div style="font-weight:700;font-size:13px;color:var(--teal);margin-bottom:12px;">Qualification 3</div>
@@ -1587,6 +1607,16 @@
         <div class="form-group"><label>Level</label><input id="s-qual3-level" placeholder="e.g. Level 2" /></div>
         <div class="form-group"><label>Awarding Body</label><input id="s-qual3-body" placeholder="e.g. City & Guilds" /></div>
         <div class="form-group"><label>Date Achieved</label><input type="date" id="s-qual3-date" /></div>
+        <div class="form-group full" style="margin-top:4px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+          <label style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px;">🎓 Certificate</label>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:white;margin-top:8px;" onclick="document.getElementById('s-qual3-cert-file').click()">
+            <div style="font-size:22px;">📄</div>
+            <div id="s-qual3-cert-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload certificate (PDF or image)</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Stored in private encrypted bucket · 10MB max</div>
+            <input type="file" id="s-qual3-cert-file" accept="image/jpeg,image/png,image/heic,application/pdf" style="display:none;" onchange="document.getElementById('s-qual3-cert-file-label').textContent=this.files[0]?.name||'Click to upload'" />
+          </div>
+          <div id="s-qual3-cert-existing" style="display:none;margin-top:8px;padding:8px 12px;background:#dcfce7;border-radius:6px;font-size:12px;color:#15803d;"></div>
+        </div>
       </div>
       <div class="form-group full" style="margin-top:16px;"><label>Other Qualifications / Certificates</label><textarea id="s-other-quals" placeholder="List any other relevant qualifications..."></textarea></div>
     </div>
@@ -2763,6 +2793,23 @@
       payload.id_document_uploaded_at = new Date().toISOString();
       payload.id_document_uploaded_by = currentUser?.email || 'unknown';
     }
+
+    // Handle qualification certificate uploads to private bucket
+    for (const n of [1, 2, 3]) {
+      const certInput = document.getElementById(`s-qual${n}-cert-file`);
+      const certFile = certInput?.files[0];
+      if (certFile) {
+        if (certFile.size > 10485760) { alert(`Qualification ${n} certificate must be 10MB or smaller.`); return; }
+        const editIdForCert = document.getElementById('s-edit-id').value;
+        const safeCertName = certFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const certPath = `${editIdForCert || 'new'}/qual${n}_${Date.now()}_${safeCertName}`;
+        const { error: certUpErr } = await db.storage
+          .from('staff-id-documents')
+          .upload(certPath, certFile, { upsert: true });
+        if (certUpErr) { alert(`Qualification ${n} certificate upload failed: ` + certUpErr.message); return; }
+        payload[`qual${n}_cert_path`] = certPath;
+      }
+    }
     
     const editId = document.getElementById('s-edit-id').value;
     let error, staffId;
@@ -2845,6 +2892,17 @@
     [1,2,3].forEach(n => {
       sf([`s-qual${n}-name`,`qual${n}_name`]); sf([`s-qual${n}-level`,`qual${n}_level`]);
       sf([`s-qual${n}-body`,`qual${n}_awarding_body`]); sf([`s-qual${n}-date`,`qual${n}_date`]);
+      document.getElementById(`s-qual${n}-cert-file`).value = '';
+      document.getElementById(`s-qual${n}-cert-file-label`).textContent = 'Click to upload certificate (PDF or image)';
+      const certEl = document.getElementById(`s-qual${n}-cert-existing`);
+      const certPath = s[`qual${n}_cert_path`];
+      if (certPath) {
+        certEl.style.display = 'block';
+        certEl.innerHTML = `📎 Certificate on file — <button type="button" onclick="viewStaffIdDoc('${certPath.replace(/'/g, "\\'")}')" style="background:none;border:none;color:var(--teal);text-decoration:underline;cursor:pointer;padding:0;font-size:12px;">View file</button>`;
+      } else {
+        certEl.style.display = 'none';
+        certEl.innerHTML = '';
+      }
     });
     sf(['s-other-quals','other_qualifications']);
     // Health
