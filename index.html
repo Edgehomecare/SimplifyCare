@@ -4100,11 +4100,11 @@
 
   async function populateRotaDataLists() {
     const { data: staff } = await db.from('staff').select('first_name, last_name').order('last_name');
-    const { data: clients } = await db.from('client_rates').select('client_name').order('client_name');
+    const { data: clients } = await db.from('residents').select('first_name, last_name').order('last_name');
     const sl = document.getElementById('sh-staff-list');
     const cl = document.getElementById('sh-client-list');
     if (sl && staff) sl.innerHTML = staff.map(s => `<option value="${s.first_name} ${s.last_name}">`).join('');
-    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.client_name}">`).join('');
+    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.first_name} ${c.last_name}">`).join('');
   }
 
   // Auto-calculate hours in shift modal
@@ -4232,11 +4232,11 @@
   }
 
   async function populateVisitDataLists() {
-    const { data: clients } = await db.from('client_rates').select('client_name').order('client_name');
+    const { data: clients } = await db.from('residents').select('first_name, last_name').order('last_name');
     const { data: staff } = await db.from('staff').select('first_name, last_name').order('last_name');
     const cl = document.getElementById('v-client-list');
     const sl = document.getElementById('v-staff-list');
-    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.client_name}">`).join('');
+    if (cl && clients) cl.innerHTML = clients.map(c => `<option value="${c.first_name} ${c.last_name}">`).join('');
     if (sl && staff) sl.innerHTML = staff.map(s => `<option value="${s.first_name} ${s.last_name}">`).join('');
   }
 
