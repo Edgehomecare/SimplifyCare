@@ -1087,7 +1087,7 @@
       <div class="form-group"><label>Visit Type</label>
         <select id="sh-type">
           <option>Regular Visit</option><option>Personal Care</option><option>Medication</option>
-          <option>Check-in</option><option>Night Care</option><option>Hospital Visit</option>
+          <option>Check-in</option><option>Night Care</option><option>Sleep-In</option><option>Waking Night</option><option>Hospital Visit</option>
           <option>Day Off</option><option>Annual Leave</option><option>Sick Leave</option><option>Other</option>
         </select>
       </div>
@@ -1101,6 +1101,7 @@
       </div>
       <div class="form-group"><label>Start Time</label><input type="time" id="sh-start" /></div>
       <div class="form-group"><label>End Time</label><input type="time" id="sh-end" /></div>
+      <div class="form-group full" style="margin-top:-8px;"><span style="font-size:11px;color:var(--muted);">For Sleep-In or Waking Night, times are optional — leave blank if the shift is an overnight session rather than fixed hours.</span></div>
       <div class="form-group"><label>Hours</label><input id="sh-hours" placeholder="Auto-calculated" readonly style="background:var(--bg);" /></div>
       <div class="form-group"><label>Status</label>
         <select id="sh-status">
@@ -3854,6 +3855,23 @@
     else renderRotaList();
   }
 
+  // ── STAFF COLOUR CODING ──
+  // Deterministic colour per staff member so each person is visually distinct on the rota,
+  // regardless of shift status. Status is still shown via strikethrough for cancelled shifts.
+  const STAFF_BG = ['#dbeafe','#fce7f3','#dcfce7','#fef3c7','#ede9fe','#ffedd5','#e0f2fe','#fee2e2','#d1fae5','#f3e8ff','#fef9c3','#e0e7ff','#cffafe','#fae8ff'];
+  const STAFF_BORDER = ['#3b82f6','#ec4899','#10b981','#f59e0b','#8b5cf6','#f97316','#0ea5e9','#ef4444','#059669','#a855f7','#ca8a04','#6366f1','#06b6d4','#d946ef'];
+  const STAFF_TEXT = ['#1e40af','#9d174d','#065f46','#92400e','#5b21b6','#9a3412','#075985','#991b1b','#065f46','#6b21a8','#854d0e','#3730a3','#155e75','#86198f'];
+  function staffColorIndex(name) {
+    const n = (name || '').trim().toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < n.length; i++) { hash = (hash * 31 + n.charCodeAt(i)) >>> 0; }
+    return hash % STAFF_BG.length;
+  }
+  function staffColorStyle(name) {
+    const idx = staffColorIndex(name);
+    return `background:${STAFF_BG[idx]};border-left:3px solid ${STAFF_BORDER[idx]};color:${STAFF_TEXT[idx]};`;
+  }
+
   // ── WEEKLY VIEW ──
   function renderWeekly() {
     const monday = getMonday(rotaCurrentDate);
@@ -3909,7 +3927,7 @@
         const dayShifts = allShifts.filter(s => s.shift_date === ds && s.staff_name === staff);
         html += `<div class="rota-cell ${isToday ? 'today-col' : ''}" style="border-bottom:1px solid var(--border);">`;
         dayShifts.forEach(s => {
-          html += `<div class="shift-card ${s.status || 'scheduled'}" onclick="editShift('${s.id}')">
+          html += `<div class="shift-card ${s.status || 'scheduled'}" style="${staffColorStyle(staff)}" onclick="editShift('${s.id}')">
             <div class="shift-staff">${s.start_time ? s.start_time.slice(0,5) : ''}${s.end_time ? '–'+s.end_time.slice(0,5) : ''}</div>
             ${s.client_name ? `<div class="shift-detail">👤 ${s.client_name}</div>` : ''}
             <div class="shift-detail">📋 ${s.visit_type || ''}</div>
@@ -3972,7 +3990,7 @@
         <div class="cal-date ${isToday ? 'today-date' : ''}">${day}</div>`;
 
       dayShifts.slice(0, showMax).forEach(s => {
-        html += `<div class="cal-shift ${s.status || 'scheduled'}" onclick="editShift('${s.id}')" title="${s.staff_name} — ${s.client_name || ''} — ${s.visit_type || ''}">
+        html += `<div class="cal-shift ${s.status || 'scheduled'}" style="${staffColorStyle(s.staff_name)}" onclick="editShift('${s.id}')" title="${s.staff_name} — ${s.client_name || ''} — ${s.visit_type || ''}">
           <strong>${s.staff_name ? s.staff_name.split(' ')[0] : ''}</strong>${s.client_name ? ' · ' + s.client_name.split(' ')[0] : ''}
         </div>`;
       });
