@@ -848,7 +848,7 @@
         <!-- POLICIES -->
         <div id="gov-policies" class="gov-section">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Policies &amp; procedures register</div><button class="btn-add" onclick="openGovModal('policy-modal')">+ Add policy</button></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Policies &amp; procedures register</div><button class="btn-add" onclick="openPolicyModal()">+ Add policy</button></div>
             <div class="table-wrap"><table><thead><tr><th>Policy name</th><th>Category</th><th>Version</th><th>Owner</th><th>Last reviewed</th><th>Next review</th><th>Status</th><th>File</th><th></th></tr></thead>
             <tbody id="policy-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr></tbody></table></div>
           </div>
@@ -1124,6 +1124,12 @@
 <div id="policy-modal" class="modal-overlay"><div class="modal">
   <div class="modal-header"><h2>Add policy / procedure</h2><button class="modal-close" onclick="closeGovModal('policy-modal')">✕</button></div>
   <div class="form-grid">
+    <div class="form-group full" style="background:var(--bg);border-radius:8px;padding:12px;">
+      <label>Use a file already uploaded in Documents → Policies</label>
+      <select id="pol-doc-link" onchange="handlePolicyDocLink()"><option value="">— Upload a new file instead —</option></select>
+      <div id="pol-doc-link-hint" style="font-size:11px;color:var(--muted);margin-top:4px;">Picking one fills in the details below and reuses that file, so nothing gets uploaded twice.</div>
+    </div>
+    <input type="hidden" id="pol-linked-filepath" />
     <div class="form-group full"><label>Policy name *</label><input id="pol-name" placeholder="e.g. Medication management policy" /></div>
     <div class="form-group"><label>Category</label><select id="pol-cat"><option>Health &amp; safety</option><option>Medication</option><option>Safeguarding</option><option>Infection control</option><option>HR &amp; staffing</option><option>Care delivery</option><option>Governance</option><option>Equality &amp; diversity</option><option>Other</option></select></div>
     <div class="form-group"><label>Version</label><input id="pol-ver" placeholder="e.g. v1.2" /></div>
@@ -1132,7 +1138,7 @@
     <div class="form-group"><label>Next review due</label><input type="date" id="pol-due" /></div>
     <div class="form-group"><label>Status</label><select id="pol-status"><option>Current</option><option>Due for review</option><option>Overdue</option><option>Archived</option></select></div>
     <div class="form-group full"><label>Notes</label><textarea id="pol-notes" placeholder="Any additional notes..."></textarea></div>
-    <div class="form-group full"><label>Upload File (optional)</label>
+    <div class="form-group full" id="pol-upload-wrap"><label>Upload File (optional)</label>
       <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('pol-file').click()">
         <div style="font-size:22px;">📎</div>
         <div id="pol-file-label" style="font-size:13px;color:var(--muted);margin-top:4px;">Click to upload policy document</div>
@@ -4597,29 +4603,73 @@
   }
 
   // Policies
+  let _policyDocsCache = [];
+  async function openPolicyModal() {
+    await populatePolicyDocLinkOptions();
+    document.getElementById('pol-doc-link').value = '';
+    document.getElementById('pol-linked-filepath').value = '';
+    document.getElementById('pol-upload-wrap').style.display = '';
+    document.getElementById('pol-file-label').textContent = 'Click to upload policy document';
+    openGovModal('policy-modal');
+  }
+  async function populatePolicyDocLinkOptions() {
+    const sel = document.getElementById('pol-doc-link');
+    const { data, error } = await db.from('documents').select('*').eq('category', 'policy').order('document_name');
+    _policyDocsCache = data || [];
+    const already = new Set(govStore.policies.map(p => p.linkedDocId).filter(Boolean));
+    sel.innerHTML = '<option value="">— Upload a new file instead —</option>' +
+      _policyDocsCache.map(d => `<option value="${d.id}" ${already.has(d.id) ? 'disabled' : ''}>${d.document_name || 'Untitled'}${d.document_url ? '' : ' (no file attached)'}${already.has(d.id) ? ' — already in register' : ''}</option>`).join('');
+    if (error) console.error('Could not load Documents → Policies for linking:', error);
+  }
+  function handlePolicyDocLink() {
+    const id = document.getElementById('pol-doc-link').value;
+    const uploadWrap = document.getElementById('pol-upload-wrap');
+    if (!id) {
+      document.getElementById('pol-linked-filepath').value = '';
+      uploadWrap.style.display = '';
+      return;
+    }
+    const doc = _policyDocsCache.find(d => String(d.id) === String(id));
+    if (!doc) return;
+    document.getElementById('pol-name').value = doc.document_name || '';
+    if (doc.version) document.getElementById('pol-ver').value = doc.version;
+    if (doc.owner) document.getElementById('pol-owner').value = doc.owner;
+    if (doc.review_date) document.getElementById('pol-reviewed').value = doc.review_date;
+    const statusMap = { current: 'Current', under_review: 'Due for review', archived: 'Archived' };
+    if (doc.status && statusMap[doc.status]) document.getElementById('pol-status').value = statusMap[doc.status];
+    if (doc.notes) document.getElementById('pol-notes').value = doc.notes;
+    document.getElementById('pol-linked-filepath').value = doc.document_url || '';
+    // The file already lives in Documents, so hide the upload box to avoid uploading it a second time.
+    uploadWrap.style.display = 'none';
+  }
   async function savePolicy(){
     const name=document.getElementById('pol-name').value.trim();
     if(!name){alert('Please enter a policy name');return;}
-    let filePath = '';
+    const linkedDocId = document.getElementById('pol-doc-link').value || null;
+    const linkedPath = document.getElementById('pol-linked-filepath').value;
+    let filePath = linkedPath || '';
     const file = document.getElementById('pol-file').files[0];
     if (file) {
       filePath = `policies/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
       const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
       if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,filePath});
+    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,filePath,linkedDocId:linkedDocId?Number(linkedDocId):null});
     govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies();
     ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('pol-file').value=''; document.getElementById('pol-file-label').textContent='Click to upload policy document';
+    document.getElementById('pol-doc-link').value=''; document.getElementById('pol-linked-filepath').value='';
+    document.getElementById('pol-upload-wrap').style.display='';
   }
   async function openPolicyFile(id){
     const p = govStore.policies.find(x=>x.id===id);
     if (!p || !p.filePath) { alert('No file attached to this policy.'); return; }
+    if (/^https?:\/\//i.test(p.filePath)) { window.open(p.filePath, '_blank'); return; }
     const { data, error } = await db.storage.from('documents').createSignedUrl(p.filePath, 60);
     if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
     window.open(data.signedUrl, '_blank');
   }
-  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
+  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>${p.linkedDocId?' <span style="font-size:10px;color:var(--muted);" title="Using the file already uploaded in Documents">🔗 Linked</span>':''}`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
 
   // KPIs
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
