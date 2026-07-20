@@ -1848,9 +1848,20 @@
 
   async function handleLogout() {
     await db.auth.signOut();
+    currentUser = null;
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('auth-error').textContent = '';
     document.getElementById('app').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
   }
+
+  // If the browser restores this page from back/forward cache (e.g. after
+  // clicking "back"), force a full reload so the real, current session is
+  // checked again rather than showing a stale snapshot of the page.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) location.reload();
+  });
 
   async function checkSession() {
     const { data } = await db.auth.getSession();
