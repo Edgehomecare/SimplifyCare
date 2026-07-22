@@ -296,6 +296,37 @@
     <input type="password" id="login-password" placeholder="••••••••" />
     <button class="btn-primary" onclick="handleLogin()">Sign In</button>
     <div class="auth-error" id="auth-error"></div>
+    <div style="text-align:center;margin-top:14px;">
+      <a href="#" onclick="showResetRequest();return false;" style="font-size:13px;color:var(--teal);text-decoration:underline;">First time here, or forgotten your password?</a>
+    </div>
+  </div>
+
+  <!-- Password reset request card (hidden by default) -->
+  <div class="auth-card" id="reset-request-card" style="display:none;">
+    <div class="auth-logo">Set your password</div>
+    <div class="auth-tagline">Enter the email address your account was set up with, and we'll send you a link to set your own password.</div>
+    <label>Email address</label>
+    <input type="email" id="reset-email" placeholder="you@example.com" />
+    <button class="btn-primary" onclick="handleResetRequest()">Send me a link</button>
+    <div class="auth-error" id="reset-error"></div>
+    <div id="reset-success" style="display:none;color:var(--green);font-size:14px;text-align:center;margin-top:12px;">
+      Check your email for a link to set your password. It can take a few minutes to arrive — check your junk folder too.
+    </div>
+    <div style="text-align:center;margin-top:14px;">
+      <a href="#" onclick="showLoginForm();return false;" style="font-size:13px;color:var(--teal);text-decoration:underline;">Back to sign in</a>
+    </div>
+  </div>
+
+  <!-- New password entry card, shown when arriving via the emailed reset link (hidden by default) -->
+  <div class="auth-card" id="set-password-card" style="display:none;">
+    <div class="auth-logo">Choose your password</div>
+    <div class="auth-tagline">Pick a password you'll remember. At least 8 characters.</div>
+    <label>New password</label>
+    <input type="password" id="new-password" placeholder="••••••••" />
+    <label>Confirm new password</label>
+    <input type="password" id="new-password-confirm" placeholder="••••••••" />
+    <button class="btn-primary" onclick="handleSetNewPassword()">Save password</button>
+    <div class="auth-error" id="set-password-error"></div>
   </div>
 </div>
 
@@ -1879,6 +1910,62 @@
     }
   }
 
+  function showResetRequest() {
+    document.querySelector('#auth-screen .auth-card').style.display = 'none';
+    document.getElementById('reset-request-card').style.display = 'block';
+    document.getElementById('set-password-card').style.display = 'none';
+    document.getElementById('reset-success').style.display = 'none';
+    document.getElementById('reset-error').textContent = '';
+    const emailField = document.getElementById('login-email');
+    if (emailField.value) document.getElementById('reset-email').value = emailField.value;
+  }
+
+  function showLoginForm() {
+    document.querySelector('#auth-screen .auth-card').style.display = 'block';
+    document.getElementById('reset-request-card').style.display = 'none';
+    document.getElementById('set-password-card').style.display = 'none';
+  }
+
+  async function handleResetRequest() {
+    const email = document.getElementById('reset-email').value.trim();
+    const errEl = document.getElementById('reset-error');
+    errEl.textContent = '';
+    if (!email) { errEl.textContent = 'Please enter your email address.'; return; }
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) {
+      errEl.textContent = error.message;
+      return;
+    }
+    document.getElementById('reset-success').style.display = 'block';
+  }
+
+  async function handleSetNewPassword() {
+    const pw = document.getElementById('new-password').value;
+    const pwConfirm = document.getElementById('new-password-confirm').value;
+    const errEl = document.getElementById('set-password-error');
+    errEl.textContent = '';
+    if (!pw || pw.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+    if (pw !== pwConfirm) { errEl.textContent = 'Passwords do not match.'; return; }
+    const { error } = await db.auth.updateUser({ password: pw });
+    if (error) { errEl.textContent = error.message; return; }
+    alert('Password set! You can now sign in with your new password.');
+    await db.auth.signOut();
+    location.href = window.location.origin + window.location.pathname;
+  }
+
+  // Detects when someone arrives via the emailed "set your password" link,
+  // and shows the new-password screen instead of the normal login form.
+  db.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      passwordRecoveryInProgress = true;
+      document.querySelector('#auth-screen .auth-card').style.display = 'none';
+      document.getElementById('reset-request-card').style.display = 'none';
+      document.getElementById('set-password-card').style.display = 'block';
+    }
+  });
+
   async function handleLogout() {
     await db.auth.signOut();
     currentUser = null;
@@ -1887,6 +1974,7 @@
     document.getElementById('auth-error').textContent = '';
     document.getElementById('app').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
+    showLoginForm();
   }
 
   // If the browser restores this page from back/forward cache (e.g. after
@@ -1896,9 +1984,11 @@
     if (event.persisted) location.reload();
   });
 
+  let passwordRecoveryInProgress = false;
+
   async function checkSession() {
     const { data } = await db.auth.getSession();
-    if (data.session) {
+    if (data.session && !passwordRecoveryInProgress) {
       currentUser = data.session.user;
       showApp();
     }
