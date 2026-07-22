@@ -657,6 +657,7 @@
           <button class="btn btn-cancel" style="padding:8px 16px;" onclick="rotaNavigate(-1)">← Previous</button>
           <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--navy);" id="rota-period-label">Loading...</div>
           <button class="btn btn-cancel" style="padding:8px 16px;" onclick="rotaNavigate(1)">Next →</button>
+          <button class="btn btn-primary" style="padding:8px 16px;" onclick="copyLastWeekRota()">📋 Copy Last Week's Rota</button>
           <button class="btn btn-cancel" style="padding:8px 16px;margin-left:auto;" onclick="rotaGoToToday()">Today</button>
         </div>
 
@@ -3870,6 +3871,65 @@
     if (error) { console.error('Rota load error:', error); return; }
     allShifts = data || [];
     renderRota();
+  }
+
+  async function copyLastWeekRota() {
+    // Work out the currently-viewed week (Mon–Sun) and the week immediately before it
+    const thisMonday = getMonday(rotaCurrentDate);
+    const lastMonday = new Date(thisMonday);
+    lastMonday.setDate(lastMonday.getDate() - 7);
+    const lastSunday = new Date(thisMonday);
+    lastSunday.setDate(lastSunday.getDate() - 1);
+
+    const lastWeekStart = localISODate(lastMonday);
+    const lastWeekEnd = localISODate(lastSunday);
+    const thisWeekStart = localISODate(thisMonday);
+    const thisWeekEnd = localISODate(new Date(thisMonday.getTime() + 6 * 86400000));
+
+    const { data: lastWeekShifts, error: fetchError } = await db.from('rota_shifts')
+      .select('*')
+      .gte('shift_date', lastWeekStart)
+      .lte('shift_date', lastWeekEnd);
+    if (fetchError) { alert('Could not load last week\'s rota: ' + fetchError.message); return; }
+    if (!lastWeekShifts || !lastWeekShifts.length) {
+      alert('No shifts found on last week\'s rota to copy.');
+      return;
+    }
+
+    // Warn if the currently-viewed week already has shifts, since copying would add to them, not replace them
+    const { data: existingShifts, error: existingError } = await db.from('rota_shifts')
+      .select('id')
+      .gte('shift_date', thisWeekStart)
+      .lte('shift_date', thisWeekEnd);
+    if (existingError) { alert('Could not check this week\'s rota: ' + existingError.message); return; }
+
+    let confirmMsg = `Copy ${lastWeekShifts.length} shift${lastWeekShifts.length === 1 ? '' : 's'} from last week into this week?`;
+    if (existingShifts && existingShifts.length) {
+      confirmMsg += `\n\nThis week already has ${existingShifts.length} shift${existingShifts.length === 1 ? '' : 's'} — copied shifts will be added alongside them, not replace them.`;
+    }
+    if (!confirm(confirmMsg)) return;
+
+    const newRows = lastWeekShifts.map(s => {
+      const newDate = new Date(s.shift_date + 'T00:00:00');
+      newDate.setDate(newDate.getDate() + 7);
+      return {
+        shift_date: localISODate(newDate),
+        staff_name: s.staff_name,
+        client_name: s.client_name,
+        visit_type: s.visit_type,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        hours: s.hours,
+        status: 'scheduled',
+        notes: s.notes,
+      };
+    });
+
+    const { error: insertError } = await db.from('rota_shifts').insert(newRows);
+    if (insertError) { alert('Copy failed: ' + insertError.message); return; }
+
+    await loadShifts();
+    alert(`Copied ${newRows.length} shift${newRows.length === 1 ? '' : 's'} to this week. You can now edit or delete individual entries as needed.`);
   }
 
   function renderRota() {
