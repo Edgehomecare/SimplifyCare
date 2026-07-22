@@ -3361,6 +3361,12 @@
   // ── HELPERS ──
   function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
   function formatDate(d) { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
+  function shortName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+  }
   function formatDateTime(d) { if (!d) return '—'; try { return new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }); } catch { return d; } }
   function nextDay(d) { const nd = new Date(d); nd.setDate(nd.getDate() + 1); return localISODate(nd); }
   function docIcon(cat) { return { policy: '📜', care_plan: '📋', form: '📝', risk_assessment: '⚠️', training: '📚' }[cat] || '📄'; }
@@ -4020,7 +4026,7 @@
 
       dayShifts.slice(0, showMax).forEach(s => {
         html += `<div class="cal-shift ${s.status || 'scheduled'}" style="${staffColorStyle(s.staff_name)}" onclick="editShift('${s.id}')" title="${s.staff_name} — ${s.client_name || ''} — ${s.visit_type || ''}">
-          <strong>${s.staff_name ? s.staff_name.split(' ')[0] : ''}</strong>${s.client_name ? ' · ' + s.client_name.split(' ')[0] : ''}
+          <strong>${shortName(s.staff_name)}</strong>${s.client_name ? ' · ' + shortName(s.client_name) : ''}
         </div>`;
       });
 
