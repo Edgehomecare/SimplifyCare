@@ -79,6 +79,7 @@
     .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
     .nav-item.active { background: rgba(13,148,136,0.15); color: var(--teal); border-left-color: var(--teal); }
     .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+    .staff-only { display: none; }
     .sidebar-user {
       padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);
       font-size: 13px; color: rgba(255,255,255,0.5);
@@ -314,41 +315,47 @@
         <div class="sub">Edge Homecare Services Ltd</div>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section">Overview</div>
-        <div class="nav-item active" onclick="showPage('dashboard')">
+        <div class="nav-section admin-only">Overview</div>
+        <div class="nav-item admin-only active" onclick="showPage('dashboard')">
           <span class="icon">🏠</span> Dashboard
         </div>
-        <div class="nav-item" onclick="showPage('scheduler')">
+        <div class="nav-item admin-only" onclick="showPage('scheduler')">
           <span class="icon">🧠</span> Smart Scheduler
         </div>
-        <div class="nav-section">Care</div>
-        <div class="nav-item" onclick="showPage('residents')">
+        <div class="nav-section admin-only">Care</div>
+        <div class="nav-item admin-only" onclick="showPage('residents')">
           <span class="icon">👥</span> Residents
         </div>
         <div class="nav-item" onclick="showPage('daily-notes')">
           <span class="icon">📋</span> Daily Notes
         </div>
-        <div class="nav-item" onclick="showPage('incidents')">
+        <div class="nav-item admin-only" onclick="showPage('incidents')">
           <span class="icon">🚨</span> Incidents
         </div>
-        <div class="nav-section">Organisation</div>
-        <div class="nav-item" onclick="showPage('staff')">
+        <div class="nav-section admin-only">Organisation</div>
+        <div class="nav-item admin-only" onclick="showPage('staff')">
           <span class="icon">👤</span> Staff
         </div>
-        <div class="nav-item" onclick="showPage('rota')">
+        <div class="nav-item admin-only" onclick="showPage('rota')">
           <span class="icon">🗓️</span> Staff Rota
         </div>
-        <div class="nav-item" onclick="showPage('documents')">
+        <div class="nav-item staff-only" onclick="showPage('my-rota')">
+          <span class="icon">🗓️</span> My Rota
+        </div>
+        <div class="nav-item staff-only" onclick="showPage('my-training')">
+          <span class="icon">🎓</span> My Training
+        </div>
+        <div class="nav-item admin-only" onclick="showPage('documents')">
           <span class="icon">📁</span> Documents
         </div>
-        <div class="nav-item" onclick="showPage('hours')">
+        <div class="nav-item admin-only" onclick="showPage('hours')">
           <span class="icon">⏱️</span> Hours & Payroll
         </div>
-        <div class="nav-section">Compliance</div>
-        <div class="nav-item" onclick="showPage('cqc')">
+        <div class="nav-section admin-only">Compliance</div>
+        <div class="nav-item admin-only" onclick="showPage('cqc')">
           <span class="icon">✅</span> CQC Dashboard
         </div>
-        <div class="nav-item" onclick="showPage('governance')">
+        <div class="nav-item admin-only" onclick="showPage('governance')">
           <span class="icon">🏛️</span> Governance Hub
         </div>
       </nav>
@@ -686,6 +693,28 @@
         </div>
 
       </div><!-- /rota page -->
+
+      <!-- MY ROTA (care staff) -->
+      <div class="page" id="page-my-rota">
+        <div class="page-header">
+          <h1>🗓️ My Rota</h1>
+          <p>Your upcoming and recent shifts.</p>
+        </div>
+        <div class="card">
+          <div id="my-rota-list">Loading...</div>
+        </div>
+      </div><!-- /my-rota page -->
+
+      <!-- MY TRAINING (care staff) -->
+      <div class="page" id="page-my-training">
+        <div class="page-header">
+          <h1>🎓 My Training</h1>
+          <p>Your training records and renewal dates.</p>
+        </div>
+        <div class="card">
+          <div id="my-training-list">Loading...</div>
+        </div>
+      </div><!-- /my-training page -->
 
       <!-- HOURS & PAYROLL -->
       <div class="page" id="page-hours">
@@ -1741,7 +1770,7 @@
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="n-date" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="n-time" /></div>
-      <div class="form-group"><label>Resident *</label><input id="n-resident" placeholder="Resident name" /></div>
+      <div class="form-group"><label>Resident *</label><input id="n-resident" list="n-resident-list" placeholder="Resident name" /><datalist id="n-resident-list"></datalist></div>
       <div class="form-group"><label>Category</label>
         <select id="n-category">
           <option>General</option><option>Personal Care</option><option>Medication</option>
@@ -1820,6 +1849,9 @@
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let currentUser = null;
+  let currentRole = null;
+  let currentStaffId = null;
+  let currentStaffFullName = null;
   let allResidents = [];
   let allNotes = [];
 
@@ -1877,11 +1909,46 @@
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = currentUser.email;
     document.getElementById('user-name').textContent = currentUser.email.split('@')[0];
-    loadDashboard();
+    loadRoleAndApplyAccess();
+  }
+
+  async function loadRoleAndApplyAccess() {
+    const { data: profile, error } = await db.from('profiles')
+      .select('role, staff_id, staff(full_name)')
+      .eq('id', currentUser.id)
+      .single();
+    if (error || !profile) {
+      console.error('Could not load role, defaulting to most restrictive view:', error);
+      currentRole = 'care_staff';
+    } else {
+      currentRole = profile.role;
+      currentStaffId = profile.staff_id;
+      if (profile.staff && profile.staff.full_name) {
+        currentStaffFullName = profile.staff.full_name;
+        document.getElementById('user-name').textContent = currentStaffFullName;
+      }
+    }
+    applyRoleRestrictions();
+    if (currentRole === 'care_staff') {
+      showPage('my-rota');
+    } else {
+      loadDashboard();
+    }
+  }
+
+  function applyRoleRestrictions() {
+    const isAdmin = currentRole === 'admin';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
+    document.querySelectorAll('.staff-only').forEach(el => el.style.display = isAdmin ? 'none' : '');
   }
 
   // ── NAVIGATION ──
   function showPage(name, e) {
+    const staffAllowedPages = ['daily-notes', 'my-rota', 'my-training'];
+    if (currentRole && currentRole !== 'admin' && !staffAllowedPages.includes(name)) {
+      name = 'my-rota';
+      e = null;
+    }
     if (e && e.currentTarget) e.currentTarget.classList.add('active');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1902,6 +1969,8 @@
     if (name === 'hours') initHours();
     if (name === 'rota') initRota();
     if (name === 'scheduler') initScheduler();
+    if (name === 'my-rota') loadMyRota();
+    if (name === 'my-training') loadMyTraining();
   }
 
   function switchTab(el, panelId) {
@@ -3029,6 +3098,20 @@
   function setTodayDate() {
     const el = document.getElementById('notes-date-filter');
     if (!el.value) el.value = localISODate(new Date());
+    populateNoteResidentList();
+    const staffField = document.getElementById('n-staff');
+    if (currentRole !== 'admin' && currentStaffFullName) {
+      staffField.value = currentStaffFullName;
+      staffField.readOnly = true;
+    }
+  }
+
+  async function populateNoteResidentList() {
+    const dl = document.getElementById('n-resident-list');
+    if (!dl || dl.childElementCount) return; // only fetch once per session
+    const { data, error } = await db.rpc('get_residents_for_care_staff');
+    if (error || !data) return;
+    dl.innerHTML = data.map(r => `<option value="${r.first_name} ${r.last_name}">`).join('');
   }
 
   async function loadNotes() {
@@ -3051,8 +3134,10 @@
         <td style="max-width:300px;">${(n.note || '').substring(0, 100)}${(n.note || '').length > 100 ? '...' : ''}</td>
         <td>${n.staff_name || '—'}</td>
         <td style="display:flex;gap:6px;">
+          ${currentRole === 'admin' ? `
           <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editNote('${n.id}')">Edit</button>
           <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteNote('${n.id}')">Delete</button>
+          ` : ''}
         </td>
       </tr>`).join('');
   }
@@ -3930,6 +4015,94 @@
 
     await loadShifts();
     alert(`Copied ${newRows.length} shift${newRows.length === 1 ? '' : 's'} to this week. You can now edit or delete individual entries as needed.`);
+  }
+
+  // ── MY ROTA (care staff) ──
+  async function loadMyRota() {
+    const el = document.getElementById('my-rota-list');
+    el.innerHTML = 'Loading...';
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    const { data, error } = await db.from('rota_shifts')
+      .select('*')
+      .gte('shift_date', localISODate(start))
+      .lte('shift_date', localISODate(end))
+      .order('shift_date').order('start_time');
+    if (error) { el.innerHTML = `<p style="color:var(--red);">Could not load your rota: ${error.message}</p>`; return; }
+    if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);">No shifts found in the next 30 days.</p>'; return; }
+
+    const byDate = {};
+    data.forEach(s => { (byDate[s.shift_date] = byDate[s.shift_date] || []).push(s); });
+    const todayStr = localISODate(new Date());
+    const dateFmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    el.innerHTML = Object.keys(byDate).sort().map(date => `
+      <div style="margin-bottom:20px;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:8px;${date === todayStr ? 'color:var(--teal);' : ''}">
+          ${date === todayStr ? 'Today — ' : ''}${dateFmt(date)}
+        </div>
+        ${byDate[date].map(s => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;${s.status === 'cancelled' ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+            <div>
+              <strong>${s.client_name || 'No client set'}</strong>
+              <div style="font-size:12px;color:var(--muted);">${s.visit_type || ''}</div>
+              ${s.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${s.notes}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:600;">${(s.start_time || '').slice(0,5)}${s.end_time ? ' – ' + s.end_time.slice(0,5) : ''}</div>
+              <div style="font-size:12px;color:var(--muted);text-transform:capitalize;">${s.status || 'scheduled'}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  // ── MY TRAINING (care staff) ──
+  async function loadMyTraining() {
+    const el = document.getElementById('my-training-list');
+    el.innerHTML = 'Loading...';
+    const { data, error } = await db.from('staff_training')
+      .select('*')
+      .order('expiry_date', { ascending: true, nullsFirst: false });
+    if (error) { el.innerHTML = `<p style="color:var(--red);">Could not load your training records: ${error.message}</p>`; return; }
+    if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);">No training records found yet.</p>'; return; }
+
+    const todayStr = localISODate(new Date());
+    const in60days = localISODate(new Date(Date.now() + 60 * 86400000));
+
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="text-align:left;border-bottom:2px solid var(--border);">
+            <th style="padding:10px;">Training</th>
+            <th style="padding:10px;">Completed</th>
+            <th style="padding:10px;">Expires</th>
+            <th style="padding:10px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(t => {
+            let statusHtml = '<span style="color:var(--muted);">—</span>';
+            if (t.expiry_date) {
+              if (t.expiry_date < todayStr) statusHtml = '<span style="color:var(--red);font-weight:600;">⚠️ Expired</span>';
+              else if (t.expiry_date <= in60days) statusHtml = '<span style="color:#b45309;font-weight:600;">⏳ Due soon</span>';
+              else statusHtml = '<span style="color:var(--green);">✓ Valid</span>';
+            }
+            return `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px;"><strong>${t.training_name || '—'}</strong>${t.provider ? `<div style="font-size:12px;color:var(--muted);">${t.provider}</div>` : ''}</td>
+                <td style="padding:10px;">${formatDate(t.completed_date)}</td>
+                <td style="padding:10px;">${formatDate(t.expiry_date)}</td>
+                <td style="padding:10px;">${statusHtml}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   function renderRota() {
