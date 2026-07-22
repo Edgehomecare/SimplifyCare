@@ -603,7 +603,7 @@
             <h1>Daily Notes</h1>
             <p>Care observations and daily records</p>
           </div>
-          <button class="btn-add" onclick="openModal('note-modal')">+ Add Note</button>
+          <button class="btn-add" onclick="openNewNoteModal()">+ Add Note</button>
         </div>
         <div class="search-bar">
           <input type="date" id="notes-date-filter" onchange="loadNotes()" style="max-width:200px;" />
@@ -1808,12 +1808,17 @@
       <div class="form-group"><label>Date *</label><input type="date" id="n-date" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="n-time" /></div>
       <div class="form-group"><label>Resident *</label><input id="n-resident" list="n-resident-list" placeholder="Resident name" /><datalist id="n-resident-list"></datalist></div>
-      <div class="form-group"><label>Category</label>
-        <select id="n-category">
-          <option>General</option><option>Personal Care</option><option>Medication</option>
-          <option>Nutrition</option><option>Mobility</option><option>Mood & Behaviour</option>
-          <option>Medical</option><option>Social</option>
-        </select>
+      <div class="form-group full"><label>Category (tick all that apply)</label>
+        <div id="n-category-group" style="display:flex;flex-wrap:wrap;gap:8px;">
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="General" class="n-category-cb"> General</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Personal Care" class="n-category-cb"> Personal Care</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Medication" class="n-category-cb"> Medication</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Nutrition" class="n-category-cb"> Nutrition</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Mobility" class="n-category-cb"> Mobility</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Mood & Behaviour" class="n-category-cb"> Mood & Behaviour</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Medical" class="n-category-cb"> Medical</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Social" class="n-category-cb"> Social</label>
+        </div>
       </div>
       <div class="form-group full"><label>Note *</label><textarea id="n-note" placeholder="Record your observations and care provided..."></textarea></div>
       <div class="form-group"><label>Staff Member</label><input id="n-staff" placeholder="Your name" /></div>
@@ -2140,7 +2145,7 @@
         <div style="padding:10px 0;border-bottom:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
             <span style="font-size:14px;font-weight:600;">${n.resident_name || 'Unknown'}</span>
-            <span class="badge badge-teal">${n.category || 'General'}</span>
+            <span>${noteCategoryBadges(n)}</span>
           </div>
           <div style="font-size:13px;color:var(--muted);">${(n.note || '').substring(0, 80)}${(n.note || '').length > 80 ? '...' : ''}</div>
         </div>`).join('');
@@ -3226,7 +3231,7 @@
       <tr>
         <td>${formatDateTime(n.created_at)}</td>
         <td>${n.resident_name || '—'}</td>
-        <td><span class="badge badge-teal">${n.category || 'General'}</span></td>
+        <td>${noteCategoryBadges(n)}</td>
         <td style="max-width:300px;">${(n.note || '').substring(0, 100)}${(n.note || '').length > 100 ? '...' : ''}</td>
         <td>${n.staff_name || '—'}</td>
         <td style="display:flex;gap:6px;">
@@ -3243,10 +3248,22 @@
     renderNotes(filtered);
   }
 
+  function openNewNoteModal() {
+    document.getElementById('n-edit-id').value = '';
+    document.getElementById('n-date').value = localISODate(new Date());
+    document.getElementById('n-time').value = '';
+    document.getElementById('n-resident').value = '';
+    document.getElementById('n-note').value = '';
+    document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = false; });
+    setTodayDate();
+    openModal('note-modal');
+  }
+
   async function saveNote() {
+    const checkedCategories = Array.from(document.querySelectorAll('.n-category-cb:checked')).map(cb => cb.value);
     const payload = {
       note_date: val('n-date'), note_time: val('n-time'),
-      resident_name: val('n-resident'), category: val('n-category'),
+      resident_name: val('n-resident'), categories: checkedCategories.length ? checkedCategories : ['General'],
       note: val('n-note'), staff_name: val('n-staff')
     };
     if (!payload.resident_name || !payload.note) { alert('Please enter resident name and note.'); return; }
@@ -3270,7 +3287,8 @@
     document.getElementById('n-date').value = n.note_date || '';
     document.getElementById('n-time').value = n.note_time || '';
     document.getElementById('n-resident').value = n.resident_name || '';
-    document.getElementById('n-category').value = n.category || 'General';
+    const existingCategories = (n.categories && n.categories.length) ? n.categories : (n.category ? [n.category] : ['General']);
+    document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = existingCategories.includes(cb.value); });
     document.getElementById('n-note').value = n.note || '';
     document.getElementById('n-staff').value = n.staff_name || '';
     openModal('note-modal');
@@ -3543,6 +3561,11 @@
   // ── HELPERS ──
   function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
   function formatDate(d) { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
+  function noteCategoryBadges(n) {
+    const cats = (n.categories && n.categories.length) ? n.categories : [n.category || 'General'];
+    return cats.map(c => `<span class="badge badge-teal" style="margin-left:4px;">${c}</span>`).join('');
+  }
+
   function shortName(fullName) {
     if (!fullName) return '';
     const parts = fullName.trim().split(/\s+/);
