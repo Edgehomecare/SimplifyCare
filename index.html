@@ -5123,6 +5123,15 @@
   } catch(e) { console.warn('login-password listener:', e); }
 
   // ── INIT ──
+  // Check synchronously, before anything else, whether this page load is from
+  // a password-reset email link. This has to happen before checkSession() so
+  // the normal "you're logged in, go to the app" path can never win the race.
+  if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+    passwordRecoveryInProgress = true;
+    document.querySelector('#auth-screen .auth-card').style.display = 'none';
+    document.getElementById('reset-request-card').style.display = 'none';
+    document.getElementById('set-password-card').style.display = 'block';
+  }
   try { checkSession(); } catch(e) { console.error('Init error:', e); }
 </script>
 </body>
