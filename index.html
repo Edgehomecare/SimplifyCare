@@ -607,6 +607,9 @@
         </div>
         <div class="search-bar">
           <input type="date" id="notes-date-filter" onchange="loadNotes()" style="max-width:200px;" />
+          <select id="notes-staff-filter" onchange="loadNotes()" style="max-width:220px;">
+            <option value="">All staff</option>
+          </select>
           <input type="text" placeholder="Search notes..." oninput="filterNotes(this.value)" style="flex:1;" />
         </div>
         <div class="card">
@@ -3217,11 +3220,26 @@
 
   async function loadNotes() {
     const dateFilter = document.getElementById('notes-date-filter').value;
+    const staffFilter = document.getElementById('notes-staff-filter').value;
+    await populateNotesStaffFilter();
     let query = db.from('daily_notes').select('*').order('created_at', { ascending: false });
     if (dateFilter) query = query.gte('created_at', dateFilter).lt('created_at', nextDay(dateFilter));
+    if (staffFilter) query = query.eq('staff_name', staffFilter);
     const { data } = await query;
     allNotes = data || [];
     renderNotes(allNotes);
+  }
+
+  async function populateNotesStaffFilter() {
+    const sel = document.getElementById('notes-staff-filter');
+    if (currentRole !== 'admin') {
+      sel.style.display = 'none';
+      return;
+    }
+    if (sel.childElementCount > 1) return; // only fetch once per session
+    const { data, error } = await db.from('staff').select('full_name').eq('status', 'active').order('full_name');
+    if (error || !data) return;
+    sel.innerHTML = '<option value="">All staff</option>' + data.map(s => `<option value="${s.full_name}">${s.full_name}</option>`).join('');
   }
 
   function renderNotes(list) {
