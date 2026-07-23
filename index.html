@@ -5254,6 +5254,7 @@
 
   setInterval(() => {
     if (!currentUser) return;
+    if (currentRole !== 'admin') return; // care staff use personal phones out in the field - forcing a full re-login when signal is patchy causes more harm than it prevents
     const idleFor = Date.now() - lastActivity;
     if (idleFor >= INACTIVITY_LIMIT_MS) {
       alert('You have been signed out due to 15 minutes of inactivity.');
