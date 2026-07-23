@@ -719,8 +719,8 @@
           <div class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Date</th><th>Day</th><th>Staff</th><th>Client</th><th>Visit Type</th><th>Start</th><th>End</th><th>Hours</th><th>Notes</th><th></th></tr></thead>
-                <tbody id="rota-list-table"><tr><td colspan="10" class="loading">Loading...</td></tr></tbody>
+                <thead><tr><th>Date</th><th>Day</th><th>Staff</th><th>Client</th><th>Visit Type</th><th>Start</th><th>End</th><th>Hours</th><th>Visit Status</th><th>Notes</th><th></th></tr></thead>
+                <tbody id="rota-list-table"><tr><td colspan="11" class="loading">Loading...</td></tr></tbody>
               </table>
             </div>
           </div>
@@ -4195,8 +4195,9 @@
 
     const dateStr = localISODate(myRotaCurrentDate);
     const todayStr = localISODate(new Date());
+    const isToday = dateStr === todayStr;
     const dateFmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-    labelEl.textContent = (dateStr === todayStr ? 'Today — ' : '') + dateFmt(dateStr);
+    labelEl.textContent = (isToday ? 'Today — ' : '') + dateFmt(dateStr);
 
     const { data, error } = await db.from('rota_shifts')
       .select('*')
@@ -4205,19 +4206,82 @@
     if (error) { el.innerHTML = `<p style="color:var(--red);">Could not load your rota: ${error.message}</p>`; return; }
     if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);">No shifts scheduled for this day.</p>'; return; }
 
-    el.innerHTML = data.map(s => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;${s.status === 'cancelled' ? 'opacity:0.5;text-decoration:line-through;' : ''}">
-        <div>
-          <strong>${s.client_name || 'No client set'}</strong>
-          <div style="font-size:12px;color:var(--muted);">${s.visit_type || ''}</div>
-          ${s.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${s.notes}</div>` : ''}
+    el.innerHTML = data.map(s => {
+      const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+      let clockSection = '';
+      if (s.status !== 'cancelled') {
+        if (!s.clock_in_time) {
+          clockSection = isToday
+            ? `<button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="handleClockIn('${s.id}', this)">📍 Clock In</button>`
+            : '';
+        } else if (!s.clock_out_time) {
+          clockSection = `
+            <div style="margin-top:10px;padding:8px 12px;background:#f0fdf9;border-radius:8px;font-size:13px;color:var(--teal);">✅ Clocked in at ${fmtTime(s.clock_in_time)}${s.clock_in_lat ? ' 📍' : ''}</div>
+            ${isToday ? `<button class="btn btn-primary" style="margin-top:8px;width:100%;" onclick="handleClockOut('${s.id}', this)">📍 Clock Out</button>` : ''}
+          `;
+        } else {
+          clockSection = `
+            <div style="margin-top:10px;padding:8px 12px;background:#f0fdf9;border-radius:8px;font-size:13px;color:var(--teal);">
+              ✅ Clocked in ${fmtTime(s.clock_in_time)}${s.clock_in_lat ? ' 📍' : ''} · Clocked out ${fmtTime(s.clock_out_time)}${s.clock_out_lat ? ' 📍' : ''}
+            </div>
+          `;
+        }
+      }
+      return `
+      <div style="padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;${s.status === 'cancelled' ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>${s.client_name || 'No client set'}</strong>
+            <div style="font-size:12px;color:var(--muted);">${s.visit_type || ''}</div>
+            ${s.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${s.notes}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:600;">${(s.start_time || '').slice(0,5)}${s.end_time ? ' – ' + s.end_time.slice(0,5) : ''}</div>
+            <div style="font-size:12px;color:var(--muted);text-transform:capitalize;">${s.status || 'scheduled'}</div>
+          </div>
         </div>
-        <div style="text-align:right;">
-          <div style="font-weight:600;">${(s.start_time || '').slice(0,5)}${s.end_time ? ' – ' + s.end_time.slice(0,5) : ''}</div>
-          <div style="font-size:12px;color:var(--muted);text-transform:capitalize;">${s.status || 'scheduled'}</div>
-        </div>
+        ${clockSection}
       </div>
-    `).join('');
+    `; }).join('');
+  }
+
+  function getLocationSafely() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    });
+  }
+
+  async function handleClockIn(shiftId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Getting your location...';
+    const loc = await getLocationSafely();
+    const { error } = await db.from('rota_shifts').update({
+      clock_in_time: new Date().toISOString(),
+      clock_in_lat: loc ? loc.lat : null,
+      clock_in_lng: loc ? loc.lng : null,
+    }).eq('id', shiftId);
+    if (error) { alert('Could not clock in: ' + error.message); btn.disabled = false; btn.textContent = '📍 Clock In'; return; }
+    if (!loc) { alert('Clocked in, but your location could not be captured (check location permissions if this keeps happening).'); }
+    loadMyRota();
+  }
+
+  async function handleClockOut(shiftId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Getting your location...';
+    const loc = await getLocationSafely();
+    const { error } = await db.from('rota_shifts').update({
+      clock_out_time: new Date().toISOString(),
+      clock_out_lat: loc ? loc.lat : null,
+      clock_out_lng: loc ? loc.lng : null,
+    }).eq('id', shiftId);
+    if (error) { alert('Could not clock out: ' + error.message); btn.disabled = false; btn.textContent = '📍 Clock Out'; return; }
+    if (!loc) { alert('Clocked out, but your location could not be captured (check location permissions if this keeps happening).'); }
+    loadMyRota();
   }
 
   // ── MY TRAINING (care staff) ──
@@ -4453,13 +4517,28 @@
     const monthShifts = allShifts.filter(s => s.shift_date && s.shift_date.startsWith(month));
     const tb = document.getElementById('rota-list-table');
     if (!monthShifts.length) {
-      tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="emoji">🗓️</div><p>No shifts this month</p></div></td></tr>';
+      tb.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="emoji">🗓️</div><p>No shifts this month</p></div></td></tr>';
       return;
     }
     const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const nowStr = new Date().toISOString().slice(0,10);
+    const nowTime = new Date();
     tb.innerHTML = monthShifts.map(s => {
       const d = new Date(s.shift_date);
       const statusColor = { scheduled: 'badge-blue', completed: 'badge-green', cancelled: 'badge-red', leave: 'badge-amber' };
+      const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+      let visitStatus = '<span style="color:var(--muted);font-size:12px;">—</span>';
+      if (s.status !== 'cancelled') {
+        if (s.clock_in_time && s.clock_out_time) {
+          visitStatus = `<span class="badge badge-green" style="font-size:11px;" title="In: ${fmtTime(s.clock_in_time)} · Out: ${fmtTime(s.clock_out_time)}${s.clock_in_lat ? ' · Location captured' : ' · No location'}">✅ Completed</span>`;
+        } else if (s.clock_in_time) {
+          visitStatus = `<span class="badge badge-blue" style="font-size:11px;" title="Clocked in ${fmtTime(s.clock_in_time)}">🟢 On visit (in ${fmtTime(s.clock_in_time)})</span>`;
+        } else if (s.shift_date < nowStr || (s.shift_date === nowStr && s.start_time && s.start_time.slice(0,5) < nowTime.toTimeString().slice(0,5))) {
+          visitStatus = `<span class="badge badge-red" style="font-size:11px;">⚠️ Not clocked in</span>`;
+        } else {
+          visitStatus = `<span class="badge badge-blue" style="font-size:11px;">Upcoming</span>`;
+        }
+      }
       return `<tr>
         <td>${formatDate(s.shift_date)}</td>
         <td>${days[d.getDay()]}</td>
@@ -4469,6 +4548,7 @@
         <td>${s.start_time ? s.start_time.slice(0,5) : '—'}</td>
         <td>${s.end_time ? s.end_time.slice(0,5) : '—'}</td>
         <td><strong>${s.hours || '—'}</strong></td>
+        <td>${visitStatus}</td>
         <td style="font-size:12px;">${s.notes || '—'}</td>
         <td style="display:flex;gap:4px;">
           <button class="btn btn-save" style="padding:4px 8px;font-size:11px;" onclick="editShift('${s.id}')">Edit</button>
