@@ -1531,10 +1531,12 @@
           <select id="s-rtw"><option value="">Select</option><option>UK/Irish citizen</option><option>EU Settled Status</option><option>Visa</option><option>Other</option></select>
         </div>
         <div class="form-group"><label>RTW Expiry</label><input type="date" id="s-rtw-expiry" /></div>
+        <div class="form-group"><label>Share Code</label><input id="s-share-code" placeholder="e.g. W7X 2W1 QRT" maxlength="12" /></div>
+        <div class="form-group"><label>Share Code Expiry</label><input type="date" id="s-share-code-expiry" /></div>
         <div class="form-group"><label>Passport Number</label><input id="s-passport" placeholder="Passport number" /></div>
         <div class="form-group"><label>Passport Expiry</label><input type="date" id="s-passport-expiry" /></div>
         <div class="form-group"><label>Visa Type</label><input id="s-visa-type" placeholder="Visa type if applicable" /></div>
-        <div class="form-group"><label>Visa Expiry</label><input type="date" id="s-visa-expiry" /></div
+        <div class="form-group"><label>Visa Expiry</label><input type="date" id="s-visa-expiry" /></div>
                                                                                                     <!-- ID DOCUMENT UPLOAD -->
         <div class="form-group full" style="margin-top:8px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
           <label style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px;">🪪 Identity Document on File</label>
@@ -2718,6 +2720,8 @@
           ${vrField('Checked By', s.barred_list_checked_by)}
           ${vrField('Right to Work', s.right_to_work)}
           ${vrField('RTW Expiry', formatDate(s.right_to_work_expiry))}
+          ${vrField('Share Code', s.share_code)}
+          ${vrField('Share Code Expiry', formatDate(s.share_code_expiry))}
           ${vrField('Passport Number', s.passport_number)}
           ${vrField('Passport Expiry', formatDate(s.passport_expiry))}
           ${vrField('Visa Type', s.visa_type)}
@@ -2890,7 +2894,7 @@
       middle_name: val('s-middlename'), preferred_name: val('s-preferredname'),
       date_of_birth: val('s-dob') || null, gender: val('s-gender'),
       ethnicity: val('s-ethnicity'), nationality: val('s-nationality'),
-      email: val('s-email'), phone: val('s-phone'),
+      email: val('s-email'), phone: val('s-phone'), home_address: val('s-address'),
      id_document_type: val('s-id-doc-type') || null,
       id_document_expiry: val('s-id-doc-expiry') || null,
       id_document_notes: val('s-id-doc-notes'),
@@ -2910,6 +2914,8 @@
       barred_list_checked_by: val('s-barred-by'),
       right_to_work: val('s-rtw'),
       right_to_work_expiry: val('s-rtw-expiry') || null,
+      share_code: val('s-share-code'),
+      share_code_expiry: val('s-share-code-expiry') || null,
       visa_type: val('s-visa-type'),
       visa_expiry: val('s-visa-expiry') || null,
       identity_verified_by: val('s-id-verified-by'),
@@ -3027,10 +3033,14 @@
     // Save sensitive data to staff_sensitive table
     if (staffId) {
       const { data: existing } = await db.from('staff_sensitive').select('id').eq('staff_id', staffId).maybeSingle();
+      let sensitiveError;
       if (existing) {
-        await db.from('staff_sensitive').update(sensitivePayload).eq('staff_id', staffId);
+        ({ error: sensitiveError } = await db.from('staff_sensitive').update(sensitivePayload).eq('staff_id', staffId));
       } else {
-        await db.from('staff_sensitive').insert([{ staff_id: staffId, ...sensitivePayload }]);
+        ({ error: sensitiveError } = await db.from('staff_sensitive').insert([{ staff_id: staffId, ...sensitivePayload }]));
+      }
+      if (sensitiveError) {
+        alert('Staff record saved, but sensitive details (NI number, bank details, etc.) failed to save: ' + sensitiveError.message);
       }
     }
     document.getElementById('s-edit-id').value = '';
@@ -3051,7 +3061,7 @@
     sf(['s-dob','date_of_birth']); sf(['s-gender','gender']);
     sf(['s-ethnicity','ethnicity']); sf(['s-nationality','nationality']);
     sf(['s-email','email']); sf(['s-phone','phone']);
-    sf(['s-address','home_address']); sf(['s-ni','ni_number']);
+    sf(['s-address','home_address']); sf(['s-ni','sensitive_ni_number']);
     sf(['s-ec-name','emergency_contact_name']); sf(['s-ec-rel','emergency_contact_relationship']); sf(['s-ec-phone','emergency_contact_phone']);
     // Employment
     sf(['s-role','role']); sf(['s-emptype','employment_type']);
@@ -3061,7 +3071,8 @@
     sf(['s-dbs-number','dbs_number']); sf(['s-dbs-date','dbs_issue_date']); sf(['s-dbs-expiry','dbs_expiry_date']);
     sf(['s-barred','barred_list_checked']); sf(['s-barred-date','barred_list_checked_date']); sf(['s-barred-by','barred_list_checked_by']);
     sf(['s-rtw','right_to_work']); sf(['s-rtw-expiry','right_to_work_expiry']);
-    sf(['s-passport','passport_number']); sf(['s-passport-expiry','passport_expiry']);
+    sf(['s-share-code','share_code']); sf(['s-share-code-expiry','share_code_expiry']);
+    sf(['s-passport','sensitive_passport_number']); sf(['s-passport-expiry','passport_expiry']);
     sf(['s-visa-type','visa_type']); sf(['s-visa-expiry','visa_expiry']);
     sf(['s-id-verified-by','identity_verified_by']); sf(['s-id-verified-date','identity_verified_date']);
     sf(['s-poa-verified','proof_of_address_verified']);
