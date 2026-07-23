@@ -3290,10 +3290,20 @@
 
   async function saveNote() {
     const checkedCategories = Array.from(document.querySelectorAll('.n-category-cb:checked')).map(cb => cb.value);
+    // For care staff, always use the verified name from their account rather than
+    // whatever's in the field - protects against the field ever being blank, stale,
+    // or altered (e.g. by browser autofill) before the database check runs.
+    if (currentRole !== 'admin') {
+      if (!currentStaffFullName) {
+        alert('Your account details are still loading - please wait a moment and try again.');
+        return;
+      }
+      document.getElementById('n-staff').value = currentStaffFullName;
+    }
     const payload = {
       note_date: val('n-date'), note_time: val('n-time'),
       resident_name: val('n-resident'), categories: checkedCategories.length ? checkedCategories : ['General'],
-      note: val('n-note'), staff_name: val('n-staff')
+      note: val('n-note'), staff_name: currentRole !== 'admin' ? currentStaffFullName : val('n-staff')
     };
     if (!payload.resident_name || !payload.note) { alert('Please enter resident name and note.'); return; }
     const editId = document.getElementById('n-edit-id').value;
