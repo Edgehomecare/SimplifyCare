@@ -2688,7 +2688,7 @@
           ${vrField('Nationality', s.nationality)}
           ${vrField('Email', s.email)}
           ${vrField('Phone', s.phone)}
-          ${vrField('NI Number', s.ni_number)}
+          ${vrField('NI Number', s.sensitive_ni_number)}
           ${vrFieldFull('Home Address', s.home_address)}
           ${vrField('Emergency Contact', s.emergency_contact_name)}
           ${vrField('Relationship', s.emergency_contact_relationship)}
@@ -2702,8 +2702,8 @@
           ${vrField('Role', s.role)}
           ${vrField('Employment Type', s.employment_type)}
           ${vrField('Start Date', formatDate(s.start_date))}
-          ${vrField('Contracted Hours', s.contracted_hours)}
-          ${vrField('Hourly Rate', s.hourly_rate ? '£' + s.hourly_rate : '—')}
+          ${vrField('Contracted Hours', s.sensitive_contracted_hours)}
+          ${vrField('Hourly Rate', s.sensitive_hourly_rate ? '£' + s.sensitive_hourly_rate : '—')}
           ${vrField('Status', s.status)}
         </div>
       </div>
@@ -2722,7 +2722,7 @@
           ${vrField('RTW Expiry', formatDate(s.right_to_work_expiry))}
           ${vrField('Share Code', s.share_code)}
           ${vrField('Share Code Expiry', formatDate(s.share_code_expiry))}
-          ${vrField('Passport Number', s.passport_number)}
+          ${vrField('Passport Number', s.sensitive_passport_number)}
           ${vrField('Passport Expiry', formatDate(s.passport_expiry))}
           ${vrField('Visa Type', s.visa_type)}
           ${vrField('Visa Expiry', formatDate(s.visa_expiry))}
@@ -2806,14 +2806,14 @@
       <!-- PAYROLL -->
       <div id="vs-payroll" class="tab-panel">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${vrField('Bank Name', s.bank_name)}
-          ${vrField('Account Name', s.bank_account_name)}
-          ${vrField('Account Number', s.bank_account_number ? '****' + s.bank_account_number.slice(-4) : '—')}
-          ${vrField('Sort Code', s.bank_sort_code)}
-          ${vrField('Tax Code', s.tax_code)}
-          ${vrField('Payment Method', s.payment_method)}
-          ${vrField('Hourly Rate', s.hourly_rate ? '£' + s.hourly_rate : '—')}
-          ${vrField('Contracted Hours', s.contracted_hours)}
+          ${vrField('Bank Name', s.sensitive_bank_name)}
+          ${vrField('Account Name', s.sensitive_bank_account_name)}
+          ${vrField('Account Number', s.sensitive_bank_account_number ? '****' + s.sensitive_bank_account_number.slice(-4) : '—')}
+          ${vrField('Sort Code', s.sensitive_bank_sort_code)}
+          ${vrField('Tax Code', s.sensitive_tax_code)}
+          ${vrField('Payment Method', s.sensitive_payment_method)}
+          ${vrField('Hourly Rate', s.sensitive_hourly_rate ? '£' + s.sensitive_hourly_rate : '—')}
+          ${vrField('Contracted Hours', s.sensitive_contracted_hours)}
         </div>
       </div>
 
@@ -3066,7 +3066,7 @@
     // Employment
     sf(['s-role','role']); sf(['s-emptype','employment_type']);
     sf(['s-startdate','start_date']); sf(['s-status','status']);
-    sf(['s-contracted-hours','contracted_hours']); sf(['s-hourly-rate','hourly_rate']);
+    sf(['s-contracted-hours','sensitive_contracted_hours']); sf(['s-hourly-rate','sensitive_hourly_rate']);
     // DBS & RTW
     sf(['s-dbs-number','dbs_number']); sf(['s-dbs-date','dbs_issue_date']); sf(['s-dbs-expiry','dbs_expiry_date']);
     sf(['s-barred','barred_list_checked']); sf(['s-barred-date','barred_list_checked_date']); sf(['s-barred-by','barred_list_checked_by']);
@@ -3131,9 +3131,9 @@
     sf(['s-probation-end','probation_end']); sf(['s-probation-outcome','probation_outcome']);
     sf(['s-probation-notes','probation_notes']);
     // Payroll
-    sf(['s-bank-name','bank_name']); sf(['s-bank-account-name','bank_account_name']);
-    sf(['s-bank-account-number','bank_account_number']); sf(['s-sort-code','bank_sort_code']);
-    sf(['s-tax-code','tax_code']); sf(['s-payment-method','payment_method']);
+    sf(['s-bank-name','sensitive_bank_name']); sf(['s-bank-account-name','sensitive_bank_account_name']);
+    sf(['s-bank-account-number','sensitive_bank_account_number']); sf(['s-sort-code','sensitive_bank_sort_code']);
+    sf(['s-tax-code','sensitive_tax_code']); sf(['s-payment-method','sensitive_payment_method']);
     openModal('staff-modal');
   }
 
