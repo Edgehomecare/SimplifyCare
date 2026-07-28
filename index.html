@@ -172,6 +172,15 @@
       z-index: 1000; align-items: center; justify-content: center;
     }
     .modal-overlay.open { display: flex; }
+    .app-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #0d9488; color: white; padding: 14px 24px; border-radius: 10px;
+      font-weight: 600; font-size: 15px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      z-index: 3000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+      display: flex; align-items: center; gap: 8px; max-width: 90vw; text-align: center;
+    }
+    .app-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .app-toast.error { background: #dc2626; }
     .modal {
       background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 580px;
       max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 60px rgba(0,0,0,0.2);
@@ -329,6 +338,8 @@
     <div class="auth-error" id="set-password-error"></div>
   </div>
 </div>
+
+<div id="app-toast" class="app-toast"></div>
 
 <!-- MAIN APP -->
 <div id="app">
@@ -1830,7 +1841,7 @@
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('note-modal')">Cancel</button>
-      <button class="btn btn-save" onclick="saveNote()">Save Note</button>
+      <button class="btn btn-save" id="save-note-btn" onclick="saveNote()">Save Note</button>
     </div>
   </div>
 </div>
@@ -3289,13 +3300,15 @@
   }
 
   async function saveNote() {
+    const saveBtn = document.getElementById('save-note-btn');
+    if (saveBtn.disabled) return; // guard against double-clicks/double-taps sending it twice
     const checkedCategories = Array.from(document.querySelectorAll('.n-category-cb:checked')).map(cb => cb.value);
     // For care staff, always use the verified name from their account rather than
     // whatever's in the field - protects against the field ever being blank, stale,
     // or altered (e.g. by browser autofill) before the database check runs.
     if (currentRole !== 'admin') {
       if (!currentStaffFullName) {
-        alert('Your account details are still loading - please wait a moment and try again.');
+        showToast('Your account details are still loading - please wait a moment and try again.', true);
         return;
       }
       document.getElementById('n-staff').value = currentStaffFullName;
@@ -3305,7 +3318,9 @@
       resident_name: val('n-resident'), categories: checkedCategories.length ? checkedCategories : ['General'],
       note: val('n-note'), staff_name: currentRole !== 'admin' ? currentStaffFullName : val('n-staff')
     };
-    if (!payload.resident_name || !payload.note) { alert('Please enter resident name and note.'); return; }
+    if (!payload.resident_name || !payload.note) { showToast('Please enter resident name and note.', true); return; }
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
     const editId = document.getElementById('n-edit-id').value;
     let error;
     if (editId) {
@@ -3313,9 +3328,12 @@
     } else {
       ({ error } = await db.from('daily_notes').insert([payload]));
     }
-    if (error) { alert('Error: ' + error.message); return; }
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Note';
+    if (error) { showToast('Note not saved: ' + error.message, true); return; }
     document.getElementById('n-edit-id').value = '';
     closeModal('note-modal');
+    showToast('Note saved');
     loadNotes();
   }
 
@@ -3603,6 +3621,17 @@
   function noteCategoryBadges(n) {
     const cats = (n.categories && n.categories.length) ? n.categories : [n.category || 'General'];
     return cats.map(c => `<span class="badge badge-teal" style="margin-left:4px;">${c}</span>`).join('');
+  }
+
+  let toastTimer = null;
+  function showToast(message, isError = false) {
+    const el = document.getElementById('app-toast');
+    if (!el) return;
+    el.textContent = (isError ? '⚠️ ' : '✅ ') + message;
+    el.classList.toggle('error', isError);
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3000);
   }
 
   function shortName(fullName) {
