@@ -3324,8 +3324,13 @@
     const editId = document.getElementById('n-edit-id').value;
     let error;
     if (editId) {
+      // Editing an existing note - never touch staff_id here, so admins correcting
+      // a typo in someone else's note can't accidentally break whose note it is.
       ({ error } = await db.from('daily_notes').update(payload).eq('id', editId));
     } else {
+      // A brand new note - set staff_id for care staff so it's tied to their account
+      // by a stable ID rather than their (editable) name.
+      payload.staff_id = currentRole !== 'admin' ? currentStaffId : null;
       ({ error } = await db.from('daily_notes').insert([payload]));
     }
     saveBtn.disabled = false;
@@ -4187,6 +4192,7 @@
       return {
         shift_date: localISODate(newDate),
         staff_name: s.staff_name,
+        staff_id: s.staff_id,
         client_name: s.client_name,
         visit_type: s.visit_type,
         start_time: s.start_time,
@@ -4610,9 +4616,17 @@
       if (hours < 0) hours += 24;
       document.getElementById('sh-hours').value = hours;
     }
+    // Look up the matching staff record so the shift is tied to a stable ID, not just
+    // the typed name - keeps "My Rota" and clock in/out working even if the name changes.
+    const { data: matchedStaff } = await db.from('staff').select('id').eq('full_name', staff).maybeSingle();
+    if (!matchedStaff) {
+      const proceed = confirm(`"${staff}" doesn't exactly match any staff member on file, so they won't see this shift on their own "My Rota" page (it will still show here on the admin list). Check the spelling matches their name exactly. Save anyway?`);
+      if (!proceed) return;
+    }
     const payload = {
       shift_date: date,
       staff_name: staff,
+      staff_id: matchedStaff ? matchedStaff.id : null,
       client_name: document.getElementById('sh-client').value,
       visit_type: document.getElementById('sh-type').value,
       start_time: start || null,
