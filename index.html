@@ -998,9 +998,9 @@
         <!-- SUPERVISIONS -->
         <div id="gov-supervisions" class="gov-section">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Supervision &amp; appraisal oversight</div><button class="btn-add" onclick="openGovModal('sup-modal')">+ Log supervision</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Staff member</th><th>Role</th><th>Type</th><th>Date</th><th>Conducted by</th><th>Outcome</th><th>Next due</th><th>Status</th></tr></thead>
-            <tbody id="sup-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr></tbody></table></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Supervision &amp; appraisal oversight</div><button class="btn-add" onclick="openSupervisionModal()">+ Log supervision</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Staff member</th><th>Role</th><th>Type</th><th>Date</th><th>Conducted by</th><th>Outcome</th><th>Next due</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="sup-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -1327,19 +1327,32 @@
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('med-modal')">Cancel</button><button class="btn btn-save" onclick="saveMed()">Save audit</button></div>
 </div></div>
 
-<div id="sup-modal" class="modal-overlay"><div class="modal">
-  <div class="modal-header"><h2>Log supervision / appraisal</h2><button class="modal-close" onclick="closeGovModal('sup-modal')">✕</button></div>
+<div id="sup-modal" class="modal-overlay"><div class="modal" style="max-width:720px;">
+  <div class="modal-header"><h2 id="sup-modal-title">Log supervision / appraisal</h2><button class="modal-close" onclick="closeGovModal('sup-modal')">✕</button></div>
+  <input type="hidden" id="sup-edit-id" />
   <div class="form-grid">
     <div class="form-group"><label>Staff member *</label><input id="sup-staff" placeholder="Name" /></div>
     <div class="form-group"><label>Role</label><input id="sup-role" placeholder="e.g. Care worker" /></div>
-    <div class="form-group"><label>Type</label><select id="sup-type"><option>Supervision</option><option>Annual appraisal</option><option>Probation review</option><option>Return to work</option><option>Other</option></select></div>
-    <div class="form-group"><label>Date</label><input type="date" id="sup-date" /></div>
-    <div class="form-group"><label>Conducted by</label><input id="sup-by" placeholder="Name" /></div>
+    <div class="form-group"><label>Type</label><select id="sup-type"><option>Supervision</option><option>Informal supervision</option><option>Annual appraisal</option><option>Probation review</option><option>Return to work</option><option>Other</option></select></div>
+    <div class="form-group"><label>Date of supervision</label><input type="date" id="sup-date" /></div>
+    <div class="form-group full"><label>Purpose of supervision</label><textarea id="sup-purpose" placeholder="Why this supervision is taking place..."></textarea></div>
+    <div class="form-group full"><label>Discussion</label><textarea id="sup-discussion" placeholder="What was discussed during the supervision..." style="min-height:120px;"></textarea></div>
+    <div class="form-group full"><label>Strengths identified</label><textarea id="sup-strengths" placeholder="What the staff member is doing well..."></textarea></div>
+    <div class="form-group full"><label>Areas of development</label><textarea id="sup-development" placeholder="What could be improved or needs continued focus..."></textarea></div>
+    <div class="form-group full"><label>Action plan</label><textarea id="sup-action-plan" placeholder="Agreed actions and next steps..."></textarea></div>
+    <div class="form-group full"><label>Staff feedback</label><textarea id="sup-staff-feedback" placeholder="The staff member's own comments..."></textarea></div>
+    <div class="form-group full"><label>Supervisor feedback</label><textarea id="sup-supervisor-feedback" placeholder="Your overall comments as supervisor..."></textarea></div>
+    <div class="form-group"><label>Supervisor signature</label><input id="sup-by" placeholder="Name" /></div>
     <div class="form-group"><label>Next due</label><input type="date" id="sup-next" /></div>
     <div class="form-group"><label>Outcome</label><select id="sup-outcome"><option>Satisfactory</option><option>Good</option><option>Outstanding</option><option>Improvement needed</option><option>Action plan set</option></select></div>
-    <div class="form-group full"><label>Key discussion points</label><textarea id="sup-notes" placeholder="Summary of what was discussed..."></textarea></div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sup-modal')">Cancel</button><button class="btn btn-save" onclick="saveSupervision()">Save</button></div>
+</div></div>
+
+<div id="sup-view-modal" class="modal-overlay"><div class="modal" style="max-width:720px;">
+  <div class="modal-header"><h2>Supervision Record</h2><button class="modal-close" onclick="closeGovModal('sup-view-modal')">✕</button></div>
+  <div id="sup-view-content"></div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sup-view-modal')">Close</button></div>
 </div></div>
 
 <div id="risk-modal" class="modal-overlay"><div class="modal">
@@ -5240,8 +5253,88 @@
   function renderGovMed(){ const tb=document.getElementById('med-table'); if(!govStore.medAudits.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.medAudits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{ const err=parseInt(m.errors)||0; const score=parseInt(m.score); return `<tr><td>${govFmtDate(m.date)}</td><td>${m.resident||'—'}</td><td>${m.auditor||'—'}</td><td>${m.mar==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-red">'+m.mar+'</span>'}</td><td>${m.stock==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-amber">'+m.stock+'</span>'}</td><td>${err===0?'<span class="badge badge-green">None</span>':'<span class="badge badge-red">'+err+'</span>'}</td><td style="font-size:12px;">${m.actions||'—'}</td><td>${isNaN(score)?'—':'<span class="badge badge-'+(score>=90?'green':score>=75?'amber':'red')+'">'+score+'%</span>'}</td></tr>`; }).join(''); }
 
   // Supervisions
-  function saveSupervision(){ const staff=document.getElementById('sup-staff').value.trim(); if(!staff){alert('Please enter the staff member name');return;} govStore.supervisions.push({id:Date.now(),staff,role:document.getElementById('sup-role').value,type:document.getElementById('sup-type').value,date:document.getElementById('sup-date').value,by:document.getElementById('sup-by').value,next:document.getElementById('sup-next').value,outcome:document.getElementById('sup-outcome').value,notes:document.getElementById('sup-notes').value}); govSave('supervisions'); closeGovModal('sup-modal'); renderGovSupervisions(); ['sup-staff','sup-role','sup-date','sup-by','sup-next','sup-notes'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovSupervisions(){ const tb=document.getElementById('sup-table'); if(!govStore.supervisions.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.supervisions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td><strong>${s.staff}</strong></td><td>${s.role||'—'}</td><td><span class="badge badge-blue">${s.type}</span></td><td>${govFmtDate(s.date)}</td><td>${s.by||'—'}</td><td>${govStatusBadge(s.outcome)}</td><td>${govFmtDate(s.next)}</td><td>${new Date(s.next)<new Date()?'<span class="badge badge-red">Overdue</span>':'<span class="badge badge-green">On track</span>'}</td></tr>`).join(''); }
+  function openSupervisionModal() {
+    document.getElementById('sup-edit-id').value = '';
+    document.getElementById('sup-modal-title').textContent = 'Log supervision / appraisal';
+    ['sup-staff','sup-role','sup-date','sup-purpose','sup-discussion','sup-strengths','sup-development','sup-action-plan','sup-staff-feedback','sup-supervisor-feedback','sup-by','sup-next'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('sup-type').value = 'Supervision';
+    document.getElementById('sup-outcome').value = 'Satisfactory';
+    openGovModal('sup-modal');
+  }
+  function saveSupervision(){
+    const staff=document.getElementById('sup-staff').value.trim();
+    if(!staff){alert('Please enter the staff member name');return;}
+    const record = {
+      staff, role:document.getElementById('sup-role').value, type:document.getElementById('sup-type').value,
+      date:document.getElementById('sup-date').value,
+      purpose:document.getElementById('sup-purpose').value,
+      discussion:document.getElementById('sup-discussion').value,
+      strengths:document.getElementById('sup-strengths').value,
+      development:document.getElementById('sup-development').value,
+      actionPlan:document.getElementById('sup-action-plan').value,
+      staffFeedback:document.getElementById('sup-staff-feedback').value,
+      supervisorFeedback:document.getElementById('sup-supervisor-feedback').value,
+      by:document.getElementById('sup-by').value, next:document.getElementById('sup-next').value,
+      outcome:document.getElementById('sup-outcome').value
+    };
+    const editId = document.getElementById('sup-edit-id').value;
+    if (editId) {
+      const idx = govStore.supervisions.findIndex(s => String(s.id) === String(editId));
+      if (idx > -1) govStore.supervisions[idx] = { ...govStore.supervisions[idx], ...record };
+    } else {
+      govStore.supervisions.push({ id: Date.now(), ...record });
+    }
+    govSave('supervisions'); closeGovModal('sup-modal'); renderGovSupervisions();
+  }
+  function editSupervision(id){
+    const s = govStore.supervisions.find(x => String(x.id) === String(id));
+    if (!s) return;
+    document.getElementById('sup-edit-id').value = s.id;
+    document.getElementById('sup-modal-title').textContent = 'Edit supervision / appraisal';
+    document.getElementById('sup-staff').value = s.staff || '';
+    document.getElementById('sup-role').value = s.role || '';
+    document.getElementById('sup-type').value = s.type || 'Supervision';
+    document.getElementById('sup-date').value = s.date || '';
+    document.getElementById('sup-purpose').value = s.purpose || '';
+    document.getElementById('sup-discussion').value = s.discussion || '';
+    document.getElementById('sup-strengths').value = s.strengths || '';
+    document.getElementById('sup-development').value = s.development || '';
+    document.getElementById('sup-action-plan').value = s.actionPlan || '';
+    document.getElementById('sup-staff-feedback').value = s.staffFeedback || '';
+    document.getElementById('sup-supervisor-feedback').value = s.supervisorFeedback || '';
+    document.getElementById('sup-by').value = s.by || '';
+    document.getElementById('sup-next').value = s.next || '';
+    document.getElementById('sup-outcome').value = s.outcome || 'Satisfactory';
+    openGovModal('sup-modal');
+  }
+  function viewSupervision(id){
+    const s = govStore.supervisions.find(x => String(x.id) === String(id));
+    if (!s) return;
+    const field = (label, value) => value ? `<div style="margin-bottom:14px;"><div style="font-weight:700;color:var(--navy);font-size:13px;margin-bottom:2px;">${label}</div><div style="white-space:pre-wrap;">${value}</div></div>` : '';
+    document.getElementById('sup-view-content').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+        ${field('Staff Member', s.staff)}${field('Role', s.role)}
+        ${field('Type', s.type)}${field('Date', govFmtDate(s.date))}
+      </div>
+      ${field('Purpose of Supervision', s.purpose)}
+      ${field('Discussion', s.discussion)}
+      ${field('Strengths Identified', s.strengths)}
+      ${field('Areas of Development', s.development)}
+      ${field('Action Plan', s.actionPlan)}
+      ${field('Staff Feedback', s.staffFeedback)}
+      ${field('Supervisor Feedback', s.supervisorFeedback)}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 20px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        ${field('Supervisor Signature', s.by)}${field('Next Due', govFmtDate(s.next))}${field('Outcome', s.outcome)}
+      </div>
+    `;
+    openGovModal('sup-view-modal');
+  }
+  function deleteSupervision(id){
+    if (!confirm('Delete this supervision record? This cannot be undone.')) return;
+    govStore.supervisions = govStore.supervisions.filter(x => String(x.id) !== String(id));
+    govSave('supervisions'); renderGovSupervisions();
+  }
+  function renderGovSupervisions(){ const tb=document.getElementById('sup-table'); if(!govStore.supervisions.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.supervisions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td><strong>${s.staff}</strong></td><td>${s.role||'—'}</td><td><span class="badge badge-blue">${s.type}</span></td><td>${govFmtDate(s.date)}</td><td>${s.by||'—'}</td><td>${govStatusBadge(s.outcome)}</td><td>${govFmtDate(s.next)}</td><td>${new Date(s.next)<new Date()?'<span class="badge badge-red">Overdue</span>':'<span class="badge badge-green">On track</span>'}</td><td style="display:flex;gap:6px;"><button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="viewSupervision(${s.id})">View</button><button class="btn btn-save" style="padding:5px 10px;font-size:12px;" onclick="editSupervision(${s.id})">Edit</button><button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteSupervision(${s.id})">Delete</button></td></tr>`).join(''); }
 
   // Risks
   function saveRisk(){ const desc=document.getElementById('risk-desc').value.trim(); if(!desc){alert('Please describe the risk');return;} govStore.risks.push({id:Date.now(),desc,category:document.getElementById('risk-cat').value,likelihood:document.getElementById('risk-like').value,impact:document.getElementById('risk-impact').value,owner:document.getElementById('risk-owner').value,review:document.getElementById('risk-review').value,controls:document.getElementById('risk-controls').value,actions:document.getElementById('risk-actions').value}); govSave('risks'); closeGovModal('risk-modal'); renderGovRisks(); ['risk-desc','risk-owner','risk-review','risk-controls','risk-actions'].forEach(id=>document.getElementById(id).value=''); }
