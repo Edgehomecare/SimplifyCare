@@ -1153,9 +1153,10 @@
       </div>
       <div class="form-group"><label>Client Name *</label><input id="v-client" placeholder="Client name" list="v-client-list" /><datalist id="v-client-list"></datalist></div>
       <div class="form-group"><label>Staff Member *</label><input id="v-staff" placeholder="Staff name" list="v-staff-list" /><datalist id="v-staff-list"></datalist></div>
-      <div class="form-group"><label>Start Time *</label><input type="time" id="v-start" /></div>
-      <div class="form-group"><label>End Time *</label><input type="time" id="v-end" /></div>
-      <div class="form-group"><label>Hours</label><input id="v-hours" placeholder="Auto-calculated" readonly style="background:var(--bg);" /></div>
+      <div class="form-group"><label>Start Time (optional)</label><input type="time" id="v-start" /></div>
+      <div class="form-group"><label>End Time (optional)</label><input type="time" id="v-end" /></div>
+      <div class="form-group"><label>Hours *</label><input type="number" id="v-hours" placeholder="e.g. 2.5" min="0" step="0.25" /></div>
+      <div class="form-group" style="grid-column:1/-1;"><p style="font-size:12px;color:var(--muted);margin:0;">Fill in Start and End Time if the visit was one continuous block and Hours will fill in automatically - or just type the total Hours directly if visits were spread across the day, so it isn't forced into a single time range.</p></div>
       <div class="form-group"><label>Mileage (miles)</label><input type="number" id="v-miles" placeholder="0" min="0" step="0.1" /></div>
       <div class="form-group full"><label>Notes</label><textarea id="v-notes" placeholder="Any notes about this visit..."></textarea></div>
     </div>
@@ -4861,9 +4862,11 @@
     loadStaffForHours();
   }
 
-  // ── AUTO-CALCULATE HOURS ──
+  // ── AUTO-CALCULATE HOURS (only if not already typed in directly) ──
   document.addEventListener('change', function(e) {
     if (e.target.id === 'v-start' || e.target.id === 'v-end') {
+      const hoursField = document.getElementById('v-hours');
+      if (hoursField.value) return; // don't clobber a manually-entered value
       const start = document.getElementById('v-start').value;
       const end = document.getElementById('v-end').value;
       if (start && end) {
@@ -4871,7 +4874,7 @@
         const en = end.split(':').map(Number);
         let hrs = (en[0] * 60 + en[1] - (s[0] * 60 + s[1])) / 60;
         if (hrs < 0) hrs += 24;
-        document.getElementById('v-hours').value = Math.round(hrs * 100) / 100;
+        hoursField.value = Math.round(hrs * 100) / 100;
       }
     }
   });
@@ -4954,6 +4957,7 @@
       const en = end.split(':').map(Number);
       hours = Math.round(((en[0] * 60 + en[1] - (s[0] * 60 + s[1])) / 60) * 100) / 100;
     }
+    if (!hours) { alert('Please enter the number of hours (or fill in Start and End Time to calculate it).'); return; }
     const payload = {
       visit_date: date, visit_type: document.getElementById('v-type').value,
       client_name: client, staff_name: staff,
