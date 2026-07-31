@@ -4961,7 +4961,7 @@
     const payload = {
       visit_date: date, visit_type: document.getElementById('v-type').value,
       client_name: client, staff_name: staff,
-      start_time: start, end_time: end,
+      start_time: start || null, end_time: end || null,
       hours: hours, mileage: parseFloat(document.getElementById('v-miles').value) || 0,
       notes: document.getElementById('v-notes').value
     };
