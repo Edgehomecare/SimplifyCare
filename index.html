@@ -777,6 +777,7 @@
         <!-- Sub tabs -->
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
           <button class="gov-tab active" onclick="showHoursSection('visits',this)">📋 Daily Visit Log</button>
+          <button class="gov-tab" onclick="showHoursSection('daily-summary',this)">📊 Daily Summary</button>
           <button class="gov-tab" onclick="showHoursSection('client-rates',this)">👥 Client Rates</button>
           <button class="gov-tab" onclick="showHoursSection('payroll',this)">💷 Monthly Payroll</button>
           <button class="gov-tab" onclick="showHoursSection('invoicing',this)">💰 Monthly Invoicing</button>
@@ -805,6 +806,40 @@
                 <thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Visit Type</th><th>Start</th><th>End</th><th>Hours</th><th>Miles</th><th>Notes</th><th></th></tr></thead>
                 <tbody id="visits-table"><tr><td colspan="10" class="loading">Loading...</td></tr></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- DAILY SUMMARY -->
+        <div id="hours-daily-summary" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+              <div class="card-title" style="margin-bottom:0;">Daily Summary</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="date" id="daily-summary-date" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="loadDailySummary()" />
+              </div>
+            </div>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Pulled automatically from the Rota, using actual clocked times where staff have clocked in/out, and scheduled times otherwise. No manual entry needed.</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="daily-summary-grid">
+              <div>
+                <div class="card-title" style="font-size:15px;">👤 Staff Hours</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Staff Member</th><th>Visits</th><th>Total Hours</th><th>Clients Seen</th></tr></thead>
+                    <tbody id="daily-summary-staff-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <div class="card-title" style="font-size:15px;">🏠 Client Hours</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Client</th><th>Visits</th><th>Total Hours</th><th>Staff Seen</th></tr></thead>
+                    <tbody id="daily-summary-client-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -4730,12 +4765,85 @@
   let allClientRates = [];
   let allStaffRates = [];
 
+  async function loadDailySummary() {
+    const dateEl = document.getElementById('daily-summary-date');
+    if (!dateEl.value) dateEl.value = localISODate(new Date());
+    const dateStr = dateEl.value;
+
+    const staffTb = document.getElementById('daily-summary-staff-table');
+    const clientTb = document.getElementById('daily-summary-client-table');
+    staffTb.innerHTML = '<tr><td colspan="4" class="loading">Loading...</td></tr>';
+    clientTb.innerHTML = '<tr><td colspan="4" class="loading">Loading...</td></tr>';
+
+    const { data, error } = await db.from('rota_shifts')
+      .select('*')
+      .eq('shift_date', dateStr)
+      .neq('status', 'cancelled');
+
+    if (error) {
+      staffTb.innerHTML = `<tr><td colspan="4" style="color:var(--red);">Error: ${error.message}</td></tr>`;
+      clientTb.innerHTML = `<tr><td colspan="4" style="color:var(--red);">Error: ${error.message}</td></tr>`;
+      return;
+    }
+
+    const shifts = data || [];
+
+    function shiftHours(s) {
+      // Prefer real clocked time if both ends were recorded, since that's the actual
+      // hours delivered - fall back to the scheduled hours otherwise.
+      if (s.clock_in_time && s.clock_out_time) {
+        const ms = new Date(s.clock_out_time) - new Date(s.clock_in_time);
+        if (ms > 0) return ms / 1000 / 60 / 60;
+      }
+      if (s.hours) return parseFloat(s.hours) || 0;
+      if (s.start_time && s.end_time) {
+        const [sh, sm] = s.start_time.split(':').map(Number);
+        const [eh, em] = s.end_time.split(':').map(Number);
+        let diff = (eh * 60 + em) - (sh * 60 + sm);
+        if (diff < 0) diff += 24 * 60;
+        return diff / 60;
+      }
+      return 0;
+    }
+
+    const byStaff = {};
+    const byClient = {};
+
+    shifts.forEach(s => {
+      const hrs = shiftHours(s);
+      const staffKey = s.staff_name || 'Unassigned';
+      const clientKey = s.client_name || 'No client set';
+
+      if (!byStaff[staffKey]) byStaff[staffKey] = { visits: 0, hours: 0, clients: new Set() };
+      byStaff[staffKey].visits += 1;
+      byStaff[staffKey].hours += hrs;
+      byStaff[staffKey].clients.add(clientKey);
+
+      if (!byClient[clientKey]) byClient[clientKey] = { visits: 0, hours: 0, staff: new Set() };
+      byClient[clientKey].visits += 1;
+      byClient[clientKey].hours += hrs;
+      byClient[clientKey].staff.add(staffKey);
+    });
+
+    const staffRows = Object.entries(byStaff).sort((a, b) => b[1].hours - a[1].hours);
+    const clientRows = Object.entries(byClient).sort((a, b) => b[1].hours - a[1].hours);
+
+    staffTb.innerHTML = staffRows.length
+      ? staffRows.map(([name, v]) => `<tr><td><strong>${name}</strong></td><td>${v.visits}</td><td>${v.hours.toFixed(2)}</td><td style="font-size:12px;color:var(--muted);">${[...v.clients].join(', ')}</td></tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">No shifts on the rota for this day</td></tr>';
+
+    clientTb.innerHTML = clientRows.length
+      ? clientRows.map(([name, v]) => `<tr><td><strong>${name}</strong></td><td>${v.visits}</td><td>${v.hours.toFixed(2)}</td><td style="font-size:12px;color:var(--muted);">${[...v.staff].join(', ')}</td></tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">No shifts on the rota for this day</td></tr>';
+  }
+
   function showHoursSection(id, btn) {
     document.querySelectorAll('#page-hours .gov-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('#page-hours .gov-tab').forEach(b => b.classList.remove('active'));
     document.getElementById('hours-' + id).classList.add('active');
     btn.classList.add('active');
     if (id === 'visits') loadVisits();
+    if (id === 'daily-summary') loadDailySummary();
     if (id === 'client-rates') loadClientRates();
     if (id === 'payroll') { setHoursMonth('payroll-month'); renderPayroll(); }
     if (id === 'invoicing') { setHoursMonth('invoice-month'); renderInvoicing(); }
