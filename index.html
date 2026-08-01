@@ -568,6 +568,16 @@
         </div>
         <div class="tab-panel" id="staff-training">
           <div class="card">
+            <div class="card-title">Mandatory Module Compliance</div>
+            <p style="color:var(--muted);font-size:13px;margin-top:-8px;margin-bottom:16px;">In-app lesson + quiz completion, across all active staff.</p>
+            <div class="table-wrap">
+              <table>
+                <thead id="training-compliance-thead"><tr><th>Staff Member</th><th colspan="9">Loading...</th></tr></thead>
+                <tbody id="training-compliance-table"><tr><td colspan="11" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Staff Member</th><th>Training</th><th>Category</th><th>Completed</th><th>Expiry</th><th>Status</th></tr></thead>
@@ -763,9 +773,23 @@
           <p>Your training records and renewal dates.</p>
         </div>
         <div class="card">
+          <div class="card-title">Mandatory Training</div>
+          <p style="color:var(--muted);font-size:13px;margin-top:-8px;margin-bottom:16px;">Complete each module below - read through the short lesson, then pass the quiz. Modules marked "Certified course also required" need a hands-on accredited course too; this covers the knowledge refresher part.</p>
+          <div id="training-modules-list">Loading...</div>
+        </div>
+        <div class="card">
+          <div class="card-title">My Training Records</div>
           <div id="my-training-list">Loading...</div>
         </div>
       </div><!-- /my-training page -->
+
+      <!-- TRAINING MODULE: LESSON + QUIZ -->
+      <div class="modal-overlay" id="training-module-modal">
+        <div class="modal" style="max-width:640px;">
+          <div class="modal-header"><h2 id="tm-title">Training Module</h2><button class="modal-close" onclick="closeTrainingModule()">✕</button></div>
+          <div id="tm-body"></div>
+        </div>
+      </div>
 
       <!-- HOURS & PAYROLL -->
       <div class="page" id="page-hours">
@@ -1958,6 +1982,190 @@
   let currentUser = null;
   let currentRole = null;
   let currentStaffId = null;
+  // ── MANDATORY TRAINING MODULE CONTENT ──
+const TRAINING_MODULES = [
+{
+  key: 'safeguarding',
+  title: 'Safeguarding Adults',
+  icon: '🛡️',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'What is safeguarding?', b: 'Safeguarding means protecting an adult\'s right to live safely, free from abuse and neglect. It applies to any adult who has care and support needs and, because of those needs, is unable to protect themselves from abuse, neglect, or the risk of it.' },
+    { h: 'Types of abuse', b: 'Abuse can be physical, sexual, psychological/emotional, financial, neglect, discriminatory, organisational, domestic, or modern slavery. Abuse is not always deliberate - unintentional neglect, for example through lack of training or resources, is still safeguarding-relevant.' },
+    { h: 'Recognising the signs', b: 'Watch for unexplained injuries or bruising, sudden changes in mood or behaviour, weight loss, poor hygiene, unexplained financial difficulty, fear of a particular person, or reluctance to be alone with someone. Trust your instincts - if something feels wrong, it is worth reporting.' },
+    { h: 'What to do if you suspect abuse', b: 'Keep the person safe first. Do not investigate yourself or challenge the alleged abuser. Listen to the person without promising secrecy - explain you may need to share what they tell you to keep them safe. Record exactly what was said, using their own words where possible, and report to your manager immediately, the same day.' },
+    { h: 'Your duty to report', b: 'Every member of staff has a personal duty to report safeguarding concerns - this cannot be delegated or ignored. If you believe your manager has not acted on a safeguarding concern, you must escalate it further, including to the local authority safeguarding team or, in an emergency, the police.' },
+  ],
+  quiz: [
+    { q: 'Which of these is NOT one of the main types of abuse recognised in safeguarding?', options: ['Financial abuse', 'Neglect', 'Discriminatory abuse', 'Seasonal abuse'], correct: 3 },
+    { q: 'A client tells you about something upsetting but asks you to keep it secret. What should you do?', options: ['Promise to keep it secret to maintain their trust', 'Explain you may need to share it to keep them safe, then report it', 'Ignore what they said', 'Only tell other clients'], correct: 1 },
+    { q: 'When should you report a safeguarding concern to your manager?', options: ['Within a week', 'At your next scheduled supervision', 'The same day, immediately', 'Only if it happens more than once'], correct: 2 },
+    { q: 'If you suspect a colleague of abusing a client, what should you do?', options: ['Confront the colleague directly yourself', 'Say nothing unless you have solid proof', 'Report your concern to management or safeguarding regardless of certainty', 'Wait to see if it happens again'], correct: 2 },
+    { q: 'Neglect as a form of abuse can be:', options: ['Only ever deliberate', 'Only relevant if it happens over many months', 'Unintentional, such as through lack of training or resources', 'Not something care workers need to worry about'], correct: 2 },
+  ],
+},
+{
+  key: 'medication',
+  title: 'Medication Awareness',
+  icon: '💊',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'The 6 Rights of medication administration', b: 'Right person, right medication, right dose, right route, right time, and right documentation. Missing any one of these is a medication error and must be reported, even if no harm resulted.' },
+    { h: 'Before giving medication', b: 'Always check the person\'s care plan and MAR (Medication Administration Record) chart. Check the medication hasn\'t already been given. Check for allergies. Never administer medication that isn\'t clearly labelled or that you\'re unsure about - ask first.' },
+    { h: 'Recording', b: 'Sign the MAR chart immediately after giving medication, never in advance and never for someone else. If a dose is refused, missed, or not given for any reason, record why using the correct code and inform the office.' },
+    { h: 'Errors and near misses', b: 'If a medication error happens - wrong dose, wrong time, missed dose - do not panic or try to hide it. Make the person safe, seek medical advice if needed (call 111 or 999 if urgent), and report immediately to your manager. Errors reported quickly and honestly are treated very differently to errors that are covered up.' },
+    { h: 'Storage and disposal', b: 'Medication should be stored as directed on the label (e.g. some need refrigeration). Never mix medications from different weeks/collections. Unused or expired medication should never be disposed of in household bins - follow your organisation\'s procedure for safe return to a pharmacy.' },
+  ],
+  quiz: [
+    { q: 'How many "Rights" are there in safe medication administration?', options: ['3', '6', '10', 'There is no set number'], correct: 1 },
+    { q: 'When should you sign the MAR chart?', options: ['At the start of your shift, for all medications due', 'Immediately after giving the medication', 'At the end of the week', 'It doesn\'t matter as long as it gets signed eventually'], correct: 1 },
+    { q: 'You realise you gave a client the wrong dose 20 minutes ago. What is the FIRST thing you should do?', options: ['Say nothing and hope it\'s fine', 'Wait until your next shift to mention it', 'Make the person safe and seek medical advice if needed, then report it', 'Fix the MAR chart to avoid a difficult conversation'], correct: 2 },
+    { q: 'A client refuses their medication. What should you do?', options: ['Force them to take it', 'Record the refusal with the correct code and inform the office', 'Just skip it and say nothing', 'Give it to them secretly in food'], correct: 1 },
+    { q: 'Before giving any medication you should always check:', options: ['Only that the packet looks correct', 'The care plan, MAR chart, and that it hasn\'t already been given', 'Nothing, if you\'ve given it to them before', 'Only the time on your phone'], correct: 1 },
+  ],
+},
+{
+  key: 'moving_handling',
+  title: 'Moving & Handling',
+  icon: '🧍',
+  certifiedElsewhere: true,
+  lesson: [
+    { h: 'Why this matters', b: 'Poor moving and handling technique is one of the leading causes of injury to care workers, and can also cause pain, bruising, or falls for the person being supported. This module is an awareness refresher - your practical moving and handling certificate must come from a properly accredited, hands-on course.' },
+    { h: 'Before any move', b: 'Always check the person\'s individual moving and handling risk assessment first - techniques are never "one size fits all." Check for any equipment needed (hoist, slide sheet, standing aid), that it is in good working order, and that you have enough people to help if it\'s a two-person move.' },
+    { h: 'Core principles', b: 'Keep your back straight and bend your knees, not your back. Keep the load as close to your body as possible. Avoid twisting - move your feet instead. Communicate clearly with the person and any colleague helping you throughout the move, using an agreed count ("ready, steady, move").' },
+    { h: 'Never do this', b: 'Never attempt a move you haven\'t been trained or assessed as competent for. Never use a "drag lift" (lifting under the arms) - this is banned in care settings and can cause serious injury. Never rush a move because you\'re short on time.' },
+    { h: 'If something goes wrong', b: 'If a person falls or is dropped during a move, do not attempt to move them again until you\'ve assessed for injury - call for help/999 if needed. Always report any moving and handling incident, near miss, or equipment fault to your manager.' },
+  ],
+  quiz: [
+    { q: 'What should you always check before carrying out a move?', options: ['Nothing, just use your best judgement', 'The person\'s individual moving and handling risk assessment', 'Whether you\'re in a hurry', 'What worked for a different client before'], correct: 1 },
+    { q: 'Which lifting technique is banned in care settings due to injury risk?', options: ['Using a hoist', 'The drag lift (lifting under the arms)', 'Using a slide sheet', 'Asking the person to help if they are able'], correct: 1 },
+    { q: 'The correct way to protect your back during a move is to:', options: ['Bend at the waist, keeping legs straight', 'Bend your knees and keep your back straight', 'Twist at the waist to reach further', 'Hold the load as far from your body as possible'], correct: 1 },
+    { q: 'Does completing this in-app module count as your official Moving & Handling certification?', options: ['Yes, this replaces the need for any other training', 'No, a practical accredited course is still required', 'Only if you score 100%', 'Only for staff who have worked here over a year'], correct: 1 },
+    { q: 'If a client falls during a move, what should you do first?', options: ['Immediately try to lift them back up', 'Assess for injury and call for help/999 if needed, without moving them again straight away', 'Say nothing if they seem okay', 'Finish the task you were doing first'], correct: 1 },
+  ],
+},
+{
+  key: 'infection_control',
+  title: 'Infection Prevention & Control',
+  icon: '🧼',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'Hand hygiene', b: 'Hand washing is the single most effective way to prevent the spread of infection. Wash hands before and after every care task, before handling food, after using the toilet, and after removing PPE. Use alcohol gel when soap and water aren\'t available, but always wash with soap and water if hands are visibly soiled.' },
+    { h: 'PPE (Personal Protective Equipment)', b: 'Wear gloves and an apron for any task involving bodily fluids, wound care, or personal care. Change gloves between clients and between tasks with the same client (e.g. don\'t go from personal care straight to preparing food in the same gloves). Dispose of PPE correctly - never reuse single-use items.' },
+    { h: 'Managing an outbreak or infection', b: 'If a client has a suspected infectious illness (e.g. diarrhoea and vomiting, flu, or a suspected infection), inform the office promptly so appropriate precautions can be arranged. Follow any specific isolation or barrier nursing guidance given.' },
+    { h: 'Cleaning and waste', b: 'Clean frequently-touched surfaces (door handles, taps) regularly. Dispose of clinical waste (used dressings, PPE that has come into contact with bodily fluids) in the correct clinical waste bags/bins, never in general household waste.' },
+    { h: 'Your own health', b: 'Do not attend work with a vomiting or diarrhoeal illness until you have been symptom-free for at least 48 hours, to protect the vulnerable people you support. Report any skin infections, cuts, or illness that could affect your ability to safely deliver care.' },
+  ],
+  quiz: [
+    { q: 'What is the single most effective way to prevent the spread of infection?', options: ['Wearing a face mask at all times', 'Hand hygiene', 'Opening windows', 'Using air freshener'], correct: 1 },
+    { q: 'When should you change your gloves?', options: ['Only at the end of your shift', 'Between clients and between different tasks with the same client', 'Only if they look dirty', 'Gloves don\'t need changing if you wash your hands'], correct: 1 },
+    { q: 'How long should you stay off work after a vomiting or diarrhoeal illness has stopped, before returning to care work?', options: ['You can return as soon as you feel a bit better', 'At least 48 hours symptom-free', '24 hours', 'There\'s no need to stay off if you feel well enough'], correct: 1 },
+    { q: 'Used dressings and soiled PPE should be disposed of:', options: ['In general household waste', 'In the correct clinical waste bags/bins', 'Down the toilet', 'It doesn\'t matter as long as it\'s in a bin'], correct: 1 },
+    { q: 'If a client develops a suspected infectious illness, you should:', options: ['Say nothing unless asked', 'Inform the office promptly so precautions can be arranged', 'Handle it entirely on your own without telling anyone', 'Wait until your next scheduled visit to mention it'], correct: 1 },
+  ],
+},
+{
+  key: 'fire_safety',
+  title: 'Fire Safety',
+  icon: '🔥',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'Prevention in the home', b: 'Check for fire hazards during visits: overloaded plug sockets, faulty appliances, smoking materials near oxygen equipment, blocked exits, or malfunctioning smoke alarms. Report any hazard you notice to the office.' },
+    { h: 'If you discover a fire', b: 'Raise the alarm immediately. Help the person evacuate if it is safe to do so, following any personal emergency evacuation plan (PEEP) in their care plan. Call 999 as soon as possible. Never re-enter a burning building for belongings.' },
+    { h: 'If evacuation isn\'t possible', b: 'If the person cannot be safely moved (e.g. due to mobility, or the fire blocking the exit), move to the room furthest from the fire, close doors behind you to slow the spread, and use a wet towel under the door if smoke is entering. Call 999 and stay on the line if possible, giving your exact location.' },
+    { h: 'Smoke alarms and equipment', b: 'Never disable or remove batteries from a smoke alarm, even if a client asks you to because it\'s "annoying." If an alarm keeps false-triggering, report this to the office to get it checked, rather than disabling it.' },
+    { h: 'Oxygen and smoking risks', b: 'Oxygen dramatically increases fire risk. If a client uses home oxygen, no smoking or naked flames should be allowed anywhere near it, and this should be clearly noted and followed as part of their care plan.' },
+  ],
+  quiz: [
+    { q: 'If you discover a fire in a client\'s home, what should you do first?', options: ['Try to put it out yourself', 'Raise the alarm immediately', 'Take photos to report later', 'Finish the care task you were doing'], correct: 1 },
+    { q: 'What is a PEEP?', options: ['A type of fire extinguisher', 'A Personal Emergency Evacuation Plan', 'A fire alarm test', 'A type of smoke detector'], correct: 1 },
+    { q: 'A client asks you to remove the battery from their smoke alarm because it\'s annoying. What should you do?', options: ['Remove it, since it\'s their home and their choice', 'Never disable it - report any fault to the office instead', 'Only remove it at night', 'Replace it with a different type'], correct: 1 },
+    { q: 'If evacuation isn\'t possible during a fire, what should you do?', options: ['Hide in the nearest cupboard', 'Move to the room furthest from the fire, close doors behind you, and call 999', 'Try to run through the fire to escape', 'Open all the windows in the house'], correct: 1 },
+    { q: 'Why does home oxygen increase fire risk?', options: ['It doesn\'t - this is a myth', 'It makes fires burn much more intensely', 'It only matters in hospitals', 'Oxygen puts fires out'], correct: 1 },
+  ],
+},
+{
+  key: 'health_safety',
+  title: 'Health & Safety',
+  icon: '⚠️',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'Your responsibilities', b: 'Under the Health and Safety at Work Act 1974, you have a legal duty to take reasonable care of your own health and safety and that of others affected by your work, and to cooperate with your employer on health and safety matters.' },
+    { h: 'Lone working', b: 'As a domiciliary care worker, you often work alone in clients\' homes. Always let the office know your whereabouts, carry a charged phone, and have a way to raise the alarm if you feel unsafe. Trust your instincts - if a situation or environment feels unsafe, leave and report it.' },
+    { h: 'Risk assessments', b: 'Every client has a risk assessment covering things like the home environment, equipment, and any specific risks (pets, trip hazards, aggressive behaviour). Read these before your first visit and follow any control measures listed.' },
+    { h: 'Reporting hazards and incidents', b: 'Report any accident, injury, near miss, or hazard - to yourself or a client - promptly, however minor it seems. This isn\'t about blame, it\'s about preventing the same thing happening to someone else.' },
+    { h: 'RIDDOR', b: 'Certain serious workplace injuries, illnesses, and dangerous occurrences must be reported to the Health and Safety Executive under RIDDOR. You don\'t need to know the legal detail, but you do need to report incidents to your manager promptly so they can assess whether this applies.' },
+  ],
+  quiz: [
+    { q: 'As a lone worker, what should you always do?', options: ['Work without telling anyone your schedule', 'Let the office know your whereabouts and carry a charged phone', 'Only carry a phone if you remember to', 'Rely on the client\'s phone if needed'], correct: 1 },
+    { q: 'If a situation in a client\'s home feels unsafe, you should:', options: ['Push through it to finish the visit', 'Trust your instincts, leave, and report it', 'Only leave if something has actually happened', 'Wait for permission before leaving'], correct: 1 },
+    { q: 'Should you report a near miss (something that almost went wrong but didn\'t cause harm)?', options: ['No, only actual injuries need reporting', 'Yes, near misses should be reported too', 'Only if a client saw it happen', 'Only if it happens more than once'], correct: 1 },
+    { q: 'What is RIDDOR?', options: ['A type of care equipment', 'A system for reporting certain serious workplace incidents to the HSE', 'A daily checklist', 'A training certificate'], correct: 1 },
+    { q: 'Client risk assessments cover things like:', options: ['Only medical conditions', 'The home environment, equipment, and specific risks like pets or hazards', 'Nothing relevant to day-to-day visits', 'Only financial matters'], correct: 1 },
+  ],
+},
+{
+  key: 'mental_capacity',
+  title: 'Mental Capacity Act & DoLS',
+  icon: '🧠',
+  certifiedElsewhere: false,
+  lesson: [
+    { h: 'The 5 principles of the Mental Capacity Act', b: '1) Assume capacity unless proven otherwise. 2) Support people to make their own decisions before concluding they can\'t. 3) People have the right to make what may seem like unwise decisions. 4) Any decision made on someone\'s behalf must be in their best interests. 5) Any decision made for someone must be the least restrictive option available.' },
+    { h: 'Capacity is decision-specific and time-specific', b: 'A person might have capacity to decide what to eat for breakfast but not capacity to manage their finances. Capacity can also fluctuate - someone might have capacity in the morning but not in the evening due to fatigue or illness. Never assume someone lacks capacity for everything just because of one diagnosis.' },
+    { h: 'Best interests decisions', b: 'If someone lacks capacity for a specific decision, any decision made for them must involve the person as much as possible, consider their past and present wishes, and consult family or others who know them, where appropriate.' },
+    { h: 'Deprivation of Liberty', b: 'If someone lacking capacity is being cared for in a way that restricts their freedom (for example, unable to leave their home unsupervised for their own safety), this may amount to a deprivation of liberty and requires proper legal authorisation (currently DoLS, moving to Liberty Protection Safeguards). This is not something care staff decide alone - always raise it with the office.' },
+    { h: 'Your role', b: 'You are not expected to formally assess capacity, but you are expected to recognise when someone may be struggling to make a decision, support them as much as possible first, and raise any concerns with your manager rather than simply making the decision for them.' },
+  ],
+  quiz: [
+    { q: 'Under the Mental Capacity Act, you should always:', options: ['Assume someone lacks capacity if they have a diagnosis like dementia', 'Assume capacity unless it\'s proven otherwise', 'Make decisions for people to save time', 'Ignore unwise decisions and override them'], correct: 1 },
+    { q: 'Can capacity change depending on the decision or time of day?', options: ['No, capacity is fixed once assessed', 'Yes, capacity is decision-specific and can fluctuate', 'Only in hospital settings', 'Only for financial decisions'], correct: 1 },
+    { q: 'If a client makes a decision you think is unwise, what should you do?', options: ['Override it because you know better', 'Respect their right to make it, as long as they have capacity', 'Report them to the office as a safeguarding issue', 'Refuse to continue supporting them'], correct: 1 },
+    { q: 'If you think a client is effectively unable to leave their home unsupervised for their own safety, this may be:', options: ['Completely normal and needs no action', 'A deprivation of liberty requiring proper authorisation - raise it with the office', 'Something only the client\'s family can raise', 'Not relevant to care staff'], correct: 1 },
+    { q: 'As a care worker, are you expected to formally assess a client\'s mental capacity?', options: ['Yes, this is a core part of your role', 'No, but you should recognise concerns and raise them with your manager', 'Only for clients over 80', 'Only if requested by family'], correct: 1 },
+  ],
+},
+{
+  key: 'first_aid',
+  title: 'First Aid Awareness',
+  icon: '🩹',
+  certifiedElsewhere: true,
+  lesson: [
+    { h: 'This is an awareness refresher', b: 'This module reinforces key first aid knowledge between renewals of your certified First Aid course, which must be delivered by an accredited provider with hands-on practical assessment. This module does not replace that certification.' },
+    { h: 'DRSABC - the basic approach', b: 'Danger (check the scene is safe), Response (check if the person is responsive), Send for help (call 999), Airway (check it\'s clear), Breathing (check for normal breathing), CPR if not breathing normally, using a Defibrillator if available.' },
+    { h: 'Recognising an emergency', b: 'Call 999 immediately for: chest pain, difficulty breathing, loss of consciousness, severe bleeding, signs of stroke (FAST - Face drooping, Arm weakness, Speech difficulty, Time to call 999), a serious fall with suspected fracture or head injury, or a severe allergic reaction.' },
+    { h: 'What you can do while waiting for help', b: 'Stay calm, keep the person as comfortable and safe as possible, apply firm direct pressure to control severe bleeding, and don\'t move someone with a suspected spinal injury unless they are in immediate danger. Reassure the person and stay with them.' },
+    { h: 'After any incident', b: 'Always report any first aid incident, however minor, to your manager, and record what happened, what you did, and the outcome.' },
+  ],
+  quiz: [
+    { q: 'Does this awareness module replace your certified First Aid course?', options: ['Yes, this is sufficient on its own', 'No, a hands-on accredited course is still required', 'Only if you pass with 100%', 'Only for new starters'], correct: 1 },
+    { q: 'What does the "S" in DRSABC stand for?', options: ['Stop', 'Send for help', 'Safety check twice', 'Support'], correct: 1 },
+    { q: 'What does FAST help you recognise?', options: ['A heart attack', 'The signs of a stroke', 'An allergic reaction', 'A broken bone'], correct: 1 },
+    { q: 'If someone has a severe allergic reaction, you should:', options: ['Wait to see if it gets better on its own', 'Call 999 immediately', 'Give them water and wait', 'Only act if they ask for help'], correct: 1 },
+    { q: 'After any first aid incident, however minor, you should:', options: ['Only report it if the person asks you to', 'Always report it to your manager and record what happened', 'Say nothing if the person seems fine afterwards', 'Wait until your next supervision to mention it'], correct: 1 },
+  ],
+},
+{
+  key: 'learning_disability_autism',
+  title: 'Learning Disability & Autism Awareness',
+  icon: '🌈',
+  certifiedElsewhere: true,
+  lesson: [
+    { h: 'A legal requirement', b: 'Since the Health and Care Act 2022, learning disability and autism training (the Oliver McGowan Mandatory Training) is a legal requirement for all CQC-regulated health and social care staff. As a care worker providing direct support, you require Tier 2 training, which includes a live session delivered with trainers who have lived experience - this in-app module is a supporting awareness refresher, not a substitute.' },
+    { h: 'Person-first, individual approach', b: 'No two autistic people or people with a learning disability are the same. Avoid assumptions based on a diagnosis - always refer to the person\'s individual care plan and communication preferences, and ask the person (or their family/advocate) directly about what works for them.' },
+    { h: 'Communication', b: 'Use clear, direct, and literal language. Avoid sarcasm, idioms ("it\'s raining cats and dogs"), or vague instructions, which can be confusing. Give the person time to process and respond - don\'t rush or fill silences for them.' },
+    { h: 'Sensory considerations', b: 'Many autistic people experience sensory sensitivities to light, sound, touch, or smell. What seems minor to you (a ticking clock, a strong smell, a bright light) may be genuinely distressing. Follow the person\'s care plan regarding their sensory environment.' },
+    { h: 'Reasonable adjustments', b: 'People with a learning disability or who are autistic are legally entitled to reasonable adjustments in how care is delivered - for example, easy-read information, more time for appointments, or a consistent routine. Raise any barriers you notice with your manager.' },
+  ],
+  quiz: [
+    { q: 'Which tier of Oliver McGowan training applies to care workers who provide direct, hands-on support?', options: ['Tier 1', 'Tier 2', 'There are no tiers', 'It depends on the client\'s age'], correct: 1 },
+    { q: 'Does this in-app module satisfy the legal Oliver McGowan training requirement on its own?', options: ['Yes, completing this quiz is sufficient', 'No, Tier 2 requires a live session with lived-experience trainers', 'Only for staff who have worked here over 5 years', 'Only if you score 100%'], correct: 1 },
+    { q: 'When communicating with an autistic person, it\'s generally best to:', options: ['Use lots of idioms to build rapport', 'Use clear, direct, literal language and allow time to respond', 'Speak as quickly as possible', 'Assume they understand exactly the same way as everyone else'], correct: 1 },
+    { q: 'Sensory sensitivities (to light, sound, touch, smell) for an autistic person are:', options: ['Usually exaggerated and can be ignored', 'A genuine and important consideration in how you deliver care', 'Only relevant in clinical settings', 'The same for every autistic person'], correct: 1 },
+    { q: '"Reasonable adjustments" for someone with a learning disability might include:', options: ['Nothing - the same approach works for everyone', 'Things like easy-read information or more time, based on individual need', 'Only physical building changes', 'Something only doctors need to think about'], correct: 1 },
+  ],
+},
+];
+
   let currentStaffFullName = null;
   let allResidents = [];
   let allNotes = [];
@@ -2136,7 +2344,7 @@
     if (name === 'rota') initRota();
     if (name === 'scheduler') initScheduler();
     if (name === 'my-rota') loadMyRota();
-    if (name === 'my-training') loadMyTraining();
+    if (name === 'my-training') { loadMyTraining(); loadTrainingModules(); }
   }
 
   function switchTab(el, panelId) {
@@ -2625,6 +2833,7 @@
     renderStaffTable(allStaffList);
     renderDBSTable(allStaffList);
     await loadTrainingTable();
+    await loadTrainingCompliance();
   }
 
   function renderStaffTable(list) {
@@ -2669,8 +2878,7 @@
     }
     const list = data || [];
     const tb = document.getElementById('training-table');
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📚</div><p>No training records yet — click View on a staff member to add</p></div></td></tr>'; return; }
-    const today = new Date();
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📚</div><p>No training records yet — click View on a staff member to add</p></div></td></tr>'; return; }    const today = new Date();
     tb.innerHTML = list.map(t => {
       const expiry = t.expiry_date ? new Date(t.expiry_date) : null;
       const daysLeft = expiry ? Math.ceil((expiry - today) / 86400000) : null;
@@ -2687,6 +2895,37 @@
         <td>${formatDate(t.expiry_date)}</td>
         <td>${statusBadgeHtml}</td>
       </tr>`;
+    }).join('');
+  }
+
+  async function loadTrainingCompliance() {
+    const tb = document.getElementById('training-compliance-table');
+    const thead = document.getElementById('training-compliance-thead');
+    if (!tb) return;
+    thead.innerHTML = `<tr><th>Staff Member</th>${TRAINING_MODULES.map(m => `<th style="text-align:center;" title="${m.title}">${m.icon}</th>`).join('')}<th>Overall</th></tr>`;
+    const { data: progressData, error } = await db.from('staff_training_progress').select('*');
+    if (error) { tb.innerHTML = `<tr><td colspan="${TRAINING_MODULES.length + 2}" style="color:var(--red);">${error.message}</td></tr>`; return; }
+    const progressByStaff = {};
+    (progressData || []).forEach(p => {
+      if (!progressByStaff[p.staff_id]) progressByStaff[p.staff_id] = {};
+      progressByStaff[p.staff_id][p.module_key] = p;
+    });
+    const activeStaff = allStaffList.filter(s => s.status === 'active');
+    if (!activeStaff.length) { tb.innerHTML = `<tr><td colspan="${TRAINING_MODULES.length + 2}" style="text-align:center;color:var(--muted);padding:20px;">No active staff</td></tr>`; return; }
+
+    tb.innerHTML = activeStaff.map(s => {
+      const staffProgress = progressByStaff[s.id] || {};
+      let passedCount = 0;
+      const cells = TRAINING_MODULES.map(m => {
+        const p = staffProgress[m.key];
+        if (p && p.status === 'passed') { passedCount++; return `<td style="text-align:center;" title="Passed ${p.score}%">✅</td>`; }
+        if (p && p.status === 'failed') return `<td style="text-align:center;" title="Not yet passed - ${p.score}%">⚠️</td>`;
+        if (p && p.status === 'in_progress') return `<td style="text-align:center;" title="In progress">🔵</td>`;
+        return `<td style="text-align:center;color:var(--muted);" title="Not started">—</td>`;
+      }).join('');
+      const pct = Math.round((passedCount / TRAINING_MODULES.length) * 100);
+      const overallBadge = pct === 100 ? `<span class="badge badge-green">${pct}%</span>` : pct >= 50 ? `<span class="badge badge-amber">${pct}%</span>` : `<span class="badge badge-red">${pct}%</span>`;
+      return `<tr><td><strong>${s.first_name || ''} ${s.last_name || ''}</strong></td>${cells}<td>${overallBadge}</td></tr>`;
     }).join('');
   }
 
@@ -4369,6 +4608,130 @@
   }
 
   // ── MY TRAINING (care staff) ──
+  // ── MANDATORY TRAINING MODULES (in-app lessons + quizzes) ──
+  let _trainingProgress = {};
+  let _currentModuleKey = null;
+  const PASS_MARK = 0.8;
+
+  async function loadTrainingModules() {
+    const el = document.getElementById('training-modules-list');
+    if (!el) return;
+    if (!currentStaffId) {
+      el.innerHTML = '<p style="color:var(--muted);">Training modules are linked to a staff record - none is linked to this account.</p>';
+      return;
+    }
+    el.innerHTML = 'Loading...';
+    const { data, error } = await db.from('staff_training_progress').select('*').eq('staff_id', currentStaffId);
+    if (error) { el.innerHTML = `<p style="color:var(--red);">Could not load training progress: ${error.message}</p>`; return; }
+    _trainingProgress = {};
+    (data || []).forEach(p => { _trainingProgress[p.module_key] = p; });
+    renderTrainingModulesList();
+  }
+
+  function renderTrainingModulesList() {
+    const el = document.getElementById('training-modules-list');
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${TRAINING_MODULES.map(m => {
+        const p = _trainingProgress[m.key];
+        const status = p ? p.status : 'not_started';
+        let badge, btnLabel;
+        if (status === 'passed') { badge = `<span class="badge badge-green">✓ Passed (${p.score}%)</span>`; btnLabel = 'Review'; }
+        else if (status === 'failed') { badge = `<span class="badge badge-amber">Not yet passed (${p.score}%)</span>`; btnLabel = 'Retake'; }
+        else if (status === 'in_progress') { badge = `<span class="badge badge-blue">In progress</span>`; btnLabel = 'Continue'; }
+        else { badge = `<span class="badge" style="background:var(--bg);color:var(--muted);">Not started</span>`; btnLabel = 'Start'; }
+        return `
+          <div style="border:1px solid var(--border);border-radius:12px;padding:16px;">
+            <div style="font-size:24px;margin-bottom:6px;">${m.icon}</div>
+            <div style="font-weight:700;margin-bottom:6px;">${m.title}</div>
+            ${m.certifiedElsewhere ? '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">📋 Certified course also required</div>' : ''}
+            <div style="margin-bottom:12px;">${badge}</div>
+            <button class="btn btn-primary" style="width:100%;" onclick="openTrainingModule('${m.key}')">${btnLabel}</button>
+          </div>
+        `;
+      }).join('')}
+    </div>`;
+  }
+
+  function openTrainingModule(key) {
+    _currentModuleKey = key;
+    const m = TRAINING_MODULES.find(x => x.key === key);
+    if (!m) return;
+    document.getElementById('tm-title').textContent = m.icon + ' ' + m.title;
+    const body = document.getElementById('tm-body');
+    body.innerHTML = `
+      ${m.certifiedElsewhere ? `<div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">📋 This module is a knowledge refresher. It does not replace the hands-on, accredited course required for full certification in this topic.</div>` : ''}
+      ${m.lesson.map(s => `<div style="margin-bottom:16px;"><div style="font-weight:700;color:var(--navy);margin-bottom:4px;">${s.h}</div><div style="line-height:1.6;">${s.b}</div></div>`).join('')}
+      <div class="form-actions"><button class="btn btn-cancel" onclick="closeTrainingModule()">Close</button><button class="btn btn-primary" onclick="startQuiz()">Start Quiz →</button></div>
+    `;
+    openModal('training-module-modal');
+  }
+
+  function startQuiz() {
+    const m = TRAINING_MODULES.find(x => x.key === _currentModuleKey);
+    if (!m) return;
+    document.getElementById('tm-title').textContent = m.icon + ' ' + m.title + ' — Quiz';
+    const body = document.getElementById('tm-body');
+    body.innerHTML = `
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Answer all questions, then submit. You need ${Math.round(PASS_MARK * 100)}% to pass - if you don't pass, you can review the lesson and try again.</p>
+      ${m.quiz.map((q, qi) => `
+        <div style="margin-bottom:20px;">
+          <div style="font-weight:600;margin-bottom:8px;">${qi + 1}. ${q.q}</div>
+          ${q.options.map((opt, oi) => `
+            <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+              <input type="radio" name="tm-q${qi}" value="${oi}" /> ${opt}
+            </label>
+          `).join('')}
+        </div>
+      `).join('')}
+      <div class="form-actions"><button class="btn btn-cancel" onclick="openTrainingModule('${_currentModuleKey}')">← Back to lesson</button><button class="btn btn-primary" onclick="submitQuiz()">Submit Quiz</button></div>
+    `;
+  }
+
+  async function submitQuiz() {
+    const m = TRAINING_MODULES.find(x => x.key === _currentModuleKey);
+    if (!m) return;
+    let correct = 0;
+    const unanswered = [];
+    m.quiz.forEach((q, qi) => {
+      const checked = document.querySelector(`input[name="tm-q${qi}"]:checked`);
+      if (!checked) { unanswered.push(qi + 1); return; }
+      if (parseInt(checked.value) === q.correct) correct++;
+    });
+    if (unanswered.length) { alert(`Please answer question${unanswered.length > 1 ? 's' : ''} ${unanswered.join(', ')} before submitting.`); return; }
+
+    const scorePct = Math.round((correct / m.quiz.length) * 100);
+    const passed = (correct / m.quiz.length) >= PASS_MARK;
+    const existing = _trainingProgress[m.key];
+    const payload = {
+      staff_id: currentStaffId, module_key: m.key,
+      status: passed ? 'passed' : 'failed',
+      score: scorePct,
+      attempts: (existing ? existing.attempts : 0) + 1,
+      completed_at: passed ? new Date().toISOString() : (existing ? existing.completed_at : null),
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await db.from('staff_training_progress').upsert(payload, { onConflict: 'staff_id,module_key' });
+    if (error) { alert('Could not save your result: ' + error.message); return; }
+
+    const body = document.getElementById('tm-body');
+    body.innerHTML = `
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-size:48px;margin-bottom:12px;">${passed ? '✅' : '📚'}</div>
+        <div style="font-size:22px;font-weight:700;color:${passed ? 'var(--green)' : 'var(--navy)'};margin-bottom:8px;">${passed ? 'Passed!' : 'Not quite there yet'}</div>
+        <div style="color:var(--muted);margin-bottom:20px;">You scored ${correct} out of ${m.quiz.length} (${scorePct}%). ${passed ? '' : `You need ${Math.round(PASS_MARK*100)}% to pass - have another read through and try again.`}</div>
+        <div class="form-actions" style="justify-content:center;">
+          ${!passed ? `<button class="btn btn-cancel" onclick="openTrainingModule('${m.key}')">Review lesson</button><button class="btn btn-primary" onclick="startQuiz()">Try again</button>` : `<button class="btn btn-primary" onclick="closeTrainingModule()">Done</button>`}
+        </div>
+      </div>
+    `;
+    await loadTrainingModules();
+  }
+
+  function closeTrainingModule() {
+    closeModal('training-module-modal');
+    _currentModuleKey = null;
+  }
+
   async function loadMyTraining() {
     const el = document.getElementById('my-training-list');
     el.innerHTML = 'Loading...';
