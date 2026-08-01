@@ -2313,7 +2313,7 @@ const TRAINING_MODULES = [
   function applyRoleRestrictions() {
     const isAdmin = currentRole === 'admin';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
-    document.querySelectorAll('.staff-only').forEach(el => el.style.display = isAdmin ? 'none' : '');
+    document.querySelectorAll('.staff-only').forEach(el => el.style.display = isAdmin ? 'none' : 'flex');
   }
 
   // ── NAVIGATION ──
