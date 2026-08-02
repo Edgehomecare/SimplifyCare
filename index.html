@@ -704,7 +704,7 @@
             <h1>🗓️ Staff Rota</h1>
             <p>Schedule shifts, view weekly and monthly rotas</p>
           </div>
-          <button class="btn-add" onclick="openModal('shift-modal')">+ Add Shift</button>
+          <button class="btn-add" onclick="openShiftForDate('','')">+ Add Shift</button>
         </div>
 
         <!-- Rota Sub-Nav -->
@@ -1256,6 +1256,7 @@
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('shift-modal')">Cancel</button>
+      <button class="btn btn-danger" id="sh-delete-btn" style="display:none;" onclick="deleteShiftFromModal()">Delete Shift</button>
       <button class="btn btn-save" onclick="saveShift()">Save Shift</button>
     </div>
   </div>
@@ -4840,7 +4841,7 @@ const TRAINING_MODULES = [
         <div class="card" style="text-align:center;padding:48px;">
           <div style="font-size:40px;margin-bottom:12px;">🗓️</div>
           <p style="color:var(--muted);">No shifts scheduled for this week</p>
-          <button class="btn-add" style="margin-top:16px;" onclick="openModal('shift-modal')">+ Add First Shift</button>
+          <button class="btn-add" style="margin-top:16px;" onclick="openShiftForDate('','')">+ Add First Shift</button>
         </div>`;
       return;
     }
@@ -5010,6 +5011,7 @@ const TRAINING_MODULES = [
     document.getElementById('sh-date').value = date;
     document.getElementById('sh-staff').value = staff || '';
     document.getElementById('sh-edit-id').value = '';
+    document.getElementById('sh-delete-btn').style.display = 'none';
     document.getElementById('shift-modal-title').textContent = 'Add Shift';
     openModal('shift-modal');
   }
@@ -5071,6 +5073,7 @@ const TRAINING_MODULES = [
     if (!s) return;
     document.getElementById('shift-modal-title').textContent = 'Edit Shift';
     document.getElementById('sh-edit-id').value = id;
+    document.getElementById('sh-delete-btn').style.display = 'inline-block';
     document.getElementById('sh-date').value = s.shift_date || '';
     document.getElementById('sh-staff').value = s.staff_name || '';
     document.getElementById('sh-client').value = s.client_name || '';
@@ -5081,6 +5084,16 @@ const TRAINING_MODULES = [
     document.getElementById('sh-status').value = s.status || 'scheduled';
     document.getElementById('sh-notes').value = s.notes || '';
     openModal('shift-modal');
+  }
+
+  async function deleteShiftFromModal() {
+    const id = document.getElementById('sh-edit-id').value;
+    if (!id) return;
+    if (!confirm('Delete this shift? This cannot be undone.')) return;
+    const { error } = await db.from('rota_shifts').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    closeModal('shift-modal');
+    await loadShifts();
   }
 
   async function deleteShift(id) {
