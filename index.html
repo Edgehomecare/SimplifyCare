@@ -1208,6 +1208,7 @@
     <div id="vr-content"></div>
     <div class="form-actions" style="margin-top:24px;">
       <button class="btn btn-cancel" onclick="closeModal('view-resident-modal')">Close</button>
+      <button class="btn btn-save" onclick="editFromView()">✏️ Edit</button>
       <button class="btn btn-save" style="background:var(--blue);" onclick="printCarePlan()">🖨️ Print Care Plan</button>
     </div>
   </div>
@@ -2282,6 +2283,7 @@ const TRAINING_MODULES = [
 
   let currentStaffFullName = null;
   let allResidents = [];
+  let currentViewResidentId = null;
   let allNotes = [];
 
   // Returns a date as YYYY-MM-DD using the browser's LOCAL calendar date,
@@ -2659,6 +2661,7 @@ const TRAINING_MODULES = [
   }
 
   async function viewResident(id) {
+    currentViewResidentId = id;
     const { data: r, error } = await db.from('residents').select('*').eq('id', id).single();
     if (error || !r) { alert('Could not load resident profile.'); return; }
 
@@ -2758,6 +2761,12 @@ const TRAINING_MODULES = [
     `;
 
     openModal('view-resident-modal');
+  }
+
+  function editFromView() {
+    if (!currentViewResidentId) return;
+    closeModal('view-resident-modal');
+    editResident(currentViewResidentId);
   }
 
   function printCarePlan() {
