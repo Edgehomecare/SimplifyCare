@@ -1607,6 +1607,13 @@
     </div>
     <div id="rt-careplan" class="tab-panel">
       <div class="form-grid">
+        <div class="form-group full" style="background:var(--teal-light);border-radius:10px;padding:14px;margin-bottom:4px;"><label style="color:var(--teal-dark);font-weight:700;">🧑 About Me — the person behind the plan</label></div>
+        <div class="form-group full"><label>Personal History &amp; Background</label><textarea id="r-life-history" placeholder="Life history, cultural background, career, family..."></textarea></div>
+        <div class="form-group full"><label>Likes, Dislikes, Fears, Triggers &amp; Motivators</label><textarea id="r-dislikes" placeholder="What upsets them, what motivates them, what to avoid..."></textarea></div>
+        <div class="form-group full"><label>Communication Style</label><textarea id="r-comm-style" placeholder="Preferred tone, pace, words — how best to talk with them..."></textarea></div>
+        <div class="form-group full"><label>Important Relationships &amp; Who Influences Decisions</label><textarea id="r-important-people" placeholder="Family, friends, who they trust, who is involved in decisions..."></textarea></div>
+        <div class="form-group full"><label>What "A Good Day" Looks Like</label><textarea id="r-good-day" placeholder="What does a good day look like for this person?"></textarea></div>
+        <div class="form-group full"><label>What Causes Distress &amp; How to De-escalate</label><textarea id="r-behaviour" placeholder="Known triggers for distress and what helps calm the situation..."></textarea></div>
         <div class="form-group full"><label>Goals &amp; Outcomes</label><textarea id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea id="r-morning" placeholder="Support required in the morning..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea id="r-evening" placeholder="Support required in the evening..."></textarea></div>
@@ -2597,6 +2604,9 @@ const TRAINING_MODULES = [
       goals: val('r-goals'), morning_routine: val('r-morning'),
       evening_routine: val('r-evening'), bedtime_routine: val('r-bedtime'),
       risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
+      life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
+      communication_style: val('r-comm-style'), important_people: val('r-important-people'),
+      good_day_looks_like: val('r-good-day'), behaviour_notes: val('r-behaviour'),
       medical_conditions: val('r-conditions'), medications: val('r-medications'),
       gp_name: val('r-gp-name'), gp_phone: val('r-gp-phone'),
       allergies: val('r-allergies'), dnr_status: val('r-dnr'),
@@ -2652,6 +2662,12 @@ const TRAINING_MODULES = [
     document.getElementById('r-likes').value = r.likes_preferences || '';
     // Care Plan
     document.getElementById('r-goals').value = r.goals || '';
+    document.getElementById('r-life-history').value = r.life_history_notes || '';
+    document.getElementById('r-dislikes').value = r.dislikes || '';
+    document.getElementById('r-comm-style').value = r.communication_style || '';
+    document.getElementById('r-important-people').value = r.important_people || '';
+    document.getElementById('r-good-day').value = r.good_day_looks_like || '';
+    document.getElementById('r-behaviour').value = r.behaviour_notes || '';
     document.getElementById('r-morning').value = r.morning_routine || '';
     document.getElementById('r-evening').value = r.evening_routine || '';
     document.getElementById('r-bedtime').value = r.bedtime_routine || '';
@@ -2746,7 +2762,14 @@ const TRAINING_MODULES = [
 
       <!-- CARE PLAN -->
       <div id="vr-careplan" class="tab-panel">
+        <div style="background:var(--teal-light);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">🧑 About Me — the person behind the plan</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrFieldFull('Personal History & Background', r.life_history_notes)}
+          ${vrFieldFull('Likes, Dislikes, Fears, Triggers & Motivators', r.dislikes)}
+          ${vrFieldFull('Communication Style', r.communication_style)}
+          ${vrFieldFull('Important Relationships & Who Influences Decisions', r.important_people)}
+          ${vrFieldFull('What "A Good Day" Looks Like', r.good_day_looks_like)}
+          ${vrFieldFull('What Causes Distress & How to De-escalate', r.behaviour_notes)}
           ${vrFieldFull('Goals & Outcomes', r.goals)}
           ${vrFieldFull('Daily Support — Morning Routine', r.morning_routine)}
           ${vrFieldFull('Daily Support — Evening Routine', r.evening_routine)}
