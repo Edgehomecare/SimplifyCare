@@ -1103,12 +1103,13 @@
             <h1>📈 Operational Excellence</h1>
             <p>How well the service is running, day to day</p>
           </div>
-          <select id="opex-month-select" onchange="renderVisitReliability()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"></select>
+          <select id="opex-month-select" onchange="renderOpexAll()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"></select>
         </div>
 
         <!-- OpEx Sub-Nav -->
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
           <button class="gov-tab active" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
+          <button class="gov-tab" onclick="showOpexSection('stability',this)">Rota Stability</button>
         </div>
 
         <!-- VISIT RELIABILITY -->
@@ -1123,6 +1124,27 @@
             <div class="card-title">Flagged visits — <span id="vr-month-label"></span></div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Scheduled</th><th>Actual</th><th>Issue</th></tr></thead>
             <tbody id="vr-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- ROTA STABILITY -->
+        <div id="opex-stability" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card amber"><div class="label">Last-minute changes</div><div class="value" id="rs-lastminute">—</div><div class="sub">added or edited within 48hrs of visit</div></div>
+            <div class="stat-card blue"><div class="label">Avg staff per client</div><div class="value" id="rs-avgstaff">—</div><div class="sub">lower means better continuity</div></div>
+            <div class="stat-card red"><div class="label">Low-continuity clients</div><div class="value" id="rs-lowcontinuity">—</div><div class="sub">seen by 4+ different staff</div></div>
+            <div class="stat-card green"><div class="label">Single-carer clients</div><div class="value" id="rs-singlestaff">—</div><div class="sub">seen by just 1 staff member</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Client continuity — <span id="rs-month-label"></span></div>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Sorted so clients seen by the most different staff appear first.</p>
+            <div class="table-wrap"><table><thead><tr><th>Client</th><th>Distinct staff</th><th>Staff seen</th></tr></thead>
+            <tbody id="rs-continuity-table"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Last-minute rota changes</div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Scheduled start</th><th>Change made</th></tr></thead>
+            <tbody id="rs-lastminute-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
           </div>
         </div>
       </div><!-- /opex page -->
@@ -5083,6 +5105,7 @@ const TRAINING_MODULES = [
       end_time: end || null,
       hours: hours || null,
       status: document.getElementById('sh-status').value,
+      updated_at: new Date().toISOString(),
       notes: document.getElementById('sh-notes').value
     };
     const editId = document.getElementById('sh-edit-id').value;
@@ -5742,7 +5765,7 @@ const TRAINING_MODULES = [
   function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>${p.linkedDocId?' <span style="font-size:10px;color:var(--muted);" title="Using the file already uploaded in Documents">🔗 Linked</span>':''}`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
 
   // KPIs
-  // ── OPERATIONAL EXCELLENCE — Visit Reliability ──
+  // ── OPERATIONAL EXCELLENCE ──
   function showOpexSection(name, btn) {
     document.querySelectorAll('#page-opex .gov-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('#page-opex .gov-tab').forEach(b => b.classList.remove('active'));
@@ -5762,13 +5785,14 @@ const TRAINING_MODULES = [
         sel.appendChild(opt);
       }
     }
-    renderVisitReliability();
+    renderOpexAll();
   }
 
-  async function renderVisitReliability() {
+  async function renderOpexAll() {
     const month = document.getElementById('opex-month-select').value;
-    document.getElementById('vr-month-label').textContent =
-      new Date(month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const label = new Date(month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    document.getElementById('vr-month-label').textContent = label;
+    document.getElementById('rs-month-label').textContent = label;
 
     const start = month + '-01';
     const [y, m] = month.split('-').map(Number);
@@ -5778,19 +5802,27 @@ const TRAINING_MODULES = [
       .gte('shift_date', start).lte('shift_date', end)
       .order('shift_date');
 
-    const tbody = document.getElementById('vr-table');
     if (error) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error loading data: ${error.message}</td></tr>`;
+      const msg = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error loading data: ${error.message}</td></tr>`;
+      document.getElementById('vr-table').innerHTML = msg;
+      document.getElementById('rs-continuity-table').innerHTML = msg;
+      document.getElementById('rs-lastminute-table').innerHTML = msg;
       return;
     }
 
+    renderVisitReliability(data || []);
+    renderRotaStability(data || []);
+  }
+
+  function renderVisitReliability(data) {
+    const tbody = document.getElementById('vr-table');
     const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
     const nowStr = localISODate(new Date());
     const nowTime = new Date().toTimeString().slice(0, 5);
     const fmtT = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
 
     // Only actual client visits count toward reliability — leave/day-off entries are excluded
-    const visits = (data || []).filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
+    const visits = data.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
 
     let missed = 0, late = 0, onTimeClocked = 0, totalClocked = 0;
     let varianceSum = 0, varianceCount = 0;
@@ -5861,6 +5893,75 @@ const TRAINING_MODULES = [
       <td>${f.actual}</td>
       <td><span class="badge ${f.issueClass}">${f.issue}</span></td>
     </tr>`).join('');
+  }
+
+  function renderRotaStability(data) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const fmtDT = t => t ? new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+
+    const visits = data.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type) && s.client_name);
+
+    // Continuity: distinct staff per client
+    const byClient = {};
+    visits.forEach(s => {
+      if (!byClient[s.client_name]) byClient[s.client_name] = new Set();
+      if (s.staff_name) byClient[s.client_name].add(s.staff_name);
+    });
+    const continuity = Object.entries(byClient)
+      .map(([client, staffSet]) => ({ client, count: staffSet.size, names: [...staffSet].join(', ') }))
+      .sort((a, b) => b.count - a.count);
+
+    const totalClients = continuity.length;
+    const avgStaff = totalClients ? (continuity.reduce((sum, c) => sum + c.count, 0) / totalClients).toFixed(1) : '—';
+    const lowContinuity = continuity.filter(c => c.count >= 4).length;
+    const singleStaff = continuity.filter(c => c.count === 1).length;
+
+    document.getElementById('rs-avgstaff').textContent = avgStaff;
+    document.getElementById('rs-lowcontinuity').textContent = lowContinuity;
+    document.getElementById('rs-singlestaff').textContent = singleStaff;
+
+    const contTbody = document.getElementById('rs-continuity-table');
+    if (!continuity.length) {
+      contTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted);">No visits recorded this month</td></tr>';
+    } else {
+      contTbody.innerHTML = continuity.map(c => `<tr>
+        <td>${c.client}</td>
+        <td><span class="badge ${c.count >= 4 ? 'badge-red' : c.count <= 1 ? 'badge-green' : 'badge-amber'}">${c.count}</span></td>
+        <td style="color:var(--muted);font-size:13px;">${c.names}</td>
+      </tr>`).join('');
+    }
+
+    // Last-minute changes: shift created or edited within 48hrs of the scheduled visit start
+    const lastMinute = [];
+    visits.forEach(s => {
+      if (!s.start_time || !s.updated_at) return;
+      const scheduledStart = new Date(s.shift_date + 'T' + s.start_time);
+      const changedAt = new Date(s.updated_at);
+      const hoursBefore = (scheduledStart - changedAt) / 3600000;
+      if (hoursBefore >= 0 && hoursBefore < 48) {
+        const wasNew = s.created_at && Math.abs(new Date(s.created_at) - changedAt) < 60000;
+        lastMinute.push({
+          date: s.shift_date, client: s.client_name, staff: s.staff_name,
+          scheduled: (s.start_time || '—').slice(0, 5),
+          change: `${wasNew ? 'Added' : 'Edited'} ${fmtDT(s.updated_at)} (${Math.round(hoursBefore)}h before)`
+        });
+      }
+    });
+
+    document.getElementById('rs-lastminute').textContent = lastMinute.length;
+    const lmTbody = document.getElementById('rs-lastminute-table');
+    if (!lastMinute.length) {
+      lmTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No last-minute rota changes this month</td></tr>';
+    } else {
+      lastMinute.sort((a, b) => a.date < b.date ? 1 : -1);
+      lmTbody.innerHTML = lastMinute.map(f => `<tr>
+        <td>${formatDate(f.date)}</td>
+        <td>${f.client || '—'}</td>
+        <td>${f.staff || '—'}</td>
+        <td>${f.scheduled}</td>
+        <td>${f.change}</td>
+      </tr>`).join('');
+    }
   }
 
   function timeToMinutes(t) {
