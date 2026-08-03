@@ -1110,6 +1110,7 @@
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
           <button class="gov-tab active" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
           <button class="gov-tab" onclick="showOpexSection('stability',this)">Rota Stability</button>
+          <button class="gov-tab" onclick="showOpexSection('records',this)">Digital Records</button>
         </div>
 
         <!-- VISIT RELIABILITY -->
@@ -1145,6 +1146,27 @@
             <div class="card-title">Last-minute rota changes</div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Scheduled start</th><th>Change made</th></tr></thead>
             <tbody id="rs-lastminute-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- DIGITAL RECORD COMPLETENESS -->
+        <div id="opex-records" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card green"><div class="label">Notes coverage</div><div class="value" id="dr-notescoverage">—</div><div class="sub" id="dr-notescoverage-sub">of visits with a note logged</div></div>
+            <div class="stat-card red"><div class="label">Visits missing a note</div><div class="value" id="dr-notesmissing">—</div><div class="sub" id="dr-notesmissing-month">this month</div></div>
+            <div class="stat-card amber"><div class="label">Care plans overdue review</div><div class="value" id="dr-planoverdue">—</div><div class="sub" id="dr-planoverdue-sub">as of today</div></div>
+            <div class="stat-card blue"><div class="label">Avg days since plan updated</div><div class="value" id="dr-planavgdays">—</div><div class="sub">across active clients</div></div>
+          </div>
+          <p style="color:var(--muted);font-size:12px;margin:-10px 0 16px;">Notes are matched to visits by client name and date. Where a client's name is entered inconsistently between the rota and daily notes, a logged note may not be picked up here — worth a quick check before treating a "missing note" as confirmed.</p>
+          <div class="card">
+            <div class="card-title">Visits with no daily note logged — <span id="dr-month-label"></span></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Scheduled</th></tr></thead>
+            <tbody id="dr-notes-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Care plan currency — active clients</div>
+            <div class="table-wrap"><table><thead><tr><th>Client</th><th>Last updated</th><th>Review date</th><th>Status</th></tr></thead>
+            <tbody id="dr-plans-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
           </div>
         </div>
       </div><!-- /opex page -->
@@ -5793,25 +5815,108 @@ const TRAINING_MODULES = [
     const label = new Date(month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     document.getElementById('vr-month-label').textContent = label;
     document.getElementById('rs-month-label').textContent = label;
+    document.getElementById('dr-month-label').textContent = label;
+    document.getElementById('dr-notesmissing-month').textContent = label;
 
     const start = month + '-01';
     const [y, m] = month.split('-').map(Number);
     const end = localISODate(new Date(y, m, 0)); // last day of that month
 
-    const { data, error } = await db.from('rota_shifts').select('*')
-      .gte('shift_date', start).lte('shift_date', end)
-      .order('shift_date');
+    const [shiftsRes, notesRes, residentsRes] = await Promise.all([
+      db.from('rota_shifts').select('*').gte('shift_date', start).lte('shift_date', end).order('shift_date'),
+      db.from('daily_notes').select('resident_name, note_date').gte('note_date', start).lte('note_date', end),
+      db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date').eq('status', 'active')
+    ]);
 
-    if (error) {
-      const msg = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error loading data: ${error.message}</td></tr>`;
+    if (shiftsRes.error) {
+      const msg = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error loading data: ${shiftsRes.error.message}</td></tr>`;
       document.getElementById('vr-table').innerHTML = msg;
       document.getElementById('rs-continuity-table').innerHTML = msg;
       document.getElementById('rs-lastminute-table').innerHTML = msg;
       return;
     }
 
-    renderVisitReliability(data || []);
-    renderRotaStability(data || []);
+    const shifts = shiftsRes.data || [];
+    renderVisitReliability(shifts);
+    renderRotaStability(shifts);
+    renderDigitalRecords(shifts, notesRes.data || [], residentsRes.data || []);
+  }
+
+  // Loose name match to cope with real-world inconsistent naming (e.g. "Anthea" vs "Anthea Dempster")
+  function namesLooselyMatch(a, b) {
+    if (!a || !b) return false;
+    const na = a.trim().toLowerCase(), nb = b.trim().toLowerCase();
+    if (!na || !nb) return false;
+    return na === nb || na.includes(nb) || nb.includes(na);
+  }
+
+  function renderDigitalRecords(shifts, notes, residents) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type) && s.client_name);
+
+    let covered = 0;
+    const missing = [];
+    visits.forEach(s => {
+      const hasNote = notes.some(n => n.note_date === s.shift_date && namesLooselyMatch(n.resident_name, s.client_name));
+      if (hasNote) covered++;
+      else missing.push(s);
+    });
+
+    const coveragePct = visits.length ? Math.round((covered / visits.length) * 100) : null;
+    document.getElementById('dr-notescoverage').textContent = coveragePct === null ? '—' : coveragePct + '%';
+    document.getElementById('dr-notescoverage-sub').textContent = visits.length ? `of ${visits.length} visits with a note logged` : 'no visits recorded yet';
+    document.getElementById('dr-notesmissing').textContent = missing.length;
+
+    const notesTbody = document.getElementById('dr-notes-table');
+    if (!missing.length) {
+      notesTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">Every visit this month has a matching note — great work!</td></tr>';
+    } else {
+      missing.sort((a, b) => a.shift_date < b.shift_date ? 1 : -1);
+      notesTbody.innerHTML = missing.map(s => `<tr>
+        <td>${formatDate(s.shift_date)}</td>
+        <td>${s.client_name || '—'}</td>
+        <td>${s.staff_name || '—'}</td>
+        <td>${(s.start_time || '—').slice(0, 5)}${s.end_time ? '–' + s.end_time.slice(0, 5) : ''}</td>
+      </tr>`).join('');
+    }
+
+    // Care plan currency — always as-of-today, not scoped to the selected month
+    const todayStr = localISODate(new Date());
+    let overdue = 0, daysSum = 0, daysCount = 0;
+    const planRows = residents.map(r => {
+      const name = r.preferred_name || `${r.first_name || ''} ${r.last_name || ''}`.trim();
+      let daysSince = null;
+      if (r.updated_at) {
+        daysSince = Math.floor((new Date(todayStr) - new Date(localISODate(new Date(r.updated_at)))) / 86400000);
+        daysSum += daysSince; daysCount++;
+      }
+      const isOverdue = r.review_date && r.review_date < todayStr;
+      if (isOverdue) overdue++;
+      return { name, daysSince, review_date: r.review_date, isOverdue, hasReviewDate: !!r.review_date };
+    }).sort((a, b) => (b.daysSince || 0) - (a.daysSince || 0));
+
+    document.getElementById('dr-planoverdue').textContent = overdue;
+    const noReviewDate = planRows.filter(p => !p.hasReviewDate).length;
+    document.getElementById('dr-planoverdue-sub').textContent = noReviewDate ? `${noReviewDate} of ${planRows.length} have no review date set` : 'as of today';
+    document.getElementById('dr-planavgdays').textContent = daysCount ? Math.round(daysSum / daysCount) : '—';
+
+    const plansTbody = document.getElementById('dr-plans-table');
+    if (!planRows.length) {
+      plansTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">No active clients found</td></tr>';
+    } else {
+      plansTbody.innerHTML = planRows.map(p => {
+        let statusBadge;
+        if (!p.hasReviewDate) statusBadge = '<span class="badge badge-blue">No review date set</span>';
+        else if (p.isOverdue) statusBadge = '<span class="badge badge-red">Overdue</span>';
+        else statusBadge = '<span class="badge badge-green">Current</span>';
+        return `<tr>
+        <td>${p.name || '—'}</td>
+        <td>${p.daysSince === null ? '—' : p.daysSince + ' days ago'}</td>
+        <td>${p.review_date ? formatDate(p.review_date) : '—'}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+      }).join('');
+    }
   }
 
   function renderVisitReliability(data) {
