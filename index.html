@@ -5992,11 +5992,12 @@ const TRAINING_MODULES = [
     const [y, m] = month.split('-').map(Number);
     const end = localISODate(new Date(y, m, 0)); // last day of that month
 
-    const [shiftsRes, notesRes, residentsRes, staffRes] = await Promise.all([
+    const [shiftsRes, notesRes, residentsRes, staffRes, changesRes] = await Promise.all([
       db.from('rota_shifts').select('*').gte('shift_date', start).lte('shift_date', end).order('shift_date'),
       db.from('daily_notes').select('resident_name, note_date').gte('note_date', start).lte('note_date', end),
       db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date, commissioned_hours_per_week').eq('status', 'active'),
-      db.from('staff').select('id, full_name, contracted_hours').eq('status', 'active')
+      db.from('staff').select('id, full_name, contracted_hours').eq('status', 'active'),
+      db.from('rota_shift_changes').select('*').gte('shift_date', start).lte('shift_date', end).order('changed_at', { ascending: false })
     ]);
 
     if (shiftsRes.error) {
@@ -6010,7 +6011,7 @@ const TRAINING_MODULES = [
     const shifts = shiftsRes.data || [];
     const daysInMonth = new Date(y, m, 0).getDate();
     renderVisitReliability(shifts);
-    renderRotaStability(shifts);
+    renderRotaStability(shifts, changesRes.data || []);
     renderDigitalRecords(shifts, notesRes.data || [], residentsRes.data || []);
     renderServiceCapacity(shifts, residentsRes.data || [], staffRes.data || [], daysInMonth);
   }
@@ -6173,9 +6174,10 @@ const TRAINING_MODULES = [
     </tr>`).join('');
   }
 
-  function renderRotaStability(data) {
+  function renderRotaStability(data, changes) {
     const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
     const fmtDT = t => t ? new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const changeLabels = { staff_reassigned: 'Staff reassigned', time_changed: 'Time changed', date_changed: 'Date changed', cancelled: 'Cancelled' };
 
     const visits = data.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type) && s.client_name);
 
@@ -6209,35 +6211,22 @@ const TRAINING_MODULES = [
       </tr>`).join('');
     }
 
-    // Last-minute changes: shift created or edited within 48hrs of the scheduled visit start
-    const lastMinute = [];
-    visits.forEach(s => {
-      if (!s.start_time || !s.updated_at) return;
-      const scheduledStart = new Date(s.shift_date + 'T' + s.start_time);
-      const changedAt = new Date(s.updated_at);
-      const hoursBefore = (scheduledStart - changedAt) / 3600000;
-      if (hoursBefore >= 0 && hoursBefore < 48) {
-        const wasNew = s.created_at && Math.abs(new Date(s.created_at) - changedAt) < 60000;
-        lastMinute.push({
-          date: s.shift_date, client: s.client_name, staff: s.staff_name,
-          scheduled: (s.start_time || '—').slice(0, 5),
-          change: `${wasNew ? 'Added' : 'Edited'} ${fmtDT(s.updated_at)} (${Math.round(hoursBefore)}h before)`
-        });
-      }
-    });
+    // Last-minute changes: genuine schedule changes (staff/time/date/cancellation) logged within
+    // 48hrs of the scheduled visit — tracked via a database trigger, not inferred from updated_at,
+    // so routine clock-in/clock-out activity is never mistaken for a rota change.
+    const lastMinute = (changes || []).filter(c => c.hours_before_shift !== null && c.hours_before_shift >= 0 && c.hours_before_shift < 48);
 
     document.getElementById('rs-lastminute').textContent = lastMinute.length;
     const lmTbody = document.getElementById('rs-lastminute-table');
     if (!lastMinute.length) {
       lmTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No last-minute rota changes this month</td></tr>';
     } else {
-      lastMinute.sort((a, b) => a.date < b.date ? 1 : -1);
-      lmTbody.innerHTML = lastMinute.map(f => `<tr>
-        <td>${formatDate(f.date)}</td>
-        <td>${f.client || '—'}</td>
-        <td>${f.staff || '—'}</td>
-        <td>${f.scheduled}</td>
-        <td>${f.change}</td>
+      lmTbody.innerHTML = lastMinute.map(c => `<tr>
+        <td>${formatDate(c.shift_date)}</td>
+        <td>${c.client_name || '—'}</td>
+        <td>${c.change_type === 'staff_reassigned' ? `${c.old_staff_name || '—'} → ${c.new_staff_name || '—'}` : (c.new_staff_name || c.old_staff_name || '—')}</td>
+        <td>${(c.old_start_time || '—').slice(0, 5)}</td>
+        <td>${changeLabels[c.change_type] || c.change_type} — ${fmtDT(c.changed_at)} (${Math.round(c.hours_before_shift)}h before)</td>
       </tr>`).join('');
     }
   }
