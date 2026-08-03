@@ -1613,6 +1613,16 @@
         <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
         <div class="form-group full"><label>Risks &amp; Mitigations</label><textarea id="r-risks" placeholder="Key risks identified and how they are managed..."></textarea></div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
+        <div class="form-group full">
+          <label>Ready-made Care Plan Document (optional)</label>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('r-careplan-file').click()">
+            <div style="font-size:28px;margin-bottom:8px;">📎</div>
+            <div id="r-careplan-file-label" style="font-size:13px;color:var(--muted);">Choose file or click to browse</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, Word, or any file type — replaces any existing upload</div>
+            <input type="file" id="r-careplan-file" style="display:none;" onchange="document.getElementById('r-careplan-file-label').textContent = this.files[0]?.name || 'Choose file...'" />
+          </div>
+          <div id="r-careplan-file-current" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+        </div>
       </div>
     </div>
     <div id="rt-care" class="tab-panel">
@@ -2596,6 +2606,22 @@ const TRAINING_MODULES = [
     };
     if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
     const editId = document.getElementById('r-edit-id').value;
+
+    // Handle ready-made care plan document upload, if one was chosen
+    const cpFileInput = document.getElementById('r-careplan-file');
+    const cpFile = cpFileInput?.files[0];
+    if (cpFile) {
+      if (cpFile.size > 10485760) { alert('Care plan document must be 10MB or smaller.'); return; }
+      const safeName = cpFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const cpPath = `residents/${editId || 'new'}/${Date.now()}_${safeName}`;
+      const { error: cpUpErr } = await db.storage.from('documents').upload(cpPath, cpFile, { upsert: true });
+      if (cpUpErr) { alert('Care plan document upload failed: ' + cpUpErr.message); return; }
+      payload.care_plan_document_path = cpPath;
+      payload.care_plan_document_name = cpFile.name;
+      payload.care_plan_document_uploaded_at = new Date().toISOString();
+      payload.care_plan_document_uploaded_by = currentUser?.email || 'unknown';
+    }
+
     let error;
     if (editId) {
       ({ error } = await db.from('residents').update(payload).eq('id', editId));
@@ -2631,6 +2657,12 @@ const TRAINING_MODULES = [
     document.getElementById('r-bedtime').value = r.bedtime_routine || '';
     document.getElementById('r-risks').value = r.risk_summary || '';
     document.getElementById('r-review-date').value = r.review_date || '';
+    document.getElementById('r-careplan-file').value = '';
+    document.getElementById('r-careplan-file-label').textContent = 'Choose file or click to browse';
+    const cpCurrent = document.getElementById('r-careplan-file-current');
+    cpCurrent.innerHTML = r.care_plan_document_path
+      ? `📎 Currently on file: <strong>${r.care_plan_document_name || 'document'}</strong>${r.care_plan_document_uploaded_at ? ' — uploaded ' + formatDate(r.care_plan_document_uploaded_at.slice(0,10)) : ''} — <button type="button" onclick="viewResidentCarePlanDoc('${r.care_plan_document_path.replace(/'/g, "\\'")}')" style="background:none;border:none;color:var(--teal);text-decoration:underline;cursor:pointer;padding:0;font-size:12px;">View file</button>`
+      : '';
     // Care
     document.getElementById('r-care-needs').value = r.care_needs || '';
     document.getElementById('r-mobility').value = r.mobility || '';
@@ -2722,6 +2754,11 @@ const TRAINING_MODULES = [
           ${vrFieldFull('Risks & Mitigations', r.risk_summary)}
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
         </div>
+        ${r.care_plan_document_path ? `
+        <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Uploaded document</div>
+          <div style="font-size:13px;margin-top:6px;">📎 <strong>${r.care_plan_document_name || 'Care plan document'}</strong>${r.care_plan_document_uploaded_at ? ' — uploaded ' + formatDate(r.care_plan_document_uploaded_at.slice(0,10)) : ''} — <button type="button" onclick="viewResidentCarePlanDoc('${r.care_plan_document_path.replace(/'/g, "\\'")}')" style="background:none;border:none;color:var(--teal-dark);text-decoration:underline;cursor:pointer;padding:0;font-size:13px;">View file</button></div>
+        </div>` : ''}
       </div>
 
       <!-- CARE NEEDS -->
@@ -2761,6 +2798,12 @@ const TRAINING_MODULES = [
     `;
 
     openModal('view-resident-modal');
+  }
+
+  async function viewResidentCarePlanDoc(path) {
+    const { data, error } = await db.storage.from('documents').createSignedUrl(path, 60);
+    if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
+    window.open(data.signedUrl, '_blank');
   }
 
   function editFromView() {
