@@ -1614,11 +1614,13 @@
         <div class="form-group full"><label>Important Relationships &amp; Who Influences Decisions</label><textarea id="r-important-people" placeholder="Family, friends, who they trust, who is involved in decisions..."></textarea></div>
         <div class="form-group full"><label>What "A Good Day" Looks Like</label><textarea id="r-good-day" placeholder="What does a good day look like for this person?"></textarea></div>
         <div class="form-group full"><label>What Causes Distress &amp; How to De-escalate</label><textarea id="r-behaviour" placeholder="Known triggers for distress and what helps calm the situation..."></textarea></div>
-        <div class="form-group full"><label>Goals &amp; Outcomes</label><textarea id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
+        <div class="form-group full"><label>Focus of the Plan</label><textarea id="r-plan-focus" placeholder="The primary focus of this care plan, e.g. maintaining independence at home, managing a specific condition..."></textarea></div>
+        <div class="form-group full"><label>Aim of the Plan</label><textarea id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
+        <div class="form-group full"><label>Action Plan</label><textarea id="r-action-plan" placeholder="Concrete steps and actions to achieve the aim..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea id="r-morning" placeholder="Support required in the morning..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea id="r-evening" placeholder="Support required in the evening..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
-        <div class="form-group full"><label>Risks &amp; Mitigations</label><textarea id="r-risks" placeholder="Key risks identified and how they are managed..."></textarea></div>
+        <div class="form-group full"><label>Risks Without Support</label><textarea id="r-risks" placeholder="What risks would this person face if the current support/care were not provided..."></textarea></div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
         <div class="form-group full">
           <label>Ready-made Care Plan Document (optional)</label>
@@ -2601,7 +2603,8 @@ const TRAINING_MODULES = [
       likes_preferences: val('r-likes'), care_needs: val('r-care-needs'),
       mobility: val('r-mobility'), personal_care: val('r-personal-care'),
       communication_needs: val('r-communication'), dietary_requirements: val('r-dietary'),
-      goals: val('r-goals'), morning_routine: val('r-morning'),
+      plan_focus: val('r-plan-focus'), goals: val('r-goals'), action_plan: val('r-action-plan'),
+      morning_routine: val('r-morning'),
       evening_routine: val('r-evening'), bedtime_routine: val('r-bedtime'),
       risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
       life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
@@ -2661,7 +2664,9 @@ const TRAINING_MODULES = [
     document.getElementById('r-status').value = r.status || 'active';
     document.getElementById('r-likes').value = r.likes_preferences || '';
     // Care Plan
+    document.getElementById('r-plan-focus').value = r.plan_focus || '';
     document.getElementById('r-goals').value = r.goals || '';
+    document.getElementById('r-action-plan').value = r.action_plan || '';
     document.getElementById('r-life-history').value = r.life_history_notes || '';
     document.getElementById('r-dislikes').value = r.dislikes || '';
     document.getElementById('r-comm-style').value = r.communication_style || '';
@@ -2770,18 +2775,25 @@ const TRAINING_MODULES = [
           ${vrFieldFull('Important Relationships & Who Influences Decisions', r.important_people)}
           ${vrFieldFull('What "A Good Day" Looks Like', r.good_day_looks_like)}
           ${vrFieldFull('What Causes Distress & How to De-escalate', r.behaviour_notes)}
-          ${vrFieldFull('Goals & Outcomes', r.goals)}
+          ${vrFieldFull('Focus of the Plan', r.plan_focus)}
+          ${vrFieldFull('Aim of the Plan', r.goals)}
+          ${vrFieldFull('Action Plan', r.action_plan)}
           ${vrFieldFull('Daily Support — Morning Routine', r.morning_routine)}
           ${vrFieldFull('Daily Support — Evening Routine', r.evening_routine)}
           ${vrFieldFull('Daily Support — Bedtime Routine', r.bedtime_routine)}
-          ${vrFieldFull('Risks & Mitigations', r.risk_summary)}
+          ${vrFieldFull('Risks Without Support', r.risk_summary)}
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
         </div>
-        ${r.care_plan_document_path ? `
         <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Uploaded document</div>
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Care plan document</div>
+          ${r.care_plan_document_path ? `
           <div style="font-size:13px;margin-top:6px;">📎 <strong>${r.care_plan_document_name || 'Care plan document'}</strong>${r.care_plan_document_uploaded_at ? ' — uploaded ' + formatDate(r.care_plan_document_uploaded_at.slice(0,10)) : ''} — <button type="button" onclick="viewResidentCarePlanDoc('${r.care_plan_document_path.replace(/'/g, "\\'")}')" style="background:none;border:none;color:var(--teal-dark);text-decoration:underline;cursor:pointer;padding:0;font-size:13px;">View file</button></div>
-        </div>` : ''}
+          ` : `<div style="font-size:13px;margin-top:6px;color:var(--muted);">No document uploaded yet</div>`}
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="file" id="vr-careplan-upload-file" style="font-size:12px;max-width:220px;" />
+            <button type="button" class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="uploadCarePlanDocFromView()">${r.care_plan_document_path ? '🔄 Replace' : '📎 Upload'} document</button>
+          </div>
+        </div>
       </div>
 
       <!-- CARE NEEDS -->
@@ -2821,6 +2833,30 @@ const TRAINING_MODULES = [
     `;
 
     openModal('view-resident-modal');
+  }
+
+  async function uploadCarePlanDocFromView() {
+    if (!currentViewResidentId) return;
+    const fileInput = document.getElementById('vr-careplan-upload-file');
+    const file = fileInput?.files[0];
+    if (!file) { alert('Please choose a file first.'); return; }
+    if (file.size > 10485760) { alert('Care plan document must be 10MB or smaller.'); return; }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const cpPath = `residents/${currentViewResidentId}/${Date.now()}_${safeName}`;
+    const { error: upErr } = await db.storage.from('documents').upload(cpPath, file, { upsert: true });
+    if (upErr) { alert('Upload failed: ' + upErr.message); return; }
+
+    const { error: updErr } = await db.from('residents').update({
+      care_plan_document_path: cpPath,
+      care_plan_document_name: file.name,
+      care_plan_document_uploaded_at: new Date().toISOString(),
+      care_plan_document_uploaded_by: currentUser?.email || 'unknown'
+    }).eq('id', currentViewResidentId);
+    if (updErr) { alert('Uploaded, but could not save the document reference: ' + updErr.message); return; }
+
+    await viewResident(currentViewResidentId); // refresh so the new document shows immediately
+    loadResidents();
   }
 
   async function viewResidentCarePlanDoc(path) {
