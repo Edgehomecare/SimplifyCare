@@ -1112,6 +1112,7 @@
           <button class="gov-tab" onclick="showOpexSection('stability',this)">Rota Stability</button>
           <button class="gov-tab" onclick="showOpexSection('records',this)">Digital Records</button>
           <button class="gov-tab" onclick="showOpexSection('capacity',this)">Service Capacity</button>
+          <button class="gov-tab" onclick="showOpexSection('satisfaction',this)">Client Satisfaction</button>
         </div>
 
         <!-- VISIT RELIABILITY -->
@@ -1190,6 +1191,26 @@
             <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Contracted hours are set from each staff member's profile. <span id="sc-staff-missing-note"></span></p>
             <div class="table-wrap"><table><thead><tr><th>Staff</th><th>Contracted hrs/week</th><th>Worked this month</th><th>Utilisation</th></tr></thead>
             <tbody id="sc-staff-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- CLIENT SATISFACTION -->
+        <div id="opex-satisfaction" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card green"><div class="label">Compliments</div><div class="value" id="cs-compliments">—</div><div class="sub" id="cs-compliments-sub">this month</div></div>
+            <div class="stat-card red"><div class="label">Complaints</div><div class="value" id="cs-complaints">—</div><div class="sub" id="cs-complaints-sub">this month</div></div>
+            <div class="stat-card blue"><div class="label">Complaints resolved</div><div class="value" id="cs-resolved">—</div><div class="sub">of complaints this month</div></div>
+            <div class="stat-card amber"><div class="label">Net feedback</div><div class="value" id="cs-net">—</div><div class="sub">compliments minus complaints</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">6-month trend</div>
+            <div class="table-wrap"><table><thead><tr><th>Month</th><th>Compliments</th><th>Complaints</th><th>Net</th></tr></thead>
+            <tbody id="cs-trend-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-title">This month's feedback log — <span id="cs-month-label"></span></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Nature / Source</th><th>Regarding</th><th>Status / Detail</th></tr></thead>
+            <tbody id="cs-log-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
           </div>
         </div>
       </div><!-- /opex page -->
@@ -5830,8 +5851,8 @@ const TRAINING_MODULES = [
     kpis: JSON.parse(localStorage.getItem('gov_kpis')||'[]'),
     audits: JSON.parse(localStorage.getItem('gov_audits')||'[]'),
     actions: JSON.parse(localStorage.getItem('gov_actions')||'[]'),
-    complaints: JSON.parse(localStorage.getItem('gov_complaints')||'[]'),
-    compliments: JSON.parse(localStorage.getItem('gov_compliments')||'[]'),
+    complaints: [], // loaded from Supabase — see loadGovComplaints()
+    compliments: [], // loaded from Supabase — see loadGovComplaints()
     medAudits: JSON.parse(localStorage.getItem('gov_medaudits')||'[]'),
     supervisions: JSON.parse(localStorage.getItem('gov_supervisions')||'[]'),
     risks: JSON.parse(localStorage.getItem('gov_risks')||'[]'),
@@ -5987,17 +6008,20 @@ const TRAINING_MODULES = [
     document.getElementById('dr-notesmissing-month').textContent = label;
     document.getElementById('sc-month-label').textContent = label;
     document.getElementById('sc-delivered-sub').textContent = label;
+    document.getElementById('cs-month-label').textContent = label;
 
     const start = month + '-01';
     const [y, m] = month.split('-').map(Number);
     const end = localISODate(new Date(y, m, 0)); // last day of that month
 
-    const [shiftsRes, notesRes, residentsRes, staffRes, changesRes] = await Promise.all([
+    const [shiftsRes, notesRes, residentsRes, staffRes, changesRes, complaintsRes, complimentsRes] = await Promise.all([
       db.from('rota_shifts').select('*').gte('shift_date', start).lte('shift_date', end).order('shift_date'),
       db.from('daily_notes').select('resident_name, note_date').gte('note_date', start).lte('note_date', end),
       db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date, commissioned_hours_per_week').eq('status', 'active'),
       db.from('staff').select('id, full_name, contracted_hours').eq('status', 'active'),
-      db.from('rota_shift_changes').select('*').gte('shift_date', start).lte('shift_date', end).order('changed_at', { ascending: false })
+      db.from('rota_shift_changes').select('*').gte('shift_date', start).lte('shift_date', end).order('changed_at', { ascending: false }),
+      db.from('governance_complaints').select('*').order('date', { ascending: false }),
+      db.from('governance_compliments').select('*').order('date', { ascending: false })
     ]);
 
     if (shiftsRes.error) {
@@ -6014,6 +6038,7 @@ const TRAINING_MODULES = [
     renderRotaStability(shifts, changesRes.data || []);
     renderDigitalRecords(shifts, notesRes.data || [], residentsRes.data || []);
     renderServiceCapacity(shifts, residentsRes.data || [], staffRes.data || [], daysInMonth);
+    renderClientSatisfaction(complaintsRes.data || [], complimentsRes.data || [], month);
   }
 
   // Loose name match to cope with real-world inconsistent naming (e.g. "Anthea" vs "Anthea Dempster")
@@ -6022,6 +6047,60 @@ const TRAINING_MODULES = [
     const na = a.trim().toLowerCase(), nb = b.trim().toLowerCase();
     if (!na || !nb) return false;
     return na === nb || na.includes(nb) || nb.includes(na);
+  }
+
+  function renderClientSatisfaction(complaints, compliments, month) {
+    const thisMonthC = complaints.filter(c => c.date && c.date.startsWith(month));
+    const thisMonthP = compliments.filter(c => c.date && c.date.startsWith(month));
+    const resolved = thisMonthC.filter(c => c.status === 'Resolved').length;
+
+    document.getElementById('cs-compliments').textContent = thisMonthP.length;
+    document.getElementById('cs-complaints').textContent = thisMonthC.length;
+    document.getElementById('cs-resolved').textContent = thisMonthC.length ? Math.round((resolved / thisMonthC.length) * 100) + '%' : '—';
+    const net = thisMonthP.length - thisMonthC.length;
+    const netEl = document.getElementById('cs-net');
+    netEl.textContent = (net > 0 ? '+' : '') + net;
+    netEl.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : '';
+
+    // 6-month trend
+    const trendTbody = document.getElementById('cs-trend-table');
+    const months = [];
+    const [y, m] = month.split('-').map(Number);
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(y, m - 1 - i, 1);
+      months.push(d.toISOString().slice(0, 7));
+    }
+    trendTbody.innerHTML = months.map(mo => {
+      const cCount = complaints.filter(c => c.date && c.date.startsWith(mo)).length;
+      const pCount = compliments.filter(c => c.date && c.date.startsWith(mo)).length;
+      const n = pCount - cCount;
+      const label = new Date(mo + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+      return `<tr>
+        <td>${label}</td>
+        <td>${pCount}</td>
+        <td>${cCount}</td>
+        <td style="color:${n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--muted)'};font-weight:600;">${n > 0 ? '+' : ''}${n}</td>
+      </tr>`;
+    }).join('');
+
+    // Combined feed for the selected month
+    const logTbody = document.getElementById('cs-log-table');
+    const combined = [
+      ...thisMonthC.map(c => ({ date: c.date, type: 'Complaint', nature: c.nature, regarding: c.raised, detail: govStatusBadge(c.status) })),
+      ...thisMonthP.map(c => ({ date: c.date, type: 'Compliment', nature: c.source, regarding: c.re || c.staff, detail: c.details }))
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (!combined.length) {
+      logTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No complaints or compliments logged this month</td></tr>';
+    } else {
+      logTbody.innerHTML = combined.map(f => `<tr>
+        <td>${formatDate(f.date)}</td>
+        <td><span class="badge ${f.type === 'Complaint' ? 'badge-red' : 'badge-green'}">${f.type}</span></td>
+        <td>${f.nature || '—'}</td>
+        <td>${f.regarding || '—'}</td>
+        <td>${f.detail || '—'}</td>
+      </tr>`).join('');
+    }
   }
 
   function renderDigitalRecords(shifts, notes, residents) {
@@ -6377,9 +6456,53 @@ const TRAINING_MODULES = [
   function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('actions',${a.id},renderGovActions)">Delete</button></td></tr>`).join(''); }
 
   // Complaints & compliments
-  function saveComplaint(){ const date=document.getElementById('cmp-date').value; if(!date){alert('Please enter the date received');return;} govStore.complaints.push({id:Date.now(),date,raised:document.getElementById('cmp-raised').value,method:document.getElementById('cmp-method').value,nature:document.getElementById('cmp-nature').value,assigned:document.getElementById('cmp-assigned').value,due:document.getElementById('cmp-due').value,status:document.getElementById('cmp-status').value,escalated:document.getElementById('cmp-escalated').value,details:document.getElementById('cmp-details').value,outcome:document.getElementById('cmp-outcome').value,learning:document.getElementById('cmp-learning').value,satisfied:document.getElementById('cmp-satisfied').value}); govSave('complaints'); closeGovModal('complaint-modal'); renderGovComplaints(); ['cmp-date','cmp-assigned','cmp-due','cmp-details','cmp-outcome','cmp-learning'].forEach(id=>document.getElementById(id).value=''); }
-  function saveCompliment(){ const date=document.getElementById('comp-date').value; if(!date){alert('Please enter the date');return;} govStore.compliments.push({id:Date.now(),date,source:document.getElementById('comp-source').value,re:document.getElementById('comp-re').value,staff:document.getElementById('comp-staff').value,details:document.getElementById('comp-details').value}); govSave('compliments'); closeGovModal('compliment-modal'); renderGovComplaints(); ['comp-date','comp-staff','comp-details'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovComplaints(){ const thisMonth=new Date().toISOString().slice(0,7); document.getElementById('comp-month').textContent=govStore.complaints.filter(c=>c.date&&c.date.startsWith(thisMonth)).length; document.getElementById('comp-open').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length; document.getElementById('comp-resolved').textContent=govStore.complaints.filter(c=>c.status==='Resolved').length; document.getElementById('comp-compliments').textContent=govStore.compliments.length; const tb=document.getElementById('complaint-table'); if(!govStore.complaints.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr>';}else{tb.innerHTML=[...govStore.complaints].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.raised}</td><td>${c.nature}</td><td>${c.assigned||'—'}</td><td>${govFmtDate(c.due)}</td><td>${govStatusBadge(c.status)}</td><td>${c.escalated?`<span class="badge badge-red">${c.escalated}</span>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('complaints',${c.id},renderGovComplaints)">Delete</button></td></tr>`).join('');} const tb2=document.getElementById('compliment-table'); if(!govStore.compliments.length){tb2.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr>';}else{tb2.innerHTML=[...govStore.compliments].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.source}</td><td>${c.re}</td><td>${c.staff||'—'}</td><td>${c.details}</td></tr>`).join('');} }
+  async function loadGovComplaints(){
+    const [cRes, pRes] = await Promise.all([
+      db.from('governance_complaints').select('*').order('date', { ascending: false }),
+      db.from('governance_compliments').select('*').order('date', { ascending: false })
+    ]);
+    if (!cRes.error) govStore.complaints = cRes.data || [];
+    if (!pRes.error) govStore.compliments = pRes.data || [];
+    renderGovComplaints();
+    updateGovOverview(); // refresh CQC score panel now this data has actually loaded
+  }
+
+  async function saveComplaint(){
+    const date=document.getElementById('cmp-date').value;
+    if(!date){alert('Please enter the date received');return;}
+    const payload = {date,raised:document.getElementById('cmp-raised').value,method:document.getElementById('cmp-method').value,nature:document.getElementById('cmp-nature').value,assigned:document.getElementById('cmp-assigned').value,due:document.getElementById('cmp-due').value||null,status:document.getElementById('cmp-status').value,escalated:document.getElementById('cmp-escalated').value,details:document.getElementById('cmp-details').value,outcome:document.getElementById('cmp-outcome').value,learning:document.getElementById('cmp-learning').value,satisfied:document.getElementById('cmp-satisfied').value};
+    const { error } = await db.from('governance_complaints').insert([payload]);
+    if (error) { alert('Could not save complaint: ' + error.message); return; }
+    closeGovModal('complaint-modal');
+    ['cmp-date','cmp-assigned','cmp-due','cmp-details','cmp-outcome','cmp-learning'].forEach(id=>document.getElementById(id).value='');
+    await loadGovComplaints();
+  }
+
+  async function saveCompliment(){
+    const date=document.getElementById('comp-date').value;
+    if(!date){alert('Please enter the date');return;}
+    const payload = {date,source:document.getElementById('comp-source').value,re:document.getElementById('comp-re').value,staff:document.getElementById('comp-staff').value,details:document.getElementById('comp-details').value};
+    const { error } = await db.from('governance_compliments').insert([payload]);
+    if (error) { alert('Could not save compliment: ' + error.message); return; }
+    closeGovModal('compliment-modal');
+    ['comp-date','comp-staff','comp-details'].forEach(id=>document.getElementById(id).value='');
+    await loadGovComplaints();
+  }
+
+  async function deleteGovComplaint(id){
+    if(!confirm('Delete this record?')) return;
+    const { error } = await db.from('governance_complaints').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovComplaints();
+  }
+
+  async function deleteGovCompliment(id){
+    if(!confirm('Delete this record?')) return;
+    const { error } = await db.from('governance_compliments').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovComplaints();
+  }
+  function renderGovComplaints(){ const thisMonth=new Date().toISOString().slice(0,7); document.getElementById('comp-month').textContent=govStore.complaints.filter(c=>c.date&&c.date.startsWith(thisMonth)).length; document.getElementById('comp-open').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length; document.getElementById('comp-resolved').textContent=govStore.complaints.filter(c=>c.status==='Resolved').length; document.getElementById('comp-compliments').textContent=govStore.compliments.length; const tb=document.getElementById('complaint-table'); if(!govStore.complaints.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr>';}else{tb.innerHTML=[...govStore.complaints].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.raised}</td><td>${c.nature}</td><td>${c.assigned||'—'}</td><td>${govFmtDate(c.due)}</td><td>${govStatusBadge(c.status)}</td><td>${c.escalated?`<span class="badge badge-red">${c.escalated}</span>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovComplaint('${c.id}')">Delete</button></td></tr>`).join('');} const tb2=document.getElementById('compliment-table'); if(!govStore.compliments.length){tb2.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr>';}else{tb2.innerHTML=[...govStore.compliments].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.source}</td><td>${c.re}</td><td>${c.staff||'—'}</td><td>${c.details}</td></tr>`).join('');} }
 
   // Medication audits
   function saveMed(){ const date=document.getElementById('med-date').value; if(!date){alert('Please enter the date');return;} govStore.medAudits.push({id:Date.now(),date,resident:document.getElementById('med-resident').value,auditor:document.getElementById('med-auditor').value,mar:document.getElementById('med-mar').value,stock:document.getElementById('med-stock').value,errors:document.getElementById('med-errors').value,findings:document.getElementById('med-findings').value,actions:document.getElementById('med-actions').value,score:document.getElementById('med-score').value}); govSave('medAudits'); closeGovModal('med-modal'); renderGovMed(); ['med-date','med-resident','med-auditor','med-errors','med-findings','med-actions','med-score'].forEach(id=>document.getElementById(id).value=''); }
@@ -6501,7 +6624,7 @@ const TRAINING_MODULES = [
     document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
     updateGovOverview();
     renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
-    renderGovComplaints(); renderGovMed(); renderGovSupervisions();
+    loadGovComplaints(); renderGovMed(); renderGovSupervisions();
     renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
   }
 
