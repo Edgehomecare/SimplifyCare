@@ -1053,8 +1053,8 @@
         <div id="gov-medication" class="gov-section">
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Medication audit log</div><button class="btn-add" onclick="openGovModal('med-modal')">+ Record audit</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Auditor</th><th>MAR accurate</th><th>Stock correct</th><th>Errors found</th><th>Actions required</th><th>Score</th></tr></thead>
-            <tbody id="med-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Auditor</th><th>MAR accurate</th><th>Stock correct</th><th>Errors found</th><th>Actions required</th><th>Score</th><th></th></tr></thead>
+            <tbody id="med-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -1080,8 +1080,8 @@
         <div id="gov-safeguarding" class="gov-section">
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Safeguarding log</div><button class="btn-add" onclick="openGovModal('sfg-modal')">+ Log referral</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Type of concern</th><th>Referred to</th><th>Referred by</th><th>Outcome</th><th>Learning</th><th>Status</th></tr></thead>
-            <tbody id="sfg-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Type of concern</th><th>Referred to</th><th>Referred by</th><th>Outcome</th><th>Learning</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sfg-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -1089,8 +1089,8 @@
         <div id="gov-meetings" class="gov-section">
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Meeting minutes</div><button class="btn-add" onclick="openGovModal('meeting-modal')">+ Add minutes</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Meeting type</th><th>Chair</th><th>Attendees</th><th>Key decisions</th><th>Actions arising</th><th>Next meeting</th></tr></thead>
-            <tbody id="meeting-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Meeting type</th><th>Chair</th><th>Attendees</th><th>Key decisions</th><th>Actions arising</th><th>Next meeting</th><th></th><th></th></tr></thead>
+            <tbody id="meeting-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -5847,17 +5847,9 @@ const TRAINING_MODULES = [
   // ══════════════════════════════════════════════
   // ══════════════════════════════════════════════
   const govStore = {
-    policies: JSON.parse(localStorage.getItem('gov_policies')||'[]'),
-    kpis: JSON.parse(localStorage.getItem('gov_kpis')||'[]'),
-    audits: JSON.parse(localStorage.getItem('gov_audits')||'[]'),
-    actions: JSON.parse(localStorage.getItem('gov_actions')||'[]'),
-    complaints: [], // loaded from Supabase — see loadGovComplaints()
-    compliments: [], // loaded from Supabase — see loadGovComplaints()
-    medAudits: JSON.parse(localStorage.getItem('gov_medaudits')||'[]'),
-    supervisions: JSON.parse(localStorage.getItem('gov_supervisions')||'[]'),
-    risks: JSON.parse(localStorage.getItem('gov_risks')||'[]'),
-    safeguarding: JSON.parse(localStorage.getItem('gov_safeguarding')||'[]'),
-    meetings: JSON.parse(localStorage.getItem('gov_meetings')||'[]'),
+    policies: [], kpis: [], audits: [], actions: [],
+    complaints: [], compliments: [], // loaded from Supabase — see loadGovComplaints()
+    medAudits: [], supervisions: [], risks: [], safeguarding: [], meetings: [],
   };
   function govSave(key){ localStorage.setItem('gov_'+key, JSON.stringify(govStore[key])); }
 
@@ -5946,6 +5938,13 @@ const TRAINING_MODULES = [
     // The file already lives in Documents, so hide the upload box to avoid uploading it a second time.
     uploadWrap.style.display = 'none';
   }
+  async function loadGovPolicies(){
+    const { data, error } = await db.from('governance_policies').select('*').order('created_at', { ascending: false });
+    if (!error) govStore.policies = (data || []).map(p => ({ ...p, filePath: p.file_path, linkedDocId: p.linked_doc_id }));
+    renderGovPolicies();
+    updateGovOverview();
+  }
+
   async function savePolicy(){
     const name=document.getElementById('pol-name').value.trim();
     if(!name){alert('Please enter a policy name');return;}
@@ -5958,22 +5957,31 @@ const TRAINING_MODULES = [
       const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
       if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    govStore.policies.push({id:Date.now(),name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value,due:document.getElementById('pol-due').value,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,filePath,linkedDocId:linkedDocId?Number(linkedDocId):null});
-    govSave('policies'); closeGovModal('policy-modal'); renderGovPolicies();
+    const payload = {name,category:document.getElementById('pol-cat').value,version:document.getElementById('pol-ver').value,owner:document.getElementById('pol-owner').value,reviewed:document.getElementById('pol-reviewed').value||null,due:document.getElementById('pol-due').value||null,status:document.getElementById('pol-status').value,notes:document.getElementById('pol-notes').value,file_path:filePath,linked_doc_id:linkedDocId||null};
+    const { error } = await db.from('governance_policies').insert([payload]);
+    if (error) { alert('Could not save policy: ' + error.message); return; }
+    closeGovModal('policy-modal');
     ['pol-name','pol-ver','pol-owner','pol-reviewed','pol-due','pol-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('pol-file').value=''; document.getElementById('pol-file-label').textContent='Click to upload policy document';
     document.getElementById('pol-doc-link').value=''; document.getElementById('pol-linked-filepath').value='';
     document.getElementById('pol-upload-wrap').style.display='';
+    await loadGovPolicies();
+  }
+  async function deleteGovPolicy(id){
+    if(!confirm('Delete this policy record?')) return;
+    const { error } = await db.from('governance_policies').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovPolicies();
   }
   async function openPolicyFile(id){
-    const p = govStore.policies.find(x=>x.id===id);
+    const p = govStore.policies.find(x=>String(x.id)===String(id));
     if (!p || !p.filePath) { alert('No file attached to this policy.'); return; }
     if (/^https?:\/\//i.test(p.filePath)) { window.open(p.filePath, '_blank'); return; }
     const { data, error } = await db.storage.from('documents').createSignedUrl(p.filePath, 60);
     if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
     window.open(data.signedUrl, '_blank');
   }
-  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>${p.linkedDocId?' <span style="font-size:10px;color:var(--muted);" title="Using the file already uploaded in Documents">🔗 Linked</span>':''}`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
+  function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile('${p.id}')" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>${p.linkedDocId?' <span style="font-size:10px;color:var(--muted);" title="Using the file already uploaded in Documents">🔗 Linked</span>':''}`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovPolicy('${p.id}')">Delete</button></td></tr>`).join(''); }
 
   // KPIs
   // ── OPERATIONAL EXCELLENCE ──
@@ -6431,29 +6439,91 @@ const TRAINING_MODULES = [
   }
 
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
-  function saveGovKPI(){ const name=document.getElementById('kpi-name').value.trim(); if(!name){alert('Please enter a KPI name');return;} govStore.kpis.push({id:Date.now(),name,unit:document.getElementById('kpi-unit').value,target:document.getElementById('kpi-target').value,actual:document.getElementById('kpi-actual').value,month:document.getElementById('kpi-month').value||new Date().toISOString().slice(0,7),category:document.getElementById('kpi-cat').value,notes:document.getElementById('kpi-notes').value}); govSave('kpis'); closeGovModal('kpi-modal'); renderGovKPIs(); ['kpi-name','kpi-target','kpi-actual','kpi-notes'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovKPIs(){ const month=document.getElementById('kpi-month-select').value; document.getElementById('kpi-month-label').textContent=new Date(month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); const data=govStore.kpis.filter(k=>k.month===month); const el=document.getElementById('kpi-list'); if(!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p>';return;} el.innerHTML=data.map(k=>{ const t=parseFloat(k.target)||0,a=parseFloat(k.actual)||0; const pct=t>0?Math.min(Math.round(a/t*100),100):0; const col=a>=t?'#10b981':a>=t*0.9?'#f59e0b':'#ef4444'; const rag=a>=t?'green':a>=t*0.9?'amber':'red'; return `<div class="kpi-row"><div><div style="font-weight:600;">${k.name}</div><div style="font-size:12px;color:var(--muted);">${k.category}</div></div><div style="text-align:center;">${k.target}${k.unit}</div><div style="text-align:center;font-weight:700;color:${col}">${k.actual}${k.unit}</div><div>${govRagBadge(rag)}</div><div><div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${pct}%;background:${col}"></div></div></div><div><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('kpis',${k.id},renderGovKPIs)">Remove</button></div></div>`; }).join(''); }
+  async function loadGovKPIs(){
+    const { data, error } = await db.from('governance_kpis').select('*').order('created_at', { ascending: false });
+    if (!error) govStore.kpis = data || [];
+    renderGovKPIs();
+    updateGovOverview();
+  }
+  async function saveGovKPI(){
+    const name=document.getElementById('kpi-name').value.trim();
+    if(!name){alert('Please enter a KPI name');return;}
+    const payload = {name,unit:document.getElementById('kpi-unit').value,target:document.getElementById('kpi-target').value,actual:document.getElementById('kpi-actual').value,month:document.getElementById('kpi-month').value||new Date().toISOString().slice(0,7),category:document.getElementById('kpi-cat').value,notes:document.getElementById('kpi-notes').value};
+    const { error } = await db.from('governance_kpis').insert([payload]);
+    if (error) { alert('Could not save KPI: ' + error.message); return; }
+    closeGovModal('kpi-modal');
+    ['kpi-name','kpi-target','kpi-actual','kpi-notes'].forEach(id=>document.getElementById(id).value='');
+    await loadGovKPIs();
+  }
+  async function deleteGovKPI(id){
+    if(!confirm('Remove this KPI record?')) return;
+    const { error } = await db.from('governance_kpis').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovKPIs();
+  }
+  function renderGovKPIs(){ const month=document.getElementById('kpi-month-select').value; document.getElementById('kpi-month-label').textContent=new Date(month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); const data=govStore.kpis.filter(k=>k.month===month); const el=document.getElementById('kpi-list'); if(!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p>';return;} el.innerHTML=data.map(k=>{ const t=parseFloat(k.target)||0,a=parseFloat(k.actual)||0; const pct=t>0?Math.min(Math.round(a/t*100),100):0; const col=a>=t?'#10b981':a>=t*0.9?'#f59e0b':'#ef4444'; const rag=a>=t?'green':a>=t*0.9?'amber':'red'; return `<div class="kpi-row"><div><div style="font-weight:600;">${k.name}</div><div style="font-size:12px;color:var(--muted);">${k.category}</div></div><div style="text-align:center;">${k.target}${k.unit}</div><div style="text-align:center;font-weight:700;color:${col}">${k.actual}${k.unit}</div><div>${govRagBadge(rag)}</div><div><div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${pct}%;background:${col}"></div></div></div><div><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovKPI('${k.id}')">Remove</button></div></div>`; }).join(''); }
 
   // Audits
+  async function loadGovAudits(){
+    const { data, error } = await db.from('governance_audits').select('*').order('date', { ascending: false });
+    if (!error) govStore.audits = (data || []).map(a => ({ ...a, actions: a.actions_text, filePath: a.file_path }));
+    renderGovAudits();
+    updateGovOverview();
+  }
   async function saveAudit(){
     const type=document.getElementById('aud-type').value;
-    let fileUrl = '';
+    let filePath = '';
     const file = document.getElementById('aud-file').files[0];
     if (file) {
-      const path = `audits/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
-      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+      filePath = `audits/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
+      if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    govStore.audits.push({id:Date.now(),type,date:document.getElementById('aud-date').value,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value,findings:document.getElementById('aud-findings').value,actions:document.getElementById('aud-actions-text').value,fileUrl});
-    govSave('audits'); closeGovModal('audit-modal'); renderGovAudits();
+    const payload = {type,date:document.getElementById('aud-date').value||null,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value||null,findings:document.getElementById('aud-findings').value,actions_text:document.getElementById('aud-actions-text').value,file_path:filePath};
+    const { error } = await db.from('governance_audits').insert([payload]);
+    if (error) { alert('Could not save audit: ' + error.message); return; }
+    closeGovModal('audit-modal');
     ['aud-date','aud-by','aud-score','aud-next','aud-findings','aud-actions-text'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('aud-file').value=''; document.getElementById('aud-file-label').textContent='Click to upload audit document';
+    await loadGovAudits();
   }
-  function renderGovAudits(){ const el=document.getElementById('audit-list'); if(!govStore.audits.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p>';return;} el.innerHTML=[...govStore.audits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=>{ const sn=parseInt(a.score); const bg=a.rag==='green'?'#dcfce7':a.rag==='amber'?'#fef3c7':'#fee2e2'; const tc=a.rag==='green'?'#15803d':a.rag==='amber'?'#92400e':'#b91c1c'; return `<div class="audit-row"><div class="score-circle" style="background:${bg};color:${tc}">${isNaN(sn)?'N/A':sn+'%'}</div><div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.type}</div><div style="font-size:12px;color:var(--muted);">By ${a.by||'—'} on ${govFmtDate(a.date)} · Next: ${govFmtDate(a.next)}</div>${a.findings?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${a.findings}</div>`:''}</div>${govRagBadge(a.rag)}<button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('audits',${a.id},renderGovAudits)">Delete</button></div>`; }).join(''); }
+  async function deleteGovAudit(id){
+    if(!confirm('Delete this audit record?')) return;
+    const { error } = await db.from('governance_audits').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovAudits();
+  }
+  async function openAuditFile(path){
+    const { data, error } = await db.storage.from('documents').createSignedUrl(path, 60);
+    if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+  function renderGovAudits(){ const el=document.getElementById('audit-list'); if(!govStore.audits.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p>';return;} el.innerHTML=[...govStore.audits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=>{ const sn=parseInt(a.score); const bg=a.rag==='green'?'#dcfce7':a.rag==='amber'?'#fef3c7':'#fee2e2'; const tc=a.rag==='green'?'#15803d':a.rag==='amber'?'#92400e':'#b91c1c'; return `<div class="audit-row"><div class="score-circle" style="background:${bg};color:${tc}">${isNaN(sn)?'N/A':sn+'%'}</div><div style="flex:1;"><div style="font-weight:600;font-size:13px;">${a.type}</div><div style="font-size:12px;color:var(--muted);">By ${a.by||'—'} on ${govFmtDate(a.date)} · Next: ${govFmtDate(a.next)}</div>${a.findings?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${a.findings}</div>`:''}${a.filePath?`<button onclick="openAuditFile('${a.filePath}')" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;margin-top:4px;">📎 View file</button>`:''}</div>${govRagBadge(a.rag)}<button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovAudit('${a.id}')">Delete</button></div>`; }).join(''); }
 
   // Actions
-  function saveGovAction(){ const desc=document.getElementById('act-desc').value.trim(); if(!desc){alert('Please describe the action');return;} govStore.actions.push({id:Date.now(),desc,source:document.getElementById('act-source').value,priority:document.getElementById('act-priority').value,owner:document.getElementById('act-owner').value,due:document.getElementById('act-due').value,status:document.getElementById('act-status').value,notes:document.getElementById('act-notes').value}); govSave('actions'); closeGovModal('action-modal'); renderGovActions(); ['act-desc','act-owner','act-due','act-notes'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('actions',${a.id},renderGovActions)">Delete</button></td></tr>`).join(''); }
+  async function loadGovActions(){
+    const { data, error } = await db.from('governance_actions').select('*').order('created_at', { ascending: false });
+    if (!error) govStore.actions = (data || []).map(a => ({ ...a, desc: a.desc }));
+    renderGovActions();
+    updateGovOverview();
+  }
+  async function saveGovAction(){
+    const desc=document.getElementById('act-desc').value.trim();
+    if(!desc){alert('Please describe the action');return;}
+    const payload = {desc,source:document.getElementById('act-source').value,priority:document.getElementById('act-priority').value,owner:document.getElementById('act-owner').value,due:document.getElementById('act-due').value||null,status:document.getElementById('act-status').value,notes:document.getElementById('act-notes').value};
+    const { error } = await db.from('governance_actions').insert([payload]);
+    if (error) { alert('Could not save action: ' + error.message); return; }
+    closeGovModal('action-modal');
+    ['act-desc','act-owner','act-due','act-notes'].forEach(id=>document.getElementById(id).value='');
+    await loadGovActions();
+  }
+  async function deleteGovAction(id){
+    if(!confirm('Delete this action record?')) return;
+    const { error } = await db.from('governance_actions').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovActions();
+  }
+  function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovAction('${a.id}')">Delete</button></td></tr>`).join(''); }
 
   // Complaints & compliments
   async function loadGovComplaints(){
@@ -6505,8 +6575,28 @@ const TRAINING_MODULES = [
   function renderGovComplaints(){ const thisMonth=new Date().toISOString().slice(0,7); document.getElementById('comp-month').textContent=govStore.complaints.filter(c=>c.date&&c.date.startsWith(thisMonth)).length; document.getElementById('comp-open').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length; document.getElementById('comp-resolved').textContent=govStore.complaints.filter(c=>c.status==='Resolved').length; document.getElementById('comp-compliments').textContent=govStore.compliments.length; const tb=document.getElementById('complaint-table'); if(!govStore.complaints.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr>';}else{tb.innerHTML=[...govStore.complaints].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.raised}</td><td>${c.nature}</td><td>${c.assigned||'—'}</td><td>${govFmtDate(c.due)}</td><td>${govStatusBadge(c.status)}</td><td>${c.escalated?`<span class="badge badge-red">${c.escalated}</span>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovComplaint('${c.id}')">Delete</button></td></tr>`).join('');} const tb2=document.getElementById('compliment-table'); if(!govStore.compliments.length){tb2.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr>';}else{tb2.innerHTML=[...govStore.compliments].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.source}</td><td>${c.re}</td><td>${c.staff||'—'}</td><td>${c.details}</td></tr>`).join('');} }
 
   // Medication audits
-  function saveMed(){ const date=document.getElementById('med-date').value; if(!date){alert('Please enter the date');return;} govStore.medAudits.push({id:Date.now(),date,resident:document.getElementById('med-resident').value,auditor:document.getElementById('med-auditor').value,mar:document.getElementById('med-mar').value,stock:document.getElementById('med-stock').value,errors:document.getElementById('med-errors').value,findings:document.getElementById('med-findings').value,actions:document.getElementById('med-actions').value,score:document.getElementById('med-score').value}); govSave('medAudits'); closeGovModal('med-modal'); renderGovMed(); ['med-date','med-resident','med-auditor','med-errors','med-findings','med-actions','med-score'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovMed(){ const tb=document.getElementById('med-table'); if(!govStore.medAudits.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.medAudits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{ const err=parseInt(m.errors)||0; const score=parseInt(m.score); return `<tr><td>${govFmtDate(m.date)}</td><td>${m.resident||'—'}</td><td>${m.auditor||'—'}</td><td>${m.mar==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-red">'+m.mar+'</span>'}</td><td>${m.stock==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-amber">'+m.stock+'</span>'}</td><td>${err===0?'<span class="badge badge-green">None</span>':'<span class="badge badge-red">'+err+'</span>'}</td><td style="font-size:12px;">${m.actions||'—'}</td><td>${isNaN(score)?'—':'<span class="badge badge-'+(score>=90?'green':score>=75?'amber':'red')+'">'+score+'%</span>'}</td></tr>`; }).join(''); }
+  async function loadGovMed(){
+    const { data, error } = await db.from('governance_med_audits').select('*').order('date', { ascending: false });
+    if (!error) govStore.medAudits = data || [];
+    renderGovMed();
+  }
+  async function saveMed(){
+    const date=document.getElementById('med-date').value;
+    if(!date){alert('Please enter the date');return;}
+    const payload = {date,resident:document.getElementById('med-resident').value,auditor:document.getElementById('med-auditor').value,mar:document.getElementById('med-mar').value,stock:document.getElementById('med-stock').value,errors:document.getElementById('med-errors').value,findings:document.getElementById('med-findings').value,actions:document.getElementById('med-actions').value,score:document.getElementById('med-score').value};
+    const { error } = await db.from('governance_med_audits').insert([payload]);
+    if (error) { alert('Could not save audit: ' + error.message); return; }
+    closeGovModal('med-modal');
+    ['med-date','med-resident','med-auditor','med-errors','med-findings','med-actions','med-score'].forEach(id=>document.getElementById(id).value='');
+    await loadGovMed();
+  }
+  async function deleteGovMed(id){
+    if(!confirm('Delete this medication audit record?')) return;
+    const { error } = await db.from('governance_med_audits').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovMed();
+  }
+  function renderGovMed(){ const tb=document.getElementById('med-table'); if(!govStore.medAudits.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.medAudits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{ const err=parseInt(m.errors)||0; const score=parseInt(m.score); return `<tr><td>${govFmtDate(m.date)}</td><td>${m.resident||'—'}</td><td>${m.auditor||'—'}</td><td>${m.mar==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-red">'+m.mar+'</span>'}</td><td>${m.stock==='Yes'?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-amber">'+m.stock+'</span>'}</td><td>${err===0?'<span class="badge badge-green">None</span>':'<span class="badge badge-red">'+err+'</span>'}</td><td style="font-size:12px;">${m.actions||'—'}</td><td>${isNaN(score)?'—':'<span class="badge badge-'+(score>=90?'green':score>=75?'amber':'red')+'">'+score+'%</span>'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovMed('${m.id}')">Delete</button></td></tr>`; }).join(''); }
 
   // Supervisions
   function openSupervisionModal() {
@@ -6517,30 +6607,37 @@ const TRAINING_MODULES = [
     document.getElementById('sup-outcome').value = 'Satisfactory';
     openGovModal('sup-modal');
   }
-  function saveSupervision(){
+  async function loadGovSupervisions(){
+    const { data, error } = await db.from('governance_supervisions').select('*').order('date', { ascending: false });
+    if (!error) govStore.supervisions = (data || []).map(s => ({ ...s, actionPlan: s.action_plan, staffFeedback: s.staff_feedback, supervisorFeedback: s.supervisor_feedback }));
+    renderGovSupervisions();
+  }
+  async function saveSupervision(){
     const staff=document.getElementById('sup-staff').value.trim();
     if(!staff){alert('Please enter the staff member name');return;}
-    const record = {
+    const payload = {
       staff, role:document.getElementById('sup-role').value, type:document.getElementById('sup-type').value,
-      date:document.getElementById('sup-date').value,
+      date:document.getElementById('sup-date').value||null,
       purpose:document.getElementById('sup-purpose').value,
       discussion:document.getElementById('sup-discussion').value,
       strengths:document.getElementById('sup-strengths').value,
       development:document.getElementById('sup-development').value,
-      actionPlan:document.getElementById('sup-action-plan').value,
-      staffFeedback:document.getElementById('sup-staff-feedback').value,
-      supervisorFeedback:document.getElementById('sup-supervisor-feedback').value,
-      by:document.getElementById('sup-by').value, next:document.getElementById('sup-next').value,
+      action_plan:document.getElementById('sup-action-plan').value,
+      staff_feedback:document.getElementById('sup-staff-feedback').value,
+      supervisor_feedback:document.getElementById('sup-supervisor-feedback').value,
+      by:document.getElementById('sup-by').value, next:document.getElementById('sup-next').value||null,
       outcome:document.getElementById('sup-outcome').value
     };
     const editId = document.getElementById('sup-edit-id').value;
+    let error;
     if (editId) {
-      const idx = govStore.supervisions.findIndex(s => String(s.id) === String(editId));
-      if (idx > -1) govStore.supervisions[idx] = { ...govStore.supervisions[idx], ...record };
+      ({ error } = await db.from('governance_supervisions').update(payload).eq('id', editId));
     } else {
-      govStore.supervisions.push({ id: Date.now(), ...record });
+      ({ error } = await db.from('governance_supervisions').insert([payload]));
     }
-    govSave('supervisions'); closeGovModal('sup-modal'); renderGovSupervisions();
+    if (error) { alert('Could not save: ' + error.message); return; }
+    closeGovModal('sup-modal');
+    await loadGovSupervisions();
   }
   function editSupervision(id){
     const s = govStore.supervisions.find(x => String(x.id) === String(id));
@@ -6585,47 +6682,109 @@ const TRAINING_MODULES = [
     `;
     openGovModal('sup-view-modal');
   }
-  function deleteSupervision(id){
+  async function deleteSupervision(id){
     if (!confirm('Delete this supervision record? This cannot be undone.')) return;
-    govStore.supervisions = govStore.supervisions.filter(x => String(x.id) !== String(id));
-    govSave('supervisions'); renderGovSupervisions();
+    const { error } = await db.from('governance_supervisions').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovSupervisions();
   }
-  function renderGovSupervisions(){ const tb=document.getElementById('sup-table'); if(!govStore.supervisions.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.supervisions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td><strong>${s.staff}</strong></td><td>${s.role||'—'}</td><td><span class="badge badge-blue">${s.type}</span></td><td>${govFmtDate(s.date)}</td><td>${s.by||'—'}</td><td>${govStatusBadge(s.outcome)}</td><td>${govFmtDate(s.next)}</td><td>${new Date(s.next)<new Date()?'<span class="badge badge-red">Overdue</span>':'<span class="badge badge-green">On track</span>'}</td><td style="display:flex;gap:6px;"><button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="viewSupervision(${s.id})">View</button><button class="btn btn-save" style="padding:5px 10px;font-size:12px;" onclick="editSupervision(${s.id})">Edit</button><button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteSupervision(${s.id})">Delete</button></td></tr>`).join(''); }
+  function renderGovSupervisions(){ const tb=document.getElementById('sup-table'); if(!govStore.supervisions.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No supervisions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.supervisions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td><strong>${s.staff}</strong></td><td>${s.role||'—'}</td><td><span class="badge badge-blue">${s.type}</span></td><td>${govFmtDate(s.date)}</td><td>${s.by||'—'}</td><td>${govStatusBadge(s.outcome)}</td><td>${govFmtDate(s.next)}</td><td>${new Date(s.next)<new Date()?'<span class="badge badge-red">Overdue</span>':'<span class="badge badge-green">On track</span>'}</td><td style="display:flex;gap:6px;"><button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="viewSupervision('${s.id}')">View</button><button class="btn btn-save" style="padding:5px 10px;font-size:12px;" onclick="editSupervision('${s.id}')">Edit</button><button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteSupervision('${s.id}')">Delete</button></td></tr>`).join(''); }
 
   // Risks
-  function saveRisk(){ const desc=document.getElementById('risk-desc').value.trim(); if(!desc){alert('Please describe the risk');return;} govStore.risks.push({id:Date.now(),desc,category:document.getElementById('risk-cat').value,likelihood:document.getElementById('risk-like').value,impact:document.getElementById('risk-impact').value,owner:document.getElementById('risk-owner').value,review:document.getElementById('risk-review').value,controls:document.getElementById('risk-controls').value,actions:document.getElementById('risk-actions').value}); govSave('risks'); closeGovModal('risk-modal'); renderGovRisks(); ['risk-desc','risk-owner','risk-review','risk-controls','risk-actions'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovRisks(){ const tb=document.getElementById('risk-table'); if(!govStore.risks.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.risks].sort((a,b)=>(parseInt(b.likelihood)*parseInt(b.impact))-(parseInt(a.likelihood)*parseInt(a.impact))).map(r=>{ const score=parseInt(r.likelihood)*parseInt(r.impact); const rating=score>=15?'red':score>=8?'amber':'green'; return `<tr><td style="max-width:200px;font-size:13px;">${r.desc}</td><td><span class="badge badge-blue">${r.category}</span></td><td style="text-align:center;">${r.likelihood}</td><td style="text-align:center;">${r.impact}</td><td style="text-align:center;font-weight:700;">${score}</td><td><span class="badge badge-${rating}">${score>=15?'High':score>=8?'Medium':'Low'}</span></td><td style="font-size:12px;max-width:180px;">${r.controls||'—'}</td><td>${r.owner||'—'}</td><td>${govFmtDate(r.review)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('risks',${r.id},renderGovRisks)">Delete</button></td></tr>`; }).join(''); }
+  async function loadGovRisks(){
+    const { data, error } = await db.from('governance_risks').select('*').order('created_at', { ascending: false });
+    if (!error) govStore.risks = data || [];
+    renderGovRisks();
+    updateGovOverview();
+  }
+  async function saveRisk(){
+    const desc=document.getElementById('risk-desc').value.trim();
+    if(!desc){alert('Please describe the risk');return;}
+    const payload = {desc,category:document.getElementById('risk-cat').value,likelihood:document.getElementById('risk-like').value,impact:document.getElementById('risk-impact').value,owner:document.getElementById('risk-owner').value,review:document.getElementById('risk-review').value||null,controls:document.getElementById('risk-controls').value,actions:document.getElementById('risk-actions').value};
+    const { error } = await db.from('governance_risks').insert([payload]);
+    if (error) { alert('Could not save risk: ' + error.message); return; }
+    closeGovModal('risk-modal');
+    ['risk-desc','risk-owner','risk-review','risk-controls','risk-actions'].forEach(id=>document.getElementById(id).value='');
+    await loadGovRisks();
+  }
+  async function deleteGovRisk(id){
+    if(!confirm('Delete this risk record?')) return;
+    const { error } = await db.from('governance_risks').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovRisks();
+  }
+  function renderGovRisks(){ const tb=document.getElementById('risk-table'); if(!govStore.risks.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.risks].sort((a,b)=>(parseInt(b.likelihood)*parseInt(b.impact))-(parseInt(a.likelihood)*parseInt(a.impact))).map(r=>{ const score=parseInt(r.likelihood)*parseInt(r.impact); const rating=score>=15?'red':score>=8?'amber':'green'; return `<tr><td style="max-width:200px;font-size:13px;">${r.desc}</td><td><span class="badge badge-blue">${r.category}</span></td><td style="text-align:center;">${r.likelihood}</td><td style="text-align:center;">${r.impact}</td><td style="text-align:center;font-weight:700;">${score}</td><td><span class="badge badge-${rating}">${score>=15?'High':score>=8?'Medium':'Low'}</span></td><td style="font-size:12px;max-width:180px;">${r.controls||'—'}</td><td>${r.owner||'—'}</td><td>${govFmtDate(r.review)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovRisk('${r.id}')">Delete</button></td></tr>`; }).join(''); }
 
   // Safeguarding
-  function saveSafeguarding(){ const date=document.getElementById('sfg-date').value; if(!date){alert('Please enter the date');return;} govStore.safeguarding.push({id:Date.now(),date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value}); govSave('safeguarding'); closeGovModal('sfg-modal'); renderGovSafeguarding(); ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value=''); }
-  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td></tr>`).join(''); }
+  async function loadGovSafeguarding(){
+    const { data, error } = await db.from('governance_safeguarding').select('*').order('date', { ascending: false });
+    if (!error) govStore.safeguarding = data || [];
+    renderGovSafeguarding();
+    updateGovOverview();
+  }
+  async function saveSafeguarding(){
+    const date=document.getElementById('sfg-date').value;
+    if(!date){alert('Please enter the date');return;}
+    const payload = {date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value};
+    const { error } = await db.from('governance_safeguarding').insert([payload]);
+    if (error) { alert('Could not save referral: ' + error.message); return; }
+    closeGovModal('sfg-modal');
+    ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value='');
+    await loadGovSafeguarding();
+  }
+  async function deleteGovSafeguarding(id){
+    if(!confirm('Delete this safeguarding record?')) return;
+    const { error } = await db.from('governance_safeguarding').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovSafeguarding();
+  }
+  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovSafeguarding('${s.id}')">Delete</button></td></tr>`).join(''); }
 
   // Meetings
+  async function loadGovMeetings(){
+    const { data, error } = await db.from('governance_meetings').select('*').order('date', { ascending: false });
+    if (!error) govStore.meetings = (data || []).map(m => ({ ...m, actions: m.actions_text, filePath: m.file_path }));
+    renderGovMeetings();
+  }
   async function saveMeeting(){
     const date=document.getElementById('mtg-date').value;
     if(!date){alert('Please enter the meeting date');return;}
-    let fileUrl = '';
+    let filePath = '';
     const file = document.getElementById('mtg-file').files[0];
     if (file) {
-      const path = `meetings/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-      const { error: ue } = await db.storage.from('documents').upload(path, file, { upsert: true });
-      if (!ue) { const { data: ud } = db.storage.from('documents').getPublicUrl(path); fileUrl = ud.publicUrl; }
+      filePath = `meetings/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
+      if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    govStore.meetings.push({id:Date.now(),date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value,fileUrl});
-    govSave('meetings'); closeGovModal('meeting-modal'); renderGovMeetings();
+    const payload = {date,type:document.getElementById('mtg-type').value,chair:document.getElementById('mtg-chair').value,next:document.getElementById('mtg-next').value||null,attendees:document.getElementById('mtg-attendees').value,decisions:document.getElementById('mtg-decisions').value,actions_text:document.getElementById('mtg-actions-text').value,notes:document.getElementById('mtg-notes').value,file_path:filePath};
+    const { error } = await db.from('governance_meetings').insert([payload]);
+    if (error) { alert('Could not save meeting: ' + error.message); return; }
+    closeGovModal('meeting-modal');
     ['mtg-date','mtg-chair','mtg-next','mtg-attendees','mtg-decisions','mtg-actions-text','mtg-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('mtg-file').value=''; document.getElementById('mtg-file-label').textContent='Click to upload meeting minutes';
+    await loadGovMeetings();
   }
-  function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td></tr>`).join(''); }
+  async function deleteGovMeeting(id){
+    if(!confirm('Delete this meeting record?')) return;
+    const { error } = await db.from('governance_meetings').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovMeetings();
+  }
+  async function openMeetingFile(path){
+    const { data, error } = await db.storage.from('documents').createSignedUrl(path, 60);
+    if (error || !data) { alert('Could not open file: ' + (error ? error.message : 'unknown error')); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+  function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td><td>${m.filePath?`<button onclick="openMeetingFile('${m.filePath}')" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 View</button>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovMeeting('${m.id}')">Delete</button></td></tr>`).join(''); }
 
   // Init governance
   function initGovernance(){
     initGovKPIMonth();
     document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
     updateGovOverview();
-    renderGovPolicies(); renderGovKPIs(); renderGovAudits(); renderGovActions();
-    loadGovComplaints(); renderGovMed(); renderGovSupervisions();
-    renderGovRisks(); renderGovSafeguarding(); renderGovMeetings();
+    loadGovPolicies(); loadGovKPIs(); loadGovAudits(); loadGovActions();
+    loadGovComplaints(); loadGovMed(); loadGovSupervisions();
+    loadGovRisks(); loadGovSafeguarding(); loadGovMeetings();
   }
 
   // ══════════════════════════════════════════════
