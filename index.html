@@ -1108,17 +1108,26 @@
 
         <!-- OpEx Sub-Nav -->
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
-          <button class="gov-tab active" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
-          <button class="gov-tab" onclick="showOpexSection('stability',this)">Rota Stability</button>
-          <button class="gov-tab" onclick="showOpexSection('records',this)">Digital Records</button>
-          <button class="gov-tab" onclick="showOpexSection('capacity',this)">Service Capacity</button>
-          <button class="gov-tab" onclick="showOpexSection('satisfaction',this)">Client Satisfaction</button>
+          <button class="gov-tab active" data-opex-tab="overview" onclick="showOpexSection('overview',this)">Overview</button>
+          <button class="gov-tab" data-opex-tab="reliability" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
+          <button class="gov-tab" data-opex-tab="stability" onclick="showOpexSection('stability',this)">Rota Stability</button>
+          <button class="gov-tab" data-opex-tab="records" onclick="showOpexSection('records',this)">Digital Records</button>
+          <button class="gov-tab" data-opex-tab="capacity" onclick="showOpexSection('capacity',this)">Service Capacity</button>
+          <button class="gov-tab" data-opex-tab="satisfaction" onclick="showOpexSection('satisfaction',this)">Client Satisfaction</button>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div id="opex-overview" class="gov-section active">
+          <p style="color:var(--muted);font-size:13px;margin:-4px 0 16px;">A quick read on how the service is running this month — <span id="ov-opex-month-label"></span>. Click any row to see the full detail.</p>
+          <div id="opex-overview-cards" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;padding:32px;color:var(--muted);">Loading...</div>
+          </div>
         </div>
 
         <!-- VISIT RELIABILITY -->
-        <div id="opex-reliability" class="gov-section active">
+        <div id="opex-reliability" class="gov-section">
           <div class="stats-grid">
-            <div class="stat-card green"><div class="label">On-time rate</div><div class="value" id="vr-ontime">—</div><div class="sub" id="vr-ontime-sub">of visits with a clock-in</div></div>
+            <div class="stat-card green"><div class="label">On-time rate</div><div class="value" id="vr-ontime">—</div><div class="sub" id="vr-ontime-sub">of visits with a clock-in</div><div class="sub" id="vr-ontime-delta" style="font-weight:600;"></div></div>
             <div class="stat-card red"><div class="label">Missed visits</div><div class="value" id="vr-missed">—</div><div class="sub">no clock-in recorded</div></div>
             <div class="stat-card amber"><div class="label">Late arrivals</div><div class="value" id="vr-late">—</div><div class="sub">30+ min after scheduled start</div></div>
             <div class="stat-card blue"><div class="label">Avg duration variance</div><div class="value" id="vr-variance">—</div><div class="sub">vs scheduled length</div></div>
@@ -1134,7 +1143,7 @@
         <div id="opex-stability" class="gov-section">
           <div class="stats-grid">
             <div class="stat-card amber"><div class="label">Last-minute changes</div><div class="value" id="rs-lastminute">—</div><div class="sub">added or edited within 48hrs of visit</div></div>
-            <div class="stat-card blue"><div class="label">Avg staff per client</div><div class="value" id="rs-avgstaff">—</div><div class="sub">lower means better continuity</div></div>
+            <div class="stat-card blue"><div class="label">Avg staff per client</div><div class="value" id="rs-avgstaff">—</div><div class="sub">lower means better continuity</div><div class="sub" id="rs-avgstaff-delta" style="font-weight:600;"></div></div>
             <div class="stat-card red"><div class="label">Low-continuity clients</div><div class="value" id="rs-lowcontinuity">—</div><div class="sub">seen by 4+ different staff</div></div>
             <div class="stat-card green"><div class="label">Single-carer clients</div><div class="value" id="rs-singlestaff">—</div><div class="sub">seen by just 1 staff member</div></div>
           </div>
@@ -1154,7 +1163,7 @@
         <!-- DIGITAL RECORD COMPLETENESS -->
         <div id="opex-records" class="gov-section">
           <div class="stats-grid">
-            <div class="stat-card green"><div class="label">Notes coverage</div><div class="value" id="dr-notescoverage">—</div><div class="sub" id="dr-notescoverage-sub">of visits with a note logged</div></div>
+            <div class="stat-card green"><div class="label">Notes coverage</div><div class="value" id="dr-notescoverage">—</div><div class="sub" id="dr-notescoverage-sub">of visits with a note logged</div><div class="sub" id="dr-notescoverage-delta" style="font-weight:600;"></div></div>
             <div class="stat-card red"><div class="label">Visits missing a note</div><div class="value" id="dr-notesmissing">—</div><div class="sub" id="dr-notesmissing-month">this month</div></div>
             <div class="stat-card amber"><div class="label">Care plans overdue review</div><div class="value" id="dr-planoverdue">—</div><div class="sub" id="dr-planoverdue-sub">as of today</div></div>
             <div class="stat-card blue"><div class="label">Avg days since plan updated</div><div class="value" id="dr-planavgdays">—</div><div class="sub">across active clients</div></div>
@@ -1177,7 +1186,7 @@
           <div class="stats-grid">
             <div class="stat-card blue"><div class="label">Commissioned hrs/week</div><div class="value" id="sc-commissioned">—</div><div class="sub">across active clients</div></div>
             <div class="stat-card teal"><div class="label">Hours delivered</div><div class="value" id="sc-delivered">—</div><div class="sub" id="sc-delivered-sub">this month</div></div>
-            <div class="stat-card green"><div class="label">Delivery rate</div><div class="value" id="sc-rate">—</div><div class="sub">delivered vs commissioned</div></div>
+            <div class="stat-card green"><div class="label">Delivery rate</div><div class="value" id="sc-rate">—</div><div class="sub">delivered vs commissioned</div><div class="sub" id="sc-rate-delta" style="font-weight:600;"></div></div>
             <div class="stat-card amber"><div class="label">Missing commissioned hours</div><div class="value" id="sc-missing">—</div><div class="sub">clients not yet set up</div></div>
           </div>
           <div class="card">
@@ -1200,7 +1209,7 @@
             <div class="stat-card green"><div class="label">Compliments</div><div class="value" id="cs-compliments">—</div><div class="sub" id="cs-compliments-sub">this month</div></div>
             <div class="stat-card red"><div class="label">Complaints</div><div class="value" id="cs-complaints">—</div><div class="sub" id="cs-complaints-sub">this month</div></div>
             <div class="stat-card blue"><div class="label">Complaints resolved</div><div class="value" id="cs-resolved">—</div><div class="sub">of complaints this month</div></div>
-            <div class="stat-card amber"><div class="label">Net feedback</div><div class="value" id="cs-net">—</div><div class="sub">compliments minus complaints</div></div>
+            <div class="stat-card amber"><div class="label">Net feedback</div><div class="value" id="cs-net">—</div><div class="sub">compliments minus complaints</div><div class="sub" id="cs-net-delta" style="font-weight:600;"></div></div>
           </div>
           <div class="card">
             <div class="card-title">6-month trend</div>
@@ -6007,6 +6016,118 @@ const TRAINING_MODULES = [
     renderOpexAll();
   }
 
+  // ── OpEx: clickable client/staff names ──
+  let opexResidentMap = {};
+  let opexStaffMap = {};
+  function buildOpexNameMaps(residents, staff) {
+    opexResidentMap = {};
+    (residents || []).forEach(r => { const n = displayName(r); if (n) opexResidentMap[n.trim().toLowerCase()] = r.id; });
+    opexStaffMap = {};
+    (staff || []).forEach(s => { if (s.full_name) opexStaffMap[s.full_name.trim().toLowerCase()] = s.id; });
+  }
+  function linkClientName(name) {
+    if (!name) return '—';
+    const id = opexResidentMap[name.trim().toLowerCase()];
+    return id ? `<a href="javascript:void(0)" onclick="viewResident('${id}')" style="color:var(--teal);text-decoration:underline;cursor:pointer;">${name}</a>` : name;
+  }
+  function linkStaffName(name) {
+    if (!name) return '—';
+    const id = opexStaffMap[name.trim().toLowerCase()];
+    return id ? `<a href="javascript:void(0)" onclick="viewStaff('${id}')" style="color:var(--teal);text-decoration:underline;cursor:pointer;">${name}</a>` : name;
+  }
+
+  // ── OpEx: month-over-month delta helper ──
+  function opexDelta(current, previous, opts) {
+    opts = opts || {};
+    if (current === null || current === undefined || previous === null || previous === undefined) return '';
+    const mult = opts.decimals ? 10 : 1;
+    const diff = Math.round((current - previous) * mult) / mult;
+    if (diff === 0) return '<span style="color:var(--muted);font-weight:400;">— vs last month</span>';
+    const improved = opts.lowerIsBetter ? diff < 0 : diff > 0;
+    const arrow = diff > 0 ? '↑' : '↓';
+    const color = improved ? 'var(--green)' : 'var(--red)';
+    const sign = diff > 0 ? '+' : '';
+    return `<span style="color:${color};">${arrow} ${sign}${diff}${opts.unit || ''} vs last month</span>`;
+  }
+
+  // ── OpEx: lightweight headline-only calculators, used for month-over-month comparison and the Overview tab ──
+  function calcOnTimeRate(shifts) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
+    let totalClocked = 0, onTime = 0;
+    visits.forEach(s => {
+      if (!s.clock_in_time) return;
+      totalClocked++;
+      if (s.start_time) {
+        const diff = Math.round((new Date(s.clock_in_time) - new Date(s.shift_date + 'T' + s.start_time)) / 60000);
+        if (diff < 30) onTime++;
+      } else onTime++;
+    });
+    return totalClocked ? Math.round((onTime / totalClocked) * 100) : null;
+  }
+  function calcAvgStaffPerClient(shifts) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type) && s.client_name);
+    const byClient = {};
+    visits.forEach(s => { if (!byClient[s.client_name]) byClient[s.client_name] = new Set(); if (s.staff_name) byClient[s.client_name].add(s.staff_name); });
+    const clients = Object.keys(byClient);
+    if (!clients.length) return null;
+    const total = clients.reduce((sum, c) => sum + byClient[c].size, 0);
+    return Math.round((total / clients.length) * 10) / 10;
+  }
+  function calcNotesCoverage(shifts, notes) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type) && s.client_name);
+    if (!visits.length) return null;
+    let covered = 0;
+    visits.forEach(s => { if (notes.some(n => n.note_date === s.shift_date && namesLooselyMatch(n.resident_name, s.client_name))) covered++; });
+    return Math.round((covered / visits.length) * 100);
+  }
+  function calcDeliveryRate(shifts, residents, daysInMonth) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
+    const weeksInMonth = daysInMonth / 7;
+    const clientMinutes = {};
+    visits.forEach(s => { if (!s.client_name) return; const mins = shiftDeliveredMinutes(s); const match = residents.find(r => namesLooselyMatch(displayName(r), s.client_name)); if (match) clientMinutes[match.id] = (clientMinutes[match.id] || 0) + mins; });
+    let matchedTarget = 0, matchedDelivered = 0;
+    residents.forEach(r => {
+      if (r.commissioned_hours_per_week === null || r.commissioned_hours_per_week === undefined) return;
+      matchedTarget += Number(r.commissioned_hours_per_week) * weeksInMonth;
+      matchedDelivered += ((clientMinutes[r.id] || 0) / 60);
+    });
+    return matchedTarget ? Math.round((matchedDelivered / matchedTarget) * 100) : null;
+  }
+  function calcNetFeedback(complaints, compliments, month) {
+    const c = complaints.filter(x => x.date && x.date.startsWith(month)).length;
+    const p = compliments.filter(x => x.date && x.date.startsWith(month)).length;
+    return p - c;
+  }
+
+  function renderOpexOverview(stats) {
+    const rows = [
+      { tab: 'reliability', label: 'Visit Reliability', metric: 'On-time rate', value: stats.onTime, delta: stats.onTimeDelta, unit: '%', empty: 'No visits recorded yet' },
+      { tab: 'stability', label: 'Rota Stability', metric: 'Avg staff per client', value: stats.avgStaff, delta: stats.avgStaffDelta, unit: '', empty: 'No visits recorded yet' },
+      { tab: 'records', label: 'Digital Records', metric: 'Notes coverage', value: stats.notesCoverage, delta: stats.notesCoverageDelta, unit: '%', empty: 'No visits recorded yet' },
+      { tab: 'capacity', label: 'Service Capacity', metric: 'Delivery rate', value: stats.deliveryRate, delta: stats.deliveryRateDelta, unit: '%', empty: 'No commissioned hours set yet' },
+      { tab: 'satisfaction', label: 'Client Satisfaction', metric: 'Net feedback', value: stats.netFeedback, delta: stats.netFeedbackDelta, unit: '', empty: 'No feedback logged yet' },
+    ];
+    document.getElementById('opex-overview-cards').innerHTML = rows.map(r => `
+      <div onclick="goToOpexTab('${r.tab}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--border);border-radius:12px;padding:16px 20px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'" onmouseout="this.style.boxShadow='none'">
+        <div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px;">${r.label}</div>
+          <div style="font-size:12px;color:var(--muted);">${r.metric}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;font-weight:700;color:var(--navy);">${r.value === null ? '—' : (r.value > 0 && r.unit === '' ? '+' : '') + r.value + r.unit}</div>
+          <div style="font-size:12px;font-weight:600;">${r.value === null ? `<span style="color:var(--muted);font-weight:400;">${r.empty}</span>` : (r.delta || '')}</div>
+        </div>
+      </div>`).join('');
+  }
+  function goToOpexTab(tab) {
+    const btn = document.querySelector(`#page-opex .gov-tab[data-opex-tab="${tab}"]`);
+    if (btn) showOpexSection(tab, btn);
+  }
+
   async function renderOpexAll() {
     const month = document.getElementById('opex-month-select').value;
     const label = new Date(month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
@@ -6017,19 +6138,30 @@ const TRAINING_MODULES = [
     document.getElementById('sc-month-label').textContent = label;
     document.getElementById('sc-delivered-sub').textContent = label;
     document.getElementById('cs-month-label').textContent = label;
+    document.getElementById('ov-opex-month-label').textContent = label;
 
     const start = month + '-01';
     const [y, m] = month.split('-').map(Number);
     const end = localISODate(new Date(y, m, 0)); // last day of that month
+    const daysInMonth = new Date(y, m, 0).getDate();
 
-    const [shiftsRes, notesRes, residentsRes, staffRes, changesRes, complaintsRes, complimentsRes] = await Promise.all([
+    // Previous month range, for month-over-month comparison
+    const prevDate = new Date(y, m - 2, 1);
+    const prevY = prevDate.getFullYear(), prevM = prevDate.getMonth() + 1;
+    const prevStart = `${prevY}-${String(prevM).padStart(2, '0')}-01`;
+    const prevEnd = localISODate(new Date(prevY, prevM, 0));
+    const prevDaysInMonth = new Date(prevY, prevM, 0).getDate();
+
+    const [shiftsRes, notesRes, residentsRes, staffRes, changesRes, complaintsRes, complimentsRes, prevShiftsRes, prevNotesRes] = await Promise.all([
       db.from('rota_shifts').select('*').gte('shift_date', start).lte('shift_date', end).order('shift_date'),
       db.from('daily_notes').select('resident_name, note_date').gte('note_date', start).lte('note_date', end),
       db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date, commissioned_hours_per_week').eq('status', 'active'),
       db.from('staff').select('id, full_name, contracted_hours').eq('status', 'active'),
       db.from('rota_shift_changes').select('*').gte('shift_date', start).lte('shift_date', end).order('changed_at', { ascending: false }),
       db.from('governance_complaints').select('*').order('date', { ascending: false }),
-      db.from('governance_compliments').select('*').order('date', { ascending: false })
+      db.from('governance_compliments').select('*').order('date', { ascending: false }),
+      db.from('rota_shifts').select('*').gte('shift_date', prevStart).lte('shift_date', prevEnd),
+      db.from('daily_notes').select('resident_name, note_date').gte('note_date', prevStart).lte('note_date', prevEnd)
     ]);
 
     if (shiftsRes.error) {
@@ -6041,12 +6173,44 @@ const TRAINING_MODULES = [
     }
 
     const shifts = shiftsRes.data || [];
-    const daysInMonth = new Date(y, m, 0).getDate();
+    const residents = residentsRes.data || [];
+    const staff = staffRes.data || [];
+    const notes = notesRes.data || [];
+    const complaints = complaintsRes.data || [];
+    const compliments = complimentsRes.data || [];
+    const prevShifts = prevShiftsRes.data || [];
+    const prevNotes = prevNotesRes.data || [];
+
+    buildOpexNameMaps(residents, staff);
+
     renderVisitReliability(shifts);
     renderRotaStability(shifts, changesRes.data || []);
-    renderDigitalRecords(shifts, notesRes.data || [], residentsRes.data || []);
-    renderServiceCapacity(shifts, residentsRes.data || [], staffRes.data || [], daysInMonth);
-    renderClientSatisfaction(complaintsRes.data || [], complimentsRes.data || [], month);
+    renderDigitalRecords(shifts, notes, residents);
+    renderServiceCapacity(shifts, residents, staff, daysInMonth);
+    renderClientSatisfaction(complaints, compliments, month);
+
+    // ── Month-over-month deltas + Overview tab ──
+    const onTime = calcOnTimeRate(shifts), prevOnTime = calcOnTimeRate(prevShifts);
+    const avgStaff = calcAvgStaffPerClient(shifts), prevAvgStaff = calcAvgStaffPerClient(prevShifts);
+    const notesCoverage = calcNotesCoverage(shifts, notes), prevNotesCoverage = calcNotesCoverage(prevShifts, prevNotes);
+    const deliveryRate = calcDeliveryRate(shifts, residents, daysInMonth), prevDeliveryRate = calcDeliveryRate(prevShifts, residents, prevDaysInMonth);
+    const netFeedback = calcNetFeedback(complaints, compliments, month);
+    const prevMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+    const prevNetFeedback = calcNetFeedback(complaints, compliments, prevMonthStr);
+
+    document.getElementById('vr-ontime-delta').innerHTML = opexDelta(onTime, prevOnTime, { unit: '%' });
+    document.getElementById('rs-avgstaff-delta').innerHTML = opexDelta(avgStaff, prevAvgStaff, { unit: '', decimals: true, lowerIsBetter: true });
+    document.getElementById('dr-notescoverage-delta').innerHTML = opexDelta(notesCoverage, prevNotesCoverage, { unit: '%' });
+    document.getElementById('sc-rate-delta').innerHTML = opexDelta(deliveryRate, prevDeliveryRate, { unit: '%' });
+    document.getElementById('cs-net-delta').innerHTML = opexDelta(netFeedback, prevNetFeedback, { unit: '' });
+
+    renderOpexOverview({
+      onTime, onTimeDelta: opexDelta(onTime, prevOnTime, { unit: '%' }),
+      avgStaff, avgStaffDelta: opexDelta(avgStaff, prevAvgStaff, { unit: '', decimals: true, lowerIsBetter: true }),
+      notesCoverage, notesCoverageDelta: opexDelta(notesCoverage, prevNotesCoverage, { unit: '%' }),
+      deliveryRate, deliveryRateDelta: opexDelta(deliveryRate, prevDeliveryRate, { unit: '%' }),
+      netFeedback, netFeedbackDelta: opexDelta(netFeedback, prevNetFeedback, { unit: '' })
+    });
   }
 
   // Loose name match to cope with real-world inconsistent naming (e.g. "Anthea" vs "Anthea Dempster")
@@ -6135,8 +6299,8 @@ const TRAINING_MODULES = [
       missing.sort((a, b) => a.shift_date < b.shift_date ? 1 : -1);
       notesTbody.innerHTML = missing.map(s => `<tr>
         <td>${formatDate(s.shift_date)}</td>
-        <td>${s.client_name || '—'}</td>
-        <td>${s.staff_name || '—'}</td>
+        <td>${linkClientName(s.client_name)}</td>
+        <td>${linkStaffName(s.staff_name)}</td>
         <td>${(s.start_time || '—').slice(0, 5)}${s.end_time ? '–' + s.end_time.slice(0, 5) : ''}</td>
       </tr>`).join('');
     }
@@ -6153,7 +6317,7 @@ const TRAINING_MODULES = [
       }
       const isOverdue = r.review_date && r.review_date < todayStr;
       if (isOverdue) overdue++;
-      return { name, daysSince, review_date: r.review_date, isOverdue, hasReviewDate: !!r.review_date };
+      return { id: r.id, name, daysSince, review_date: r.review_date, isOverdue, hasReviewDate: !!r.review_date };
     }).sort((a, b) => (b.daysSince || 0) - (a.daysSince || 0));
 
     document.getElementById('dr-planoverdue').textContent = overdue;
@@ -6171,7 +6335,7 @@ const TRAINING_MODULES = [
         else if (p.isOverdue) statusBadge = '<span class="badge badge-red">Overdue</span>';
         else statusBadge = '<span class="badge badge-green">Current</span>';
         return `<tr>
-        <td>${p.name || '—'}</td>
+        <td><a href="javascript:void(0)" onclick="viewResident('${p.id}')" style="color:var(--teal);text-decoration:underline;cursor:pointer;">${p.name || '—'}</a></td>
         <td>${p.daysSince === null ? '—' : p.daysSince + ' days ago'}</td>
         <td>${p.review_date ? formatDate(p.review_date) : '—'}</td>
         <td>${statusBadge}</td>
@@ -6253,8 +6417,8 @@ const TRAINING_MODULES = [
     flagged.sort((a, b) => a.date < b.date ? 1 : -1);
     tbody.innerHTML = flagged.map(f => `<tr>
       <td>${formatDate(f.date)}</td>
-      <td>${f.client || '—'}</td>
-      <td>${f.staff || '—'}</td>
+      <td>${linkClientName(f.client)}</td>
+      <td>${linkStaffName(f.staff)}</td>
       <td>${f.scheduled}</td>
       <td>${f.actual}</td>
       <td><span class="badge ${f.issueClass}">${f.issue}</span></td>
@@ -6275,7 +6439,7 @@ const TRAINING_MODULES = [
       if (s.staff_name) byClient[s.client_name].add(s.staff_name);
     });
     const continuity = Object.entries(byClient)
-      .map(([client, staffSet]) => ({ client, count: staffSet.size, names: [...staffSet].join(', ') }))
+      .map(([client, staffSet]) => ({ client, count: staffSet.size, names: [...staffSet].map(linkStaffName).join(', ') }))
       .sort((a, b) => b.count - a.count);
 
     const totalClients = continuity.length;
@@ -6292,7 +6456,7 @@ const TRAINING_MODULES = [
       contTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted);">No visits recorded this month</td></tr>';
     } else {
       contTbody.innerHTML = continuity.map(c => `<tr>
-        <td>${c.client}</td>
+        <td>${linkClientName(c.client)}</td>
         <td><span class="badge ${c.count >= 4 ? 'badge-red' : c.count <= 1 ? 'badge-green' : 'badge-amber'}">${c.count}</span></td>
         <td style="color:var(--muted);font-size:13px;">${c.names}</td>
       </tr>`).join('');
@@ -6310,8 +6474,8 @@ const TRAINING_MODULES = [
     } else {
       lmTbody.innerHTML = lastMinute.map(c => `<tr>
         <td>${formatDate(c.shift_date)}</td>
-        <td>${c.client_name || '—'}</td>
-        <td>${c.change_type === 'staff_reassigned' ? `${c.old_staff_name || '—'} → ${c.new_staff_name || '—'}` : (c.new_staff_name || c.old_staff_name || '—')}</td>
+        <td>${linkClientName(c.client_name)}</td>
+        <td>${c.change_type === 'staff_reassigned' ? `${linkStaffName(c.old_staff_name)} → ${linkStaffName(c.new_staff_name)}` : linkStaffName(c.new_staff_name || c.old_staff_name)}</td>
         <td>${(c.old_start_time || '—').slice(0, 5)}</td>
         <td>${changeLabels[c.change_type] || c.change_type} — ${fmtDT(c.changed_at)} (${Math.round(c.hours_before_shift)}h before)</td>
       </tr>`).join('');
@@ -6381,7 +6545,7 @@ const TRAINING_MODULES = [
       clientTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">No active clients found</td></tr>';
     } else {
       clientTbody.innerHTML = clientRows.map(c => `<tr>
-        <td>${c.name || '—'}</td>
+        <td><a href="javascript:void(0)" onclick="viewResident('${c.id}')" style="color:var(--teal);text-decoration:underline;cursor:pointer;">${c.name || '—'}</a></td>
         <td><input type="number" min="0" step="0.5" value="${c.commissioned !== null && c.commissioned !== undefined ? c.commissioned : ''}" placeholder="not set" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="saveCommissionedHours('${c.id}', this.value, this)" /></td>
         <td>${c.deliveredHrs} hrs</td>
         <td>${c.rate === null ? '<span class="badge badge-blue">Set hours to compare</span>' : `<span class="badge ${c.rate >= 90 ? 'badge-green' : c.rate >= 70 ? 'badge-amber' : 'badge-red'}">${c.rate}%</span>`}</td>
@@ -6406,7 +6570,7 @@ const TRAINING_MODULES = [
       const contracted = st.contracted_hours !== null && st.contracted_hours !== undefined && st.contracted_hours !== '' ? Number(st.contracted_hours) : null;
       const monthlyTarget = contracted ? contracted * weeksInMonth : null;
       const util = monthlyTarget ? Math.round((workedHrs / monthlyTarget) * 100) : null;
-      return { name: st.full_name, contracted, workedHrs, util };
+      return { id: st.id, name: st.full_name, contracted, workedHrs, util };
     }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const staffTbody = document.getElementById('sc-staff-table');
@@ -6414,7 +6578,7 @@ const TRAINING_MODULES = [
       staffTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">No active staff found</td></tr>';
     } else {
       staffTbody.innerHTML = staffRows.map(s => `<tr>
-        <td>${s.name || '—'}</td>
+        <td><a href="javascript:void(0)" onclick="viewStaff('${s.id}')" style="color:var(--teal);text-decoration:underline;cursor:pointer;">${s.name || '—'}</a></td>
         <td>${s.contracted !== null ? s.contracted + ' hrs' : '<span style="color:var(--muted);">not set</span>'}</td>
         <td>${s.workedHrs} hrs</td>
         <td>${s.util === null ? '—' : `<span class="badge ${s.util >= 85 && s.util <= 115 ? 'badge-green' : 'badge-amber'}">${s.util}%</span>`}</td>
