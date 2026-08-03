@@ -393,6 +393,10 @@
         <div class="nav-item admin-only" onclick="showPage('hours')">
           <span class="icon">⏱️</span> Hours & Payroll
         </div>
+        <div class="nav-section admin-only">Performance</div>
+        <div class="nav-item admin-only" onclick="showPage('opex')">
+          <span class="icon">📈</span> Operational Excellence
+        </div>
         <div class="nav-section admin-only">Compliance</div>
         <div class="nav-item admin-only" onclick="showPage('cqc')">
           <span class="icon">✅</span> CQC Dashboard
@@ -1091,6 +1095,37 @@
         </div>
 
       </div><!-- /governance page -->
+
+      <!-- OPERATIONAL EXCELLENCE -->
+      <div class="page" id="page-opex">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1>📈 Operational Excellence</h1>
+            <p>How well the service is running, day to day</p>
+          </div>
+          <select id="opex-month-select" onchange="renderVisitReliability()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"></select>
+        </div>
+
+        <!-- OpEx Sub-Nav -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;background:white;border:1px solid var(--border);border-radius:12px;padding:6px;">
+          <button class="gov-tab active" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
+        </div>
+
+        <!-- VISIT RELIABILITY -->
+        <div id="opex-reliability" class="gov-section active">
+          <div class="stats-grid">
+            <div class="stat-card green"><div class="label">On-time rate</div><div class="value" id="vr-ontime">—</div><div class="sub" id="vr-ontime-sub">of visits with a clock-in</div></div>
+            <div class="stat-card red"><div class="label">Missed visits</div><div class="value" id="vr-missed">—</div><div class="sub">no clock-in recorded</div></div>
+            <div class="stat-card amber"><div class="label">Late arrivals</div><div class="value" id="vr-late">—</div><div class="sub">30+ min after scheduled start</div></div>
+            <div class="stat-card blue"><div class="label">Avg duration variance</div><div class="value" id="vr-variance">—</div><div class="sub">vs scheduled length</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Flagged visits — <span id="vr-month-label"></span></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Staff</th><th>Scheduled</th><th>Actual</th><th>Issue</th></tr></thead>
+            <tbody id="vr-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </div><!-- /opex page -->
 
     </main>
   </div>
@@ -2341,6 +2376,7 @@ const TRAINING_MODULES = [
     if (name === 'documents') loadDocuments();
     if (name === 'cqc') loadCQC();
     if (name === 'governance') initGovernance();
+    if (name === 'opex') initOpex();
     if (name === 'hours') initHours();
     if (name === 'rota') initRota();
     if (name === 'scheduler') initScheduler();
@@ -5706,6 +5742,132 @@ const TRAINING_MODULES = [
   function renderGovPolicies(){ const tb=document.getElementById('policy-table'); if(!govStore.policies.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No policies added yet</td></tr>';return;} tb.innerHTML=govStore.policies.map(p=>`<tr><td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:12px;color:var(--muted);">${p.notes}</span>`:''}</td><td>${p.category}</td><td>${p.version||'—'}</td><td>${p.owner||'—'}</td><td>${govFmtDate(p.reviewed)}</td><td>${govFmtDate(p.due)}</td><td>${govStatusBadge(p.status)}</td><td>${p.filePath?`<button onclick="openPolicyFile(${p.id})" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 Open</button>${p.linkedDocId?' <span style="font-size:10px;color:var(--muted);" title="Using the file already uploaded in Documents">🔗 Linked</span>':''}`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('policies',${p.id},renderGovPolicies)">Delete</button></td></tr>`).join(''); }
 
   // KPIs
+  // ── OPERATIONAL EXCELLENCE — Visit Reliability ──
+  function showOpexSection(name, btn) {
+    document.querySelectorAll('#page-opex .gov-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#page-opex .gov-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('opex-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function initOpex() {
+    const sel = document.getElementById('opex-month-select');
+    if (!sel.options.length) {
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(); d.setMonth(d.getMonth() - i);
+        const v = d.toISOString().slice(0, 7);
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        sel.appendChild(opt);
+      }
+    }
+    renderVisitReliability();
+  }
+
+  async function renderVisitReliability() {
+    const month = document.getElementById('opex-month-select').value;
+    document.getElementById('vr-month-label').textContent =
+      new Date(month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+    const start = month + '-01';
+    const [y, m] = month.split('-').map(Number);
+    const end = localISODate(new Date(y, m, 0)); // last day of that month
+
+    const { data, error } = await db.from('rota_shifts').select('*')
+      .gte('shift_date', start).lte('shift_date', end)
+      .order('shift_date');
+
+    const tbody = document.getElementById('vr-table');
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error loading data: ${error.message}</td></tr>`;
+      return;
+    }
+
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const nowStr = localISODate(new Date());
+    const nowTime = new Date().toTimeString().slice(0, 5);
+    const fmtT = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+    // Only actual client visits count toward reliability — leave/day-off entries are excluded
+    const visits = (data || []).filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
+
+    let missed = 0, late = 0, onTimeClocked = 0, totalClocked = 0;
+    let varianceSum = 0, varianceCount = 0;
+    const flagged = [];
+
+    visits.forEach(s => {
+      const isPast = s.shift_date < nowStr || (s.shift_date === nowStr && s.start_time && s.start_time.slice(0, 5) < nowTime);
+
+      if (!s.clock_in_time) {
+        if (isPast) {
+          missed++;
+          flagged.push({
+            date: s.shift_date, client: s.client_name, staff: s.staff_name,
+            scheduled: `${(s.start_time || '—').slice(0, 5)}–${(s.end_time || '—').slice(0, 5)}`,
+            actual: '—', issue: 'Missed visit', issueClass: 'badge-red'
+          });
+        }
+        return;
+      }
+
+      totalClocked++;
+      let isLate = false;
+      if (s.start_time) {
+        const scheduledStart = new Date(s.shift_date + 'T' + s.start_time);
+        const clockIn = new Date(s.clock_in_time);
+        const diffMin = Math.round((clockIn - scheduledStart) / 60000);
+        if (diffMin >= 30) {
+          isLate = true;
+          late++;
+          flagged.push({
+            date: s.shift_date, client: s.client_name, staff: s.staff_name,
+            scheduled: (s.start_time || '—').slice(0, 5), actual: fmtT(s.clock_in_time),
+            issue: `Late — ${diffMin} min`, issueClass: 'badge-amber'
+          });
+        }
+      }
+      if (!isLate) onTimeClocked++;
+
+      if (s.clock_out_time && s.start_time && s.end_time) {
+        let schedStart = timeToMinutes(s.start_time), schedEnd = timeToMinutes(s.end_time);
+        if (schedEnd <= schedStart) schedEnd += 1440; // overnight shift (sleep-in / waking night)
+        const scheduledMin = schedEnd - schedStart;
+        const actualMin = Math.round((new Date(s.clock_out_time) - new Date(s.clock_in_time)) / 60000);
+        varianceSum += (actualMin - scheduledMin);
+        varianceCount++;
+      }
+    });
+
+    const ontimeRate = totalClocked ? Math.round((onTimeClocked / totalClocked) * 100) : null;
+    const avgVariance = varianceCount ? Math.round(varianceSum / varianceCount) : null;
+
+    document.getElementById('vr-ontime').textContent = ontimeRate === null ? '—' : ontimeRate + '%';
+    document.getElementById('vr-ontime-sub').textContent = totalClocked ? `of ${totalClocked} visits with a clock-in` : 'no clock-ins recorded yet';
+    document.getElementById('vr-missed').textContent = missed;
+    document.getElementById('vr-late').textContent = late;
+    document.getElementById('vr-variance').textContent = avgVariance === null ? '—' : (avgVariance > 0 ? '+' : '') + avgVariance + ' min';
+
+    if (!flagged.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);">No missed or late visits this month — great work!</td></tr>';
+      return;
+    }
+    flagged.sort((a, b) => a.date < b.date ? 1 : -1);
+    tbody.innerHTML = flagged.map(f => `<tr>
+      <td>${formatDate(f.date)}</td>
+      <td>${f.client || '—'}</td>
+      <td>${f.staff || '—'}</td>
+      <td>${f.scheduled}</td>
+      <td>${f.actual}</td>
+      <td><span class="badge ${f.issueClass}">${f.issue}</span></td>
+    </tr>`).join('');
+  }
+
+  function timeToMinutes(t) {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
   function saveGovKPI(){ const name=document.getElementById('kpi-name').value.trim(); if(!name){alert('Please enter a KPI name');return;} govStore.kpis.push({id:Date.now(),name,unit:document.getElementById('kpi-unit').value,target:document.getElementById('kpi-target').value,actual:document.getElementById('kpi-actual').value,month:document.getElementById('kpi-month').value||new Date().toISOString().slice(0,7),category:document.getElementById('kpi-cat').value,notes:document.getElementById('kpi-notes').value}); govSave('kpis'); closeGovModal('kpi-modal'); renderGovKPIs(); ['kpi-name','kpi-target','kpi-actual','kpi-notes'].forEach(id=>document.getElementById(id).value=''); }
   function renderGovKPIs(){ const month=document.getElementById('kpi-month-select').value; document.getElementById('kpi-month-label').textContent=new Date(month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); const data=govStore.kpis.filter(k=>k.month===month); const el=document.getElementById('kpi-list'); if(!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No KPIs recorded for this month</p>';return;} el.innerHTML=data.map(k=>{ const t=parseFloat(k.target)||0,a=parseFloat(k.actual)||0; const pct=t>0?Math.min(Math.round(a/t*100),100):0; const col=a>=t?'#10b981':a>=t*0.9?'#f59e0b':'#ef4444'; const rag=a>=t?'green':a>=t*0.9?'amber':'red'; return `<div class="kpi-row"><div><div style="font-weight:600;">${k.name}</div><div style="font-size:12px;color:var(--muted);">${k.category}</div></div><div style="text-align:center;">${k.target}${k.unit}</div><div style="text-align:center;font-weight:700;color:${col}">${k.actual}${k.unit}</div><div>${govRagBadge(rag)}</div><div><div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${pct}%;background:${col}"></div></div></div><div><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="govDel('kpis',${k.id},renderGovKPIs)">Remove</button></div></div>`; }).join(''); }
