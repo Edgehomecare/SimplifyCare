@@ -1111,6 +1111,7 @@
           <button class="gov-tab active" onclick="showOpexSection('reliability',this)">Visit Reliability</button>
           <button class="gov-tab" onclick="showOpexSection('stability',this)">Rota Stability</button>
           <button class="gov-tab" onclick="showOpexSection('records',this)">Digital Records</button>
+          <button class="gov-tab" onclick="showOpexSection('capacity',this)">Service Capacity</button>
         </div>
 
         <!-- VISIT RELIABILITY -->
@@ -1167,6 +1168,28 @@
             <div class="card-title">Care plan currency — active clients</div>
             <div class="table-wrap"><table><thead><tr><th>Client</th><th>Last updated</th><th>Review date</th><th>Status</th></tr></thead>
             <tbody id="dr-plans-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- SERVICE CAPACITY -->
+        <div id="opex-capacity" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card blue"><div class="label">Commissioned hrs/week</div><div class="value" id="sc-commissioned">—</div><div class="sub">across active clients</div></div>
+            <div class="stat-card teal"><div class="label">Hours delivered</div><div class="value" id="sc-delivered">—</div><div class="sub" id="sc-delivered-sub">this month</div></div>
+            <div class="stat-card green"><div class="label">Delivery rate</div><div class="value" id="sc-rate">—</div><div class="sub">delivered vs commissioned</div></div>
+            <div class="stat-card amber"><div class="label">Missing commissioned hours</div><div class="value" id="sc-missing">—</div><div class="sub">clients not yet set up</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Client hours — <span id="sc-month-label"></span></div>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Enter each client's commissioned hours per week — it saves automatically. Delivered hours use actual clocked time where available, scheduled time otherwise.</p>
+            <div class="table-wrap"><table><thead><tr><th>Client</th><th>Commissioned hrs/week</th><th>Delivered this month</th><th>Delivery rate</th></tr></thead>
+            <tbody id="sc-client-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Staff capacity — active staff</div>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Contracted hours are set from each staff member's profile. <span id="sc-staff-missing-note"></span></p>
+            <div class="table-wrap"><table><thead><tr><th>Staff</th><th>Contracted hrs/week</th><th>Worked this month</th><th>Utilisation</th></tr></thead>
+            <tbody id="sc-staff-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
           </div>
         </div>
       </div><!-- /opex page -->
@@ -5817,15 +5840,18 @@ const TRAINING_MODULES = [
     document.getElementById('rs-month-label').textContent = label;
     document.getElementById('dr-month-label').textContent = label;
     document.getElementById('dr-notesmissing-month').textContent = label;
+    document.getElementById('sc-month-label').textContent = label;
+    document.getElementById('sc-delivered-sub').textContent = label;
 
     const start = month + '-01';
     const [y, m] = month.split('-').map(Number);
     const end = localISODate(new Date(y, m, 0)); // last day of that month
 
-    const [shiftsRes, notesRes, residentsRes] = await Promise.all([
+    const [shiftsRes, notesRes, residentsRes, staffRes] = await Promise.all([
       db.from('rota_shifts').select('*').gte('shift_date', start).lte('shift_date', end).order('shift_date'),
       db.from('daily_notes').select('resident_name, note_date').gte('note_date', start).lte('note_date', end),
-      db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date').eq('status', 'active')
+      db.from('residents').select('id, first_name, last_name, preferred_name, status, updated_at, review_date, commissioned_hours_per_week').eq('status', 'active'),
+      db.from('staff').select('id, full_name, contracted_hours').eq('status', 'active')
     ]);
 
     if (shiftsRes.error) {
@@ -5837,9 +5863,11 @@ const TRAINING_MODULES = [
     }
 
     const shifts = shiftsRes.data || [];
+    const daysInMonth = new Date(y, m, 0).getDate();
     renderVisitReliability(shifts);
     renderRotaStability(shifts);
     renderDigitalRecords(shifts, notesRes.data || [], residentsRes.data || []);
+    renderServiceCapacity(shifts, residentsRes.data || [], staffRes.data || [], daysInMonth);
   }
 
   // Loose name match to cope with real-world inconsistent naming (e.g. "Anthea" vs "Anthea Dempster")
@@ -6072,6 +6100,121 @@ const TRAINING_MODULES = [
   function timeToMinutes(t) {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + m;
+  }
+
+  // Delivered minutes for a single shift: actual clocked duration where available, scheduled otherwise
+  function shiftDeliveredMinutes(s) {
+    if (s.clock_in_time && s.clock_out_time) {
+      return Math.round((new Date(s.clock_out_time) - new Date(s.clock_in_time)) / 60000);
+    }
+    if (s.start_time && s.end_time) {
+      let schedStart = timeToMinutes(s.start_time), schedEnd = timeToMinutes(s.end_time);
+      if (schedEnd <= schedStart) schedEnd += 1440;
+      return schedEnd - schedStart;
+    }
+    return 0;
+  }
+
+  function renderServiceCapacity(shifts, residents, staff, daysInMonth) {
+    const leaveTypes = ['Day Off', 'Annual Leave', 'Sick Leave'];
+    const visits = shifts.filter(s => s.status !== 'cancelled' && !leaveTypes.includes(s.visit_type));
+    const weeksInMonth = daysInMonth / 7;
+
+    // ── Client side ──
+    let totalDeliveredMin = 0;
+    const clientMinutes = {}; // resident.id -> minutes
+    visits.forEach(s => {
+      if (!s.client_name) return;
+      const mins = shiftDeliveredMinutes(s);
+      totalDeliveredMin += mins;
+      const match = residents.find(r => namesLooselyMatch(displayName(r), s.client_name));
+      if (match) clientMinutes[match.id] = (clientMinutes[match.id] || 0) + mins;
+    });
+
+    let totalCommissionedWeekly = 0, missingCommissioned = 0;
+    let matchedCommissionedMonthly = 0, matchedDeliveredHrs = 0;
+    const clientRows = residents.map(r => {
+      const name = displayName(r);
+      const deliveredHrs = Math.round(((clientMinutes[r.id] || 0) / 60) * 10) / 10;
+      const hasCommissioned = r.commissioned_hours_per_week !== null && r.commissioned_hours_per_week !== undefined;
+      if (hasCommissioned) {
+        totalCommissionedWeekly += Number(r.commissioned_hours_per_week);
+        const monthlyTarget = Number(r.commissioned_hours_per_week) * weeksInMonth;
+        matchedCommissionedMonthly += monthlyTarget;
+        matchedDeliveredHrs += deliveredHrs;
+      } else {
+        missingCommissioned++;
+      }
+      const monthlyTarget = hasCommissioned ? Number(r.commissioned_hours_per_week) * weeksInMonth : null;
+      const rate = monthlyTarget ? Math.round((deliveredHrs / monthlyTarget) * 100) : null;
+      return { id: r.id, name, commissioned: r.commissioned_hours_per_week, deliveredHrs, rate, hasCommissioned };
+    }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    document.getElementById('sc-commissioned').textContent = totalCommissionedWeekly ? Math.round(totalCommissionedWeekly * 10) / 10 : '—';
+    document.getElementById('sc-delivered').textContent = Math.round((totalDeliveredMin / 60) * 10) / 10;
+    document.getElementById('sc-rate').textContent = matchedCommissionedMonthly ? Math.round((matchedDeliveredHrs / matchedCommissionedMonthly) * 100) + '%' : '—';
+    document.getElementById('sc-missing').textContent = missingCommissioned;
+
+    const clientTbody = document.getElementById('sc-client-table');
+    if (!clientRows.length) {
+      clientTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">No active clients found</td></tr>';
+    } else {
+      clientTbody.innerHTML = clientRows.map(c => `<tr>
+        <td>${c.name || '—'}</td>
+        <td><input type="number" min="0" step="0.5" value="${c.commissioned !== null && c.commissioned !== undefined ? c.commissioned : ''}" placeholder="not set" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="saveCommissionedHours('${c.id}', this.value, this)" /></td>
+        <td>${c.deliveredHrs} hrs</td>
+        <td>${c.rate === null ? '<span class="badge badge-blue">Set hours to compare</span>' : `<span class="badge ${c.rate >= 90 ? 'badge-green' : c.rate >= 70 ? 'badge-amber' : 'badge-red'}">${c.rate}%</span>`}</td>
+      </tr>`).join('');
+    }
+
+    // ── Staff side ──
+    const staffMinutes = {}; // staff.id -> minutes
+    visits.forEach(s => {
+      const mins = shiftDeliveredMinutes(s);
+      let match = null;
+      if (s.staff_id) match = staff.find(st => st.id === s.staff_id);
+      if (!match && s.staff_name) match = staff.find(st => namesLooselyMatch(st.full_name, s.staff_name));
+      if (match) staffMinutes[match.id] = (staffMinutes[match.id] || 0) + mins;
+    });
+
+    const missingContracted = staff.filter(st => st.contracted_hours === null || st.contracted_hours === undefined || st.contracted_hours === '').length;
+    document.getElementById('sc-staff-missing-note').textContent = missingContracted ? `${missingContracted} of ${staff.length} active staff have no contracted hours set.` : '';
+
+    const staffRows = staff.map(st => {
+      const workedHrs = Math.round(((staffMinutes[st.id] || 0) / 60) * 10) / 10;
+      const contracted = st.contracted_hours !== null && st.contracted_hours !== undefined && st.contracted_hours !== '' ? Number(st.contracted_hours) : null;
+      const monthlyTarget = contracted ? contracted * weeksInMonth : null;
+      const util = monthlyTarget ? Math.round((workedHrs / monthlyTarget) * 100) : null;
+      return { name: st.full_name, contracted, workedHrs, util };
+    }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const staffTbody = document.getElementById('sc-staff-table');
+    if (!staffRows.length) {
+      staffTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">No active staff found</td></tr>';
+    } else {
+      staffTbody.innerHTML = staffRows.map(s => `<tr>
+        <td>${s.name || '—'}</td>
+        <td>${s.contracted !== null ? s.contracted + ' hrs' : '<span style="color:var(--muted);">not set</span>'}</td>
+        <td>${s.workedHrs} hrs</td>
+        <td>${s.util === null ? '—' : `<span class="badge ${s.util >= 85 && s.util <= 115 ? 'badge-green' : 'badge-amber'}">${s.util}%</span>`}</td>
+      </tr>`).join('');
+    }
+  }
+
+  function displayName(r) {
+    return r.preferred_name || `${r.first_name || ''} ${r.last_name || ''}`.trim();
+  }
+
+  async function saveCommissionedHours(residentId, value, inputEl) {
+    const num = value === '' ? null : parseFloat(value);
+    const { error } = await db.from('residents').update({ commissioned_hours_per_week: num }).eq('id', residentId);
+    if (error) {
+      alert('Error saving: ' + error.message);
+      return;
+    }
+    inputEl.style.borderColor = 'var(--teal)';
+    setTimeout(() => { inputEl.style.borderColor = ''; }, 1000);
+    renderOpexAll();
   }
 
   function initGovKPIMonth(){ const sel=document.getElementById('kpi-month-select'); sel.innerHTML=''; for(let i=0;i<12;i++){ const d=new Date(); d.setMonth(d.getMonth()-i); const v=d.toISOString().slice(0,7); const opt=document.createElement('option'); opt.value=v; opt.textContent=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); sel.appendChild(opt); } }
