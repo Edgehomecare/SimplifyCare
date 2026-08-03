@@ -4047,12 +4047,23 @@ const TRAINING_MODULES = [
     document.getElementById('cqc-actions').innerHTML = '<div class="loading">Loading action items...</div>';
 
     // ── Pull live data from Supabase ──
-    const [residents, staff, incidents, notes, docs] = await Promise.all([
+    const [residents, staff, incidents, notes, docs, gPolicies, gAudits, gActions, gComplaints, gSafeguarding, gRisks, gSupervisions, gMedAudits, gMeetings, gKpis, gCompliments] = await Promise.all([
       db.from('residents').select('id, status', { count: 'exact' }),
       db.from('staff').select('id, dbs_expiry_date, status', { count: 'exact' }),
       db.from('incidents').select('id, status, severity', { count: 'exact' }),
       db.from('daily_notes').select('id', { count: 'exact' }),
-      db.from('documents').select('id, category', { count: 'exact' })
+      db.from('documents').select('id, category', { count: 'exact' }),
+      db.from('governance_policies').select('status'),
+      db.from('governance_audits').select('rag'),
+      db.from('governance_actions').select('status, due'),
+      db.from('governance_complaints').select('status'),
+      db.from('governance_safeguarding').select('status'),
+      db.from('governance_risks').select('likelihood, impact'),
+      db.from('governance_supervisions').select('id'),
+      db.from('governance_med_audits').select('errors'),
+      db.from('governance_meetings').select('id'),
+      db.from('governance_kpis').select('month, actual, target'),
+      db.from('governance_compliments').select('id')
     ]);
 
     // Supabase numbers
@@ -4067,24 +4078,30 @@ const TRAINING_MODULES = [
     const dbsValid = (staff.data || []).filter(s => s.dbs_expiry_date && new Date(s.dbs_expiry_date) > new Date()).length;
     const dbsMissing = staffCount - dbsValid;
 
-    // ── Pull live data from Governance Hub (localStorage) ──
-    const govPolicies = govStore.policies.length;
-    const govPoliciesCurrent = govStore.policies.filter(p => p.status === 'Current').length;
-    const govPoliciesOverdue = govStore.policies.filter(p => p.status === 'Overdue' || p.status === 'Due for review').length;
-    const govAudits = govStore.audits.length;
-    const govAuditsGreen = govStore.audits.filter(a => a.rag === 'green').length;
-    const govOpenActions = govStore.actions.filter(a => a.status === 'Open' || a.status === 'In progress').length;
-    const govOverdueActions = govStore.actions.filter(a => { return a.status !== 'Completed' && a.due && new Date(a.due) < new Date(); }).length;
-    const govOpenComplaints = govStore.complaints.filter(c => c.status === 'Open' || c.status === 'Under investigation').length;
-    const govOpenSafeguarding = govStore.safeguarding.filter(s => s.status === 'Open' || s.status === 'Under investigation').length;
-    const govHighRisks = govStore.risks.filter(r => (parseInt(r.likelihood) * parseInt(r.impact)) >= 12).length;
-    const govSupervisions = govStore.supervisions.length;
-    const govMedAudits = govStore.medAudits.length;
-    const govMedErrors = govStore.medAudits.reduce((sum, m) => sum + (parseInt(m.errors) || 0), 0);
-    const govMeetings = govStore.meetings.length;
+    // ── Pull live data from Governance Hub (Supabase) ──
+    const gPoliciesData = gPolicies.data || [];
+    const gAuditsData = gAudits.data || [];
+    const gActionsData = gActions.data || [];
+    const gSupervisionsData = gSupervisions.data || [];
+    const gMedAuditsData = gMedAudits.data || [];
+    const gKpisData = gKpis.data || [];
+    const govPolicies = gPoliciesData.length;
+    const govPoliciesCurrent = gPoliciesData.filter(p => p.status === 'Current').length;
+    const govPoliciesOverdue = gPoliciesData.filter(p => p.status === 'Overdue' || p.status === 'Due for review').length;
+    const govAudits = gAuditsData.length;
+    const govAuditsGreen = gAuditsData.filter(a => a.rag === 'green').length;
+    const govOpenActions = gActionsData.filter(a => a.status === 'Open' || a.status === 'In progress').length;
+    const govOverdueActions = gActionsData.filter(a => { return a.status !== 'Completed' && a.due && new Date(a.due) < new Date(); }).length;
+    const govOpenComplaints = (gComplaints.data || []).filter(c => c.status === 'Open' || c.status === 'Under investigation').length;
+    const govOpenSafeguarding = (gSafeguarding.data || []).filter(s => s.status === 'Open' || s.status === 'Under investigation').length;
+    const govHighRisks = (gRisks.data || []).filter(r => (parseInt(r.likelihood) * parseInt(r.impact)) >= 12).length;
+    const govSupervisions = gSupervisionsData.length;
+    const govMedAudits = gMedAuditsData.length;
+    const govMedErrors = gMedAuditsData.reduce((sum, m) => sum + (parseInt(m.errors) || 0), 0);
+    const govMeetings = (gMeetings.data || []).length;
     const thisMonth = new Date().toISOString().slice(0, 7);
-    const govKpisOnTarget = govStore.kpis.filter(k => k.month === thisMonth && parseFloat(k.actual) >= parseFloat(k.target)).length;
-    const govKpisTotal = govStore.kpis.filter(k => k.month === thisMonth).length;
+    const govKpisOnTarget = gKpisData.filter(k => k.month === thisMonth && parseFloat(k.actual) >= parseFloat(k.target)).length;
+    const govKpisTotal = gKpisData.filter(k => k.month === thisMonth).length;
 
     const totalPolicies = supabasePolicies + govPolicies;
 
@@ -4110,7 +4127,7 @@ const TRAINING_MODULES = [
 
     // CARING: resident profiles, daily notes, compliments
     let caringScore = resCount > 0 ? 65 : 20;
-    caringScore += Math.min(15, govStore.compliments.length * 5);
+    caringScore += Math.min(15, (gCompliments.data || []).length * 5);
     caringScore += notesCount > 0 ? 10 : 0;
     caringScore -= openInc * 2;
     caringScore = Math.max(0, Math.min(100, caringScore));
@@ -4120,7 +4137,7 @@ const TRAINING_MODULES = [
     responsiveScore -= govOpenComplaints * 8;
     responsiveScore -= govOverdueActions * 5;
     responsiveScore += Math.min(15, docsCount * 2);
-    const resolvedComplaints = govStore.complaints.filter(c => c.status === 'Resolved').length;
+    const resolvedComplaints = (gComplaints.data || []).filter(c => c.status === 'Resolved').length;
     responsiveScore += Math.min(10, resolvedComplaints * 3);
     responsiveScore = Math.max(0, Math.min(100, responsiveScore));
 
@@ -4260,18 +4277,24 @@ const TRAINING_MODULES = [
     const tasks = [];
 
     // ── FETCH LIVE DATA ──
-    const [staff, residents, incidents, notes, govActions, govPolicies, govSupervisions, govMedAudits, govKpis, shifts] = await Promise.all([
+    const [staff, residents, incidents, notes, govActionsRes, govPoliciesRes, govSupervisionsRes, govMedAuditsRes, govKpisRes, shifts] = await Promise.all([
       db.from('staff').select('first_name, last_name, dbs_expiry_date, status'),
       db.from('residents').select('id, first_name, last_name, status'),
       db.from('incidents').select('id, status, severity, incident_date'),
       db.from('daily_notes').select('id, created_at').gte('created_at', today.toISOString()),
-      Promise.resolve(govStore.actions),
-      Promise.resolve(govStore.policies),
-      Promise.resolve(govStore.supervisions),
-      Promise.resolve(govStore.medAudits),
-      Promise.resolve(govStore.kpis),
+      db.from('governance_actions').select('*'),
+      db.from('governance_policies').select('*'),
+      db.from('governance_supervisions').select('*'),
+      db.from('governance_med_audits').select('*'),
+      db.from('governance_kpis').select('*'),
       db.from('rota_shifts').select('id, shift_date, status').gte('shift_date', localISODate(today)).lte('shift_date', localISODate(new Date(today.getTime() + 7*86400000)))
     ]);
+
+    const govActions = govActionsRes.data || [];
+    const govPolicies = govPoliciesRes.data || [];
+    const govSupervisions = govSupervisionsRes.data || [];
+    const govMedAudits = govMedAuditsRes.data || [];
+    const govKpis = govKpisRes.data || [];
 
     const staffList = staff.data || [];
     const residentList = residents.data || [];
