@@ -1582,6 +1582,7 @@
     </div>
     <input type="hidden" id="r-edit-id" />
     <div class="profile-tabs">
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-careplan')">📋 Care Plan</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-care')">Care Needs</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-medical')">Medical</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-contacts')">Contacts</div>
@@ -1601,6 +1602,16 @@
           <select id="r-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="hospital">Hospital</option><option value="discharged">Discharged</option></select>
         </div>
         <div class="form-group full"><label>Likes & Preferences</label><textarea id="r-likes" placeholder="What does the resident enjoy? Hobbies, preferences..."></textarea></div>
+      </div>
+    </div>
+    <div id="rt-careplan" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group full"><label>Goals &amp; Outcomes</label><textarea id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea id="r-morning" placeholder="Support required in the morning..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea id="r-evening" placeholder="Support required in the evening..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
+        <div class="form-group full"><label>Risks &amp; Mitigations</label><textarea id="r-risks" placeholder="Key risks identified and how they are managed..."></textarea></div>
+        <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
       </div>
     </div>
     <div id="rt-care" class="tab-panel">
@@ -2571,6 +2582,9 @@ const TRAINING_MODULES = [
       likes_preferences: val('r-likes'), care_needs: val('r-care-needs'),
       mobility: val('r-mobility'), personal_care: val('r-personal-care'),
       communication_needs: val('r-communication'), dietary_requirements: val('r-dietary'),
+      goals: val('r-goals'), morning_routine: val('r-morning'),
+      evening_routine: val('r-evening'), bedtime_routine: val('r-bedtime'),
+      risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
       medical_conditions: val('r-conditions'), medications: val('r-medications'),
       gp_name: val('r-gp-name'), gp_phone: val('r-gp-phone'),
       allergies: val('r-allergies'), dnr_status: val('r-dnr'),
@@ -2608,6 +2622,13 @@ const TRAINING_MODULES = [
     document.getElementById('r-keyworker').value = r.key_worker || '';
     document.getElementById('r-status').value = r.status || 'active';
     document.getElementById('r-likes').value = r.likes_preferences || '';
+    // Care Plan
+    document.getElementById('r-goals').value = r.goals || '';
+    document.getElementById('r-morning').value = r.morning_routine || '';
+    document.getElementById('r-evening').value = r.evening_routine || '';
+    document.getElementById('r-bedtime').value = r.bedtime_routine || '';
+    document.getElementById('r-risks').value = r.risk_summary || '';
+    document.getElementById('r-review-date').value = r.review_date || '';
     // Care
     document.getElementById('r-care-needs').value = r.care_needs || '';
     document.getElementById('r-mobility').value = r.mobility || '';
@@ -2669,6 +2690,7 @@ const TRAINING_MODULES = [
       <!-- Profile tabs -->
       <div class="profile-tabs" style="margin-bottom:20px;">
         <div class="profile-tab active" onclick="switchProfileTab(this,'vr-personal')">👤 Personal</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-careplan')">📋 Care Plan</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-care')">🏥 Care Needs</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medical')">💊 Medical</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-contacts')">📞 Contacts</div>
@@ -2684,6 +2706,18 @@ const TRAINING_MODULES = [
           ${vrField('Room / Address', r.room)}
           ${vrField('Key Worker', r.key_worker)}
           ${vrFieldFull('Likes & Preferences', r.likes_preferences)}
+        </div>
+      </div>
+
+      <!-- CARE PLAN -->
+      <div id="vr-careplan" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${vrFieldFull('Goals & Outcomes', r.goals)}
+          ${vrFieldFull('Daily Support — Morning Routine', r.morning_routine)}
+          ${vrFieldFull('Daily Support — Evening Routine', r.evening_routine)}
+          ${vrFieldFull('Daily Support — Bedtime Routine', r.bedtime_routine)}
+          ${vrFieldFull('Risks & Mitigations', r.risk_summary)}
+          ${vrField('Care Plan Review Date', formatDate(r.review_date))}
         </div>
       </div>
 
