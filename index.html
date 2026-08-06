@@ -4149,18 +4149,27 @@ const TRAINING_MODULES = [
     const start = ta.selectionStart, end = ta.selectionEnd;
     if (start === end) { showToast('Select some text first, then tap Italic or Highlight.', true); return; }
     const v = ta.value;
-    const selected = v.substring(start, end);
-    ta.value = v.substring(0, start) + marker + selected + marker + v.substring(end);
-    ta.focus();
-    ta.setSelectionRange(start + marker.length, end + marker.length + selected.length);
+    const mlen = marker.length;
+    const alreadyWrapped = v.substring(start - mlen, start) === marker && v.substring(end, end + mlen) === marker;
+    if (alreadyWrapped) {
+      // Already marked — clicking again removes the marker instead of doubling it up
+      ta.value = v.substring(0, start - mlen) + v.substring(start, end) + v.substring(end + mlen);
+      ta.focus();
+      ta.setSelectionRange(start - mlen, end - mlen);
+    } else {
+      const selected = v.substring(start, end);
+      ta.value = v.substring(0, start) + marker + selected + marker + v.substring(end);
+      ta.focus();
+      ta.setSelectionRange(start + mlen, end + mlen + selected.length);
+    }
   }
   function escapeHtml(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
   function renderNoteFormatting(text) {
     let s = escapeHtml(text);
-    s = s.replace(/==([^=\n]+)==/g, '<mark style="background:#fff3a3;padding:0 2px;border-radius:2px;">$1</mark>');
-    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    s = s.replace(/={2,}([^=\n]+)={2,}/g, '<mark style="background:#fff3a3;padding:0 2px;border-radius:2px;">$1</mark>');
+    s = s.replace(/\*+([^*\n]+)\*+/g, '<em>$1</em>');
     return s;
   }
 
