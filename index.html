@@ -527,7 +527,7 @@
             <h1>Residents</h1>
             <p>Manage service user profiles and care plans</p>
           </div>
-          <button class="btn-add" onclick="resetResidentModalTabs();openModal('resident-modal')">+ Add Resident</button>
+          <button class="btn-add" onclick="resetResidentModalFields();resetResidentModalTabs();openModal('resident-modal')">+ Add Resident</button>
         </div>
         <div class="search-bar">
           <input type="text" placeholder="Search residents..." oninput="filterResidents(this.value)" />
@@ -2599,6 +2599,17 @@ const TRAINING_MODULES = [
     const modal = document.getElementById('resident-modal');
     modal.querySelectorAll('.profile-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
     modal.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'rt-personal'));
+  }
+
+  function resetResidentModalFields() {
+    const modal = document.getElementById('resident-modal');
+    modal.querySelectorAll('input, textarea').forEach(el => { if (el.type !== 'hidden') el.value = ''; });
+    modal.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+    document.getElementById('r-edit-id').value = '';
+    document.getElementById('resident-modal-title').textContent = 'Add Resident';
+    const medList = document.getElementById('rt-med-list');
+    if (medList) medList.innerHTML = '<p style="color:var(--muted);font-size:13px;">Save the resident first, then add medications.</p>';
+    currentEditResidentName = null;
   }
 
   function switchProfileTab(el, panelId) {
