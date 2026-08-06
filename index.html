@@ -2144,7 +2144,15 @@
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Social" class="n-category-cb"> Social</label>
         </div>
       </div>
-      <div class="form-group full"><label>Note *</label><textarea id="n-note" placeholder="Record your observations and care provided..."></textarea></div>
+      <div class="form-group full">
+        <label>Note *</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button type="button" class="btn btn-cancel" style="padding:4px 12px;font-size:12px;font-style:italic;" onclick="wrapNoteSelection('n-note','*')">Italic</button>
+          <button type="button" class="btn btn-cancel" style="padding:4px 12px;font-size:12px;background:#fff3a3;border-color:#f5e08a;" onclick="wrapNoteSelection('n-note','==')">Highlight</button>
+        </div>
+        <textarea id="n-note" placeholder="Record your observations and care provided..."></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Select some text first, then tap Italic or Highlight to mark it.</div>
+      </div>
       <div class="form-group"><label>Staff Member</label><input id="n-staff" placeholder="Your name" /></div>
     </div>
     <div class="form-actions">
@@ -2676,7 +2684,7 @@ const TRAINING_MODULES = [
             <span style="font-size:14px;font-weight:600;">${n.resident_name || 'Unknown'}</span>
             <span>${noteCategoryBadges(n)}</span>
           </div>
-          <div style="font-size:13px;color:var(--muted);">${(n.note || '').substring(0, 80)}${(n.note || '').length > 80 ? '...' : ''}</div>
+          <div style="font-size:13px;color:var(--muted);">${renderNoteFormatting((n.note || '').substring(0, 80))}${(n.note || '').length > 80 ? '...' : ''}</div>
         </div>`).join('');
     }
 
@@ -4088,7 +4096,7 @@ const TRAINING_MODULES = [
         <td>${formatDateTime(n.created_at)}</td>
         <td>${n.resident_name || '—'}</td>
         <td>${noteCategoryBadges(n)}</td>
-        <td style="max-width:300px;">${(n.note || '').substring(0, 100)}${(n.note || '').length > 100 ? '...' : ''}</td>
+        <td style="max-width:300px;">${renderNoteFormatting((n.note || '').substring(0, 100))}${(n.note || '').length > 100 ? '...' : ''}</td>
         <td>${n.staff_name || '—'}</td>
         <td style="display:flex;gap:6px;">
           ${currentRole === 'admin' ? `
@@ -4113,6 +4121,27 @@ const TRAINING_MODULES = [
     document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = false; });
     setTodayDate();
     openModal('note-modal');
+  }
+
+  // ── Lightweight note formatting: *italic* and ==highlight== ──
+  function wrapNoteSelection(textareaId, marker) {
+    const ta = document.getElementById(textareaId);
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    if (start === end) { showToast('Select some text first, then tap Italic or Highlight.', true); return; }
+    const v = ta.value;
+    const selected = v.substring(start, end);
+    ta.value = v.substring(0, start) + marker + selected + marker + v.substring(end);
+    ta.focus();
+    ta.setSelectionRange(start + marker.length, end + marker.length + selected.length);
+  }
+  function escapeHtml(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function renderNoteFormatting(text) {
+    let s = escapeHtml(text);
+    s = s.replace(/==([^=\n]+)==/g, '<mark style="background:#fff3a3;padding:0 2px;border-radius:2px;">$1</mark>');
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    return s;
   }
 
   async function saveNote() {
