@@ -527,7 +527,7 @@
             <h1>Residents</h1>
             <p>Manage service user profiles and care plans</p>
           </div>
-          <button class="btn-add" onclick="openModal('resident-modal')">+ Add Resident</button>
+          <button class="btn-add" onclick="resetResidentModalTabs();openModal('resident-modal')">+ Add Resident</button>
         </div>
         <div class="search-bar">
           <input type="text" placeholder="Search residents..." oninput="filterResidents(this.value)" />
@@ -881,8 +881,8 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Client Name</th><th>Date of Birth</th><th>Next of Kin</th><th>Phone</th><th>Hourly Rate (£)</th><th>Mileage Rate (£)</th><th>Notes</th><th></th></tr></thead>
-                <tbody id="client-rates-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+                <thead><tr><th>Client Name</th><th>Date of Birth</th><th>Next of Kin</th><th>Phone</th><th>Hourly Rate (£)</th><th>Commissioned Hrs/wk</th><th>Mileage Rate (£)</th><th>Notes</th><th></th></tr></thead>
+                <tbody id="client-rates-table"><tr><td colspan="9" class="loading">Loading...</td></tr></tbody>
               </table>
             </div>
           </div>
@@ -1244,6 +1244,67 @@
   </div>
 </div>
 
+<!-- MEDICATION SCHEDULE MODAL (admin: add/edit a resident's medication) -->
+<div class="modal-overlay" id="med-schedule-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2 id="med-schedule-title">Add Medication</h2>
+      <button class="modal-close" onclick="closeModal('med-schedule-modal')">✕</button>
+    </div>
+    <input type="hidden" id="ms-edit-id" />
+    <input type="hidden" id="ms-resident-id" />
+    <input type="hidden" id="ms-resident-name" />
+    <div class="form-grid">
+      <div class="form-group full"><label>Medication name *</label><input id="ms-name" placeholder="e.g. Paracetamol" /></div>
+      <div class="form-group"><label>Dose</label><input id="ms-dose" placeholder="e.g. 500mg, 2 tablets" /></div>
+      <div class="form-group"><label>Route</label><input id="ms-route" placeholder="e.g. Oral, Topical" /></div>
+      <div class="form-group full"><label>Schedule type *</label>
+        <select id="ms-freq" onchange="toggleMsFreqFields()">
+          <option value="scheduled">Regular — given at set times</option>
+          <option value="prn">PRN — as needed</option>
+        </select>
+      </div>
+      <div class="form-group full" id="ms-times-row"><label>Times due (24hr, comma-separated)</label><input id="ms-times" placeholder="e.g. 08:00, 14:00, 20:00" /></div>
+      <div class="form-group full" id="ms-prn-row" style="display:none;"><label>When to give (PRN reason)</label><input id="ms-prn-reason" placeholder="e.g. For pain, max 4x daily" /></div>
+      <div class="form-group full"><label>Instructions</label><textarea id="ms-instructions" placeholder="e.g. Take with food, do not crush..."></textarea></div>
+      <div class="form-group"><label>Start date</label><input type="date" id="ms-start" /></div>
+      <div class="form-group"><label>End date (optional)</label><input type="date" id="ms-end" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('med-schedule-modal')">Cancel</button>
+      <button class="btn btn-save" onclick="saveMedicationSchedule()">Save medication</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAR SIGN-OFF MODAL (staff: sign during a visit) -->
+<div class="modal-overlay" id="mar-sign-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2 id="mar-sign-title">Sign for Medication</h2>
+      <button class="modal-close" onclick="closeModal('mar-sign-modal')">✕</button>
+    </div>
+    <input type="hidden" id="mar-sign-key" />
+    <div style="padding:0 20px 16px;">
+      <div id="mar-sign-sub" style="color:var(--muted);font-size:13px;margin-bottom:16px;"></div>
+      <div class="form-group"><label>What happened? *</label>
+        <select id="mar-sign-code">
+          <option>Given</option>
+          <option>Refused</option>
+          <option>Not Available</option>
+          <option>Vomited</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes (optional)</label><textarea id="mar-sign-notes" placeholder="Any additional detail..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('mar-sign-modal')">Cancel</button>
+      <button class="btn btn-save" id="mar-sign-confirm-btn" onclick="confirmMarSign()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- VIEW STAFF MODAL -->
 <div class="modal-overlay" id="view-staff-modal">
   <div class="modal" style="max-width:680px;">
@@ -1338,6 +1399,7 @@
       <div class="form-group"><label>Next of Kin</label><input id="cr-nok" placeholder="Name & relationship" /></div>
       <div class="form-group"><label>Phone</label><input id="cr-phone" placeholder="Contact number" /></div>
       <div class="form-group"><label>Hourly Rate (£)</label><input type="number" id="cr-rate" placeholder="e.g. 25.00" step="0.01" /></div>
+      <div class="form-group"><label>Commissioned Hours (per week)</label><input type="number" id="cr-commissioned-hours" placeholder="e.g. 10.5" step="0.5" /></div>
       <div class="form-group"><label>Mileage Rate (£/mile)</label><input type="number" id="cr-mileage-rate" placeholder="e.g. 0.25" step="0.01" value="0.25" /></div>
       <div class="form-group full"><label>Notes</label><textarea id="cr-notes" placeholder="Any notes about this client..."></textarea></div>
     </div>
@@ -1613,8 +1675,10 @@
     </div>
     <input type="hidden" id="r-edit-id" />
     <div class="profile-tabs">
+      <div class="profile-tab active" onclick="switchProfileTab(this,'rt-personal')">👤 Personal</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-careplan')">📋 Care Plan</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-care')">Care Needs</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-medications')">💊 Medications</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-medical')">Medical</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-contacts')">Contacts</div>
     </div>
@@ -1672,6 +1736,13 @@
         <div class="form-group"><label>Communication Needs</label><input id="r-communication" placeholder="e.g. hearing aid, interpreter" /></div>
         <div class="form-group"><label>Dietary Requirements</label><input id="r-dietary" placeholder="e.g. diabetic, vegetarian" /></div>
       </div>
+    </div>
+    <div id="rt-medications" class="tab-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <p style="color:var(--muted);font-size:13px;margin:0;">The medication schedule shown to care staff during visits, so they can sign the MAR chart.</p>
+        <button class="btn-add" style="white-space:nowrap;" onclick="openMedScheduleModal()">+ Add Medication</button>
+      </div>
+      <div id="rt-med-list"><p style="color:var(--muted);font-size:13px;">Save the resident first, then add medications.</p></div>
     </div>
     <div id="rt-medical" class="tab-panel">
       <div class="form-grid">
@@ -2333,6 +2404,8 @@ const TRAINING_MODULES = [
   let currentStaffFullName = null;
   let allResidents = [];
   let currentViewResidentId = null;
+  let currentViewResidentName = null;
+  let currentEditResidentName = null;
   let allNotes = [];
 
   // Returns a date as YYYY-MM-DD using the browser's LOCAL calendar date,
@@ -2520,6 +2593,12 @@ const TRAINING_MODULES = [
     const panels = el.closest('.page, .modal').querySelectorAll('.tab-panel');
     panels.forEach(p => p.classList.remove('active'));
     document.getElementById(panelId).classList.add('active');
+  }
+
+  function resetResidentModalTabs() {
+    const modal = document.getElementById('resident-modal');
+    modal.querySelectorAll('.profile-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+    modal.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'rt-personal'));
   }
 
   function switchProfileTab(el, panelId) {
@@ -2735,6 +2814,9 @@ const TRAINING_MODULES = [
     document.getElementById('r-poa').value = r.power_of_attorney || '';
     document.getElementById('r-sw').value = r.social_worker || '';
     openModal('resident-modal');
+    resetResidentModalTabs();
+    currentEditResidentName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+    loadResidentMedications(id, currentEditResidentName, 'rt-med-list');
   }
 
   async function deleteResident(id) {
@@ -2778,6 +2860,7 @@ const TRAINING_MODULES = [
         <div class="profile-tab active" onclick="switchProfileTab(this,'vr-personal')">👤 Personal</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-careplan')">📋 Care Plan</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-care')">🏥 Care Needs</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-medications')">📅 MAR Chart</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medical')">💊 Medical</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-contacts')">📞 Contacts</div>
       </div>
@@ -2837,6 +2920,18 @@ const TRAINING_MODULES = [
         </div>
       </div>
 
+      <!-- MAR CHART -->
+      <div id="vr-medications" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <p style="color:var(--muted);font-size:13px;margin:0;">Medication schedule and recent sign-off history from visits.</p>
+          <button class="btn-add" style="white-space:nowrap;" onclick="openMedScheduleModal()">+ Add Medication</button>
+        </div>
+        <div id="vr-med-list"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+        <div class="card-title" style="margin-top:20px;">Recent MAR history</div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Medication</th><th>Due</th><th>Outcome</th><th>Staff</th></tr></thead>
+        <tbody id="vr-mar-history"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
+      </div>
+
       <!-- MEDICAL -->
       <div id="vr-medical" class="tab-panel">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -2863,6 +2958,149 @@ const TRAINING_MODULES = [
     `;
 
     openModal('view-resident-modal');
+    currentViewResidentName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+    loadResidentMedications(id, currentViewResidentName, 'vr-med-list');
+    loadResidentMarHistory(currentViewResidentName);
+  }
+
+  // ══════════════════════════════════════════════
+  // MEDICATION SCHEDULE (admin) + MAR HISTORY
+  // ══════════════════════════════════════════════
+
+  let _medListContext = { residentId: null, residentName: null, targetElId: null };
+
+  async function loadResidentMedications(residentId, residentName, targetElId) {
+    _medListContext = { residentId, residentName, targetElId };
+    const el = document.getElementById(targetElId);
+    if (!el) return;
+    const { data, error } = await db.from('resident_medications')
+      .select('*').eq('resident_id', residentId).eq('status', 'active')
+      .order('medication_name');
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">Could not load medications: ${error.message}</p>`; return; }
+    if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No medications on file yet.</p>'; return; }
+    el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Medication</th><th>Dose</th><th>Schedule</th><th></th></tr></thead><tbody>
+      ${data.map(m => `<tr>
+        <td><strong>${m.medication_name}</strong>${m.instructions ? `<div style="font-size:11px;color:var(--muted);">${m.instructions}</div>` : ''}</td>
+        <td>${m.dose || '—'}</td>
+        <td>${m.frequency_type === 'prn' ? `PRN${m.prn_reason ? ' — ' + m.prn_reason : ''}` : (m.times || []).join(', ') || '—'}</td>
+        <td style="white-space:nowrap;"><button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;" onclick="openMedScheduleModal('${m.id}')">Edit</button> <button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;color:var(--red);" onclick="discontinueMedication('${m.id}')">Discontinue</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  }
+
+  async function loadResidentMarHistory(residentName) {
+    const el = document.getElementById('vr-mar-history');
+    if (!el) return;
+    const { data, error } = await db.from('mar_entries')
+      .select('*').eq('resident_name', residentName)
+      .order('administered_at', { ascending: false }).limit(30);
+    if (error) { el.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--red);padding:16px;">Could not load MAR history: ${error.message}</td></tr>`; return; }
+    if (!data || !data.length) { el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px;">No medication has been signed for yet.</td></tr>'; return; }
+    el.innerHTML = data.map(e => {
+      const codeColor = e.mar_code === 'Given' ? 'var(--green)' : (e.mar_code === 'Refused' || e.mar_code === 'Not Available' ? 'var(--red)' : 'var(--amber)');
+      return `<tr>
+        <td>${formatDate(e.scheduled_date)}</td>
+        <td>${e.medication_name}${e.dose ? ' ' + e.dose : ''}</td>
+        <td>${e.scheduled_time || 'PRN'}</td>
+        <td><span style="color:${codeColor};font-weight:600;">${e.mar_code}</span>${e.notes ? `<div style="font-size:11px;color:var(--muted);">${e.notes}</div>` : ''}</td>
+        <td>${e.staff_name || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openMedScheduleModal(medId) {
+    // Figure out which resident context we're working in (Edit modal or View modal)
+    const editOpen = document.getElementById('resident-modal').classList.contains('open');
+    const residentId = editOpen ? document.getElementById('r-edit-id').value : currentViewResidentId;
+    const residentName = editOpen ? currentEditResidentName : currentViewResidentName;
+    if (!residentId) { showToast('Save the resident first, then add medications.', true); return; }
+
+    document.getElementById('ms-edit-id').value = medId || '';
+    document.getElementById('ms-resident-id').value = residentId;
+    document.getElementById('ms-resident-name').value = residentName || '';
+    document.getElementById('med-schedule-title').textContent = medId ? 'Edit Medication' : 'Add Medication';
+
+    if (medId) {
+      const source = editOpen ? _medListContext : _medListContext; // both tabs share the same fetch cache via re-query below
+      db.from('resident_medications').select('*').eq('id', medId).single().then(({ data: m }) => {
+        if (!m) return;
+        document.getElementById('ms-name').value = m.medication_name || '';
+        document.getElementById('ms-dose').value = m.dose || '';
+        document.getElementById('ms-route').value = m.route || '';
+        document.getElementById('ms-freq').value = m.frequency_type || 'scheduled';
+        document.getElementById('ms-times').value = (m.times || []).join(', ');
+        document.getElementById('ms-prn-reason').value = m.prn_reason || '';
+        document.getElementById('ms-instructions').value = m.instructions || '';
+        document.getElementById('ms-start').value = m.start_date || '';
+        document.getElementById('ms-end').value = m.end_date || '';
+        toggleMsFreqFields();
+        openModal('med-schedule-modal');
+      });
+    } else {
+      document.getElementById('ms-name').value = '';
+      document.getElementById('ms-dose').value = '';
+      document.getElementById('ms-route').value = '';
+      document.getElementById('ms-freq').value = 'scheduled';
+      document.getElementById('ms-times').value = '';
+      document.getElementById('ms-prn-reason').value = '';
+      document.getElementById('ms-instructions').value = '';
+      document.getElementById('ms-start').value = localISODate(new Date());
+      document.getElementById('ms-end').value = '';
+      toggleMsFreqFields();
+      openModal('med-schedule-modal');
+    }
+  }
+
+  function toggleMsFreqFields() {
+    const isPrn = val('ms-freq') === 'prn';
+    document.getElementById('ms-times-row').style.display = isPrn ? 'none' : '';
+    document.getElementById('ms-prn-row').style.display = isPrn ? '' : 'none';
+  }
+
+  async function saveMedicationSchedule() {
+    const name = val('ms-name');
+    if (!name) { showToast('Please enter a medication name.', true); return; }
+    const freq = val('ms-freq');
+    const times = freq === 'scheduled'
+      ? val('ms-times').split(',').map(t => t.trim()).filter(Boolean)
+      : [];
+    const payload = {
+      resident_id: document.getElementById('ms-resident-id').value,
+      resident_name: document.getElementById('ms-resident-name').value,
+      medication_name: name,
+      dose: val('ms-dose'),
+      route: val('ms-route'),
+      frequency_type: freq,
+      times: times.length ? times : null,
+      prn_reason: freq === 'prn' ? val('ms-prn-reason') : null,
+      instructions: val('ms-instructions'),
+      start_date: val('ms-start') || null,
+      end_date: val('ms-end') || null,
+      status: 'active'
+    };
+    const editId = val('ms-edit-id');
+    let error;
+    if (editId) {
+      ({ error } = await db.from('resident_medications').update(payload).eq('id', editId));
+    } else {
+      payload.created_by = currentRole === 'admin' ? (currentStaffFullName || currentUser.email) : currentStaffFullName;
+      ({ error } = await db.from('resident_medications').insert([payload]));
+    }
+    if (error) { showToast('Could not save medication: ' + error.message, true); return; }
+    closeModal('med-schedule-modal');
+    showToast('Medication saved');
+    if (_medListContext.targetElId) loadResidentMedications(_medListContext.residentId, _medListContext.residentName, _medListContext.targetElId);
+    // Keep both tabs in sync if the resident happens to be open in both places
+    if (document.getElementById('rt-med-list') && document.getElementById('r-edit-id').value) loadResidentMedications(document.getElementById('r-edit-id').value, currentEditResidentName, 'rt-med-list');
+    if (document.getElementById('vr-med-list') && currentViewResidentId) loadResidentMedications(currentViewResidentId, currentViewResidentName, 'vr-med-list');
+  }
+
+  async function discontinueMedication(id) {
+    if (!confirm('Discontinue this medication? It will no longer show as due for staff to sign, but its history is kept.')) return;
+    const { error } = await db.from('resident_medications').update({ status: 'discontinued' }).eq('id', id);
+    if (error) { showToast('Could not discontinue: ' + error.message, true); return; }
+    showToast('Medication discontinued');
+    if (_medListContext.targetElId) loadResidentMedications(_medListContext.residentId, _medListContext.residentName, _medListContext.targetElId);
   }
 
   async function uploadCarePlanDocFromView() {
@@ -5691,7 +5929,7 @@ const TRAINING_MODULES = [
 
   function renderClientRates(list) {
     const tb = document.getElementById('client-rates-table');
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="emoji">👥</div><p>No clients added yet</p></div></td></tr>'; return; }
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="emoji">👥</div><p>No clients added yet</p></div></td></tr>'; return; }
     tb.innerHTML = list.map(c => `
       <tr>
         <td><strong>${c.client_name || '—'}</strong></td>
@@ -5699,6 +5937,7 @@ const TRAINING_MODULES = [
         <td>${c.nok || '—'}</td>
         <td>${c.phone || '—'}</td>
         <td><strong>£${parseFloat(c.hourly_rate || 0).toFixed(2)}</strong></td>
+        <td>${c.commissioned_hours !== null && c.commissioned_hours !== undefined ? c.commissioned_hours : '—'}</td>
         <td>£${parseFloat(c.mileage_rate || 0.25).toFixed(2)}</td>
         <td style="font-size:12px;">${c.notes || '—'}</td>
         <td style="display:flex;gap:4px;">
@@ -5717,6 +5956,7 @@ const TRAINING_MODULES = [
       nok: document.getElementById('cr-nok').value,
       phone: document.getElementById('cr-phone').value,
       hourly_rate: parseFloat(document.getElementById('cr-rate').value) || 0,
+      commissioned_hours: document.getElementById('cr-commissioned-hours').value !== '' ? parseFloat(document.getElementById('cr-commissioned-hours').value) : null,
       mileage_rate: parseFloat(document.getElementById('cr-mileage-rate').value) || 0.25,
       notes: document.getElementById('cr-notes').value
     };
@@ -5730,7 +5970,7 @@ const TRAINING_MODULES = [
     if (error) { alert('Error: ' + error.message); return; }
     document.getElementById('cr-edit-id').value = '';
     document.getElementById('client-rate-modal-title').textContent = 'Add Client';
-    ['cr-name','cr-dob','cr-nok','cr-phone','cr-rate','cr-notes'].forEach(id => document.getElementById(id).value = '');
+    ['cr-name','cr-dob','cr-nok','cr-phone','cr-rate','cr-commissioned-hours','cr-notes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('cr-mileage-rate').value = '0.25';
     closeModal('client-rate-modal');
     loadClientRates();
@@ -5746,6 +5986,7 @@ const TRAINING_MODULES = [
     document.getElementById('cr-nok').value = c.nok || '';
     document.getElementById('cr-phone').value = c.phone || '';
     document.getElementById('cr-rate').value = c.hourly_rate || '';
+    document.getElementById('cr-commissioned-hours').value = c.commissioned_hours !== null && c.commissioned_hours !== undefined ? c.commissioned_hours : '';
     document.getElementById('cr-mileage-rate').value = c.mileage_rate || '0.25';
     document.getElementById('cr-notes').value = c.notes || '';
     openModal('client-rate-modal');
