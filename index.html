@@ -1702,19 +1702,19 @@
     <div id="rt-careplan" class="tab-panel">
       <div class="form-grid">
         <div class="form-group full" style="background:var(--teal-light);border-radius:10px;padding:14px;margin-bottom:4px;"><label style="color:var(--teal-dark);font-weight:700;">🧑 About Me — the person behind the plan</label></div>
-        <div class="form-group full"><label>Personal History &amp; Background</label><textarea id="r-life-history" placeholder="Life history, cultural background, career, family..."></textarea></div>
-        <div class="form-group full"><label>Likes, Dislikes, Fears, Triggers &amp; Motivators</label><textarea id="r-dislikes" placeholder="What upsets them, what motivates them, what to avoid..."></textarea></div>
-        <div class="form-group full"><label>Communication Style</label><textarea id="r-comm-style" placeholder="Preferred tone, pace, words — how best to talk with them..."></textarea></div>
-        <div class="form-group full"><label>Important Relationships &amp; Who Influences Decisions</label><textarea id="r-important-people" placeholder="Family, friends, who they trust, who is involved in decisions..."></textarea></div>
-        <div class="form-group full"><label>What "A Good Day" Looks Like</label><textarea id="r-good-day" placeholder="What does a good day look like for this person?"></textarea></div>
-        <div class="form-group full"><label>What Causes Distress &amp; How to De-escalate</label><textarea id="r-behaviour" placeholder="Known triggers for distress and what helps calm the situation..."></textarea></div>
-        <div class="form-group full"><label>Focus of the Plan</label><textarea id="r-plan-focus" placeholder="The primary focus of this care plan, e.g. maintaining independence at home, managing a specific condition..."></textarea></div>
-        <div class="form-group full"><label>Aim of the Plan</label><textarea id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
-        <div class="form-group full"><label>Action Plan</label><textarea id="r-action-plan" placeholder="Concrete steps and actions to achieve the aim..."></textarea></div>
-        <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea id="r-morning" placeholder="Support required in the morning..."></textarea></div>
-        <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea id="r-evening" placeholder="Support required in the evening..."></textarea></div>
-        <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
-        <div class="form-group full"><label>Risks Without Support</label><textarea id="r-risks" placeholder="What risks would this person face if the current support/care were not provided..."></textarea></div>
+        <div class="form-group full"><label>Personal History &amp; Background</label><textarea class="fmt-textarea" id="r-life-history" placeholder="Life history, cultural background, career, family..."></textarea></div>
+        <div class="form-group full"><label>Likes, Dislikes, Fears, Triggers &amp; Motivators</label><textarea class="fmt-textarea" id="r-dislikes" placeholder="What upsets them, what motivates them, what to avoid..."></textarea></div>
+        <div class="form-group full"><label>Communication Style</label><textarea class="fmt-textarea" id="r-comm-style" placeholder="Preferred tone, pace, words — how best to talk with them..."></textarea></div>
+        <div class="form-group full"><label>Important Relationships &amp; Who Influences Decisions</label><textarea class="fmt-textarea" id="r-important-people" placeholder="Family, friends, who they trust, who is involved in decisions..."></textarea></div>
+        <div class="form-group full"><label>What "A Good Day" Looks Like</label><textarea class="fmt-textarea" id="r-good-day" placeholder="What does a good day look like for this person?"></textarea></div>
+        <div class="form-group full"><label>What Causes Distress &amp; How to De-escalate</label><textarea class="fmt-textarea" id="r-behaviour" placeholder="Known triggers for distress and what helps calm the situation..."></textarea></div>
+        <div class="form-group full"><label>Focus of the Plan</label><textarea class="fmt-textarea" id="r-plan-focus" placeholder="The primary focus of this care plan, e.g. maintaining independence at home, managing a specific condition..."></textarea></div>
+        <div class="form-group full"><label>Aim of the Plan</label><textarea class="fmt-textarea" id="r-goals" placeholder="What is this care plan working towards? e.g. maintaining independence, improving mobility..."></textarea></div>
+        <div class="form-group full"><label>Action Plan</label><textarea class="fmt-textarea" id="r-action-plan" placeholder="Concrete steps and actions to achieve the aim..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea class="fmt-textarea" id="r-morning" placeholder="Support required in the morning..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea class="fmt-textarea" id="r-evening" placeholder="Support required in the evening..."></textarea></div>
+        <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea class="fmt-textarea" id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
+        <div class="form-group full"><label>Risks Without Support</label><textarea class="fmt-textarea" id="r-risks" placeholder="What risks would this person face if the current support/care were not provided..."></textarea></div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
         <div class="form-group full">
           <label>Ready-made Care Plan Document (optional)</label>
@@ -2901,19 +2901,19 @@ const TRAINING_MODULES = [
       <div id="vr-careplan" class="tab-panel">
         <div style="background:var(--teal-light);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">🧑 About Me — the person behind the plan</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          ${vrFieldFull('Personal History & Background', r.life_history_notes)}
-          ${vrFieldFull('Likes, Dislikes, Fears, Triggers & Motivators', r.dislikes)}
-          ${vrFieldFull('Communication Style', r.communication_style)}
-          ${vrFieldFull('Important Relationships & Who Influences Decisions', r.important_people)}
-          ${vrFieldFull('What "A Good Day" Looks Like', r.good_day_looks_like)}
-          ${vrFieldFull('What Causes Distress & How to De-escalate', r.behaviour_notes)}
-          ${vrFieldFull('Focus of the Plan', r.plan_focus)}
-          ${vrFieldFull('Aim of the Plan', r.goals)}
-          ${vrFieldFull('Action Plan', r.action_plan)}
-          ${vrFieldFull('Daily Support — Morning Routine', r.morning_routine)}
-          ${vrFieldFull('Daily Support — Evening Routine', r.evening_routine)}
-          ${vrFieldFull('Daily Support — Bedtime Routine', r.bedtime_routine)}
-          ${vrFieldFull('Risks Without Support', r.risk_summary)}
+          ${vrFieldFullFormatted('Personal History & Background', r.life_history_notes)}
+          ${vrFieldFullFormatted('Likes, Dislikes, Fears, Triggers & Motivators', r.dislikes)}
+          ${vrFieldFullFormatted('Communication Style', r.communication_style)}
+          ${vrFieldFullFormatted('Important Relationships & Who Influences Decisions', r.important_people)}
+          ${vrFieldFullFormatted('What "A Good Day" Looks Like', r.good_day_looks_like)}
+          ${vrFieldFullFormatted('What Causes Distress & How to De-escalate', r.behaviour_notes)}
+          ${vrFieldFullFormatted('Focus of the Plan', r.plan_focus)}
+          ${vrFieldFullFormatted('Aim of the Plan', r.goals)}
+          ${vrFieldFullFormatted('Action Plan', r.action_plan)}
+          ${vrFieldFullFormatted('Daily Support — Morning Routine', r.morning_routine)}
+          ${vrFieldFullFormatted('Daily Support — Evening Routine', r.evening_routine)}
+          ${vrFieldFullFormatted('Daily Support — Bedtime Routine', r.bedtime_routine)}
+          ${vrFieldFullFormatted('Risks Without Support', r.risk_summary)}
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
         </div>
         <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
@@ -3357,6 +3357,13 @@ const TRAINING_MODULES = [
     return `<div style="grid-column:1/-1;background:var(--bg);border-radius:8px;padding:12px;">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${label}</div>
       <div style="font-size:14px;color:var(--navy);font-weight:500;white-space:pre-wrap;">${value || '—'}</div>
+    </div>`;
+  }
+
+  function vrFieldFullFormatted(label, value) {
+    return `<div style="grid-column:1/-1;background:var(--bg);border-radius:8px;padding:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${label}</div>
+      <div style="font-size:14px;color:var(--navy);font-weight:500;white-space:pre-wrap;">${value ? renderNoteFormatting(value) : '—'}</div>
     </div>`;
   }
 
@@ -4121,6 +4128,18 @@ const TRAINING_MODULES = [
     document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = false; });
     setTodayDate();
     openModal('note-modal');
+  }
+
+  function attachFormattingToolbars() {
+    document.querySelectorAll('textarea.fmt-textarea').forEach(ta => {
+      if (ta.dataset.fmtAttached) return;
+      ta.dataset.fmtAttached = '1';
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;';
+      bar.innerHTML = `<button type="button" class="btn btn-cancel" style="padding:3px 10px;font-size:11px;font-style:italic;" onclick="wrapNoteSelection('${ta.id}','*')">Italic</button>
+        <button type="button" class="btn btn-cancel" style="padding:3px 10px;font-size:11px;background:#fff3a3;border-color:#f5e08a;" onclick="wrapNoteSelection('${ta.id}','==')">Highlight</button>`;
+      ta.parentNode.insertBefore(bar, ta);
+    });
   }
 
   // ── Lightweight note formatting: *italic* and ==highlight== ──
@@ -7303,6 +7322,7 @@ const TRAINING_MODULES = [
     document.getElementById('set-password-card').style.display = 'block';
   }
   try { checkSession(); } catch(e) { console.error('Init error:', e); }
+  try { attachFormattingToolbars(); } catch(e) { console.warn('attachFormattingToolbars:', e); }
 </script>
 </body>
 </html>
