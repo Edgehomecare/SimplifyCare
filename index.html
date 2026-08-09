@@ -577,7 +577,7 @@
             <h1>Staff</h1>
             <p>Team management, training and DBS compliance</p>
           </div>
-          <button class="btn-add" onclick="openModal('staff-modal')">+ Add Staff</button>
+          <button class="btn-add" onclick="openNewStaffModal()">+ Add Staff</button>
         </div>
         <div class="tabs">
           <div class="tab active" onclick="switchTab(this,'staff-all')">All Staff</div>
@@ -3859,6 +3859,18 @@ const TRAINING_MODULES = [
     const { data: training } = await db.from('staff_training').select('*').eq('staff_id', staffId).order('expiry_date');
     document.getElementById('vs-training-list').innerHTML = renderStaffTrainingList(training || []);
     loadTrainingTable();
+  }
+
+  function openNewStaffModal() {
+    document.getElementById('staff-modal-title').textContent = 'Add Staff Member';
+    document.getElementById('s-edit-id').value = '';
+    const modal = document.getElementById('staff-modal');
+    modal.querySelectorAll('input, textarea').forEach(el => {
+      if (el.type === 'checkbox' || el.type === 'radio') { el.checked = false; }
+      else if (el.type !== 'hidden') { el.value = ''; }
+    });
+    modal.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    openModal('staff-modal');
   }
 
   async function saveStaff() {
