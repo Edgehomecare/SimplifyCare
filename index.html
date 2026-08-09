@@ -4242,7 +4242,10 @@ const TRAINING_MODULES = [
   function renderNotes(list) {
     const tb = document.getElementById('notes-table');
     if (!list.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">📋</div><p>No notes for this date</p></div></td></tr>'; return; }
-    tb.innerHTML = list.map(n => `
+    tb.innerHTML = list.map(n => {
+      const isOwnTodayNote = currentRole !== 'admin' && n.created_at && localISODate(new Date(n.created_at)) === localISODate(new Date());
+      const canEdit = currentRole === 'admin' || isOwnTodayNote;
+      return `
       <tr>
         <td>${formatDateTime(n.created_at)}</td>
         <td>${n.resident_name || '—'}</td>
@@ -4250,12 +4253,13 @@ const TRAINING_MODULES = [
         <td style="max-width:300px;">${renderNoteFormatting((n.note || '').substring(0, 100))}${(n.note || '').length > 100 ? '...' : ''}</td>
         <td>${n.staff_name || '—'}</td>
         <td style="display:flex;gap:6px;">
-          ${currentRole === 'admin' ? `
+          ${canEdit ? `
           <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editNote('${n.id}')">Edit</button>
           <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteNote('${n.id}')">Delete</button>
-          ` : ''}
+          ` : (currentRole !== 'admin' ? '<span style="font-size:11px;color:var(--muted);">Locked after today</span>' : '')}
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
 
   function filterNotes(q) {
