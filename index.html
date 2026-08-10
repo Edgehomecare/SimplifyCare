@@ -740,6 +740,7 @@
           <button class="gov-tab active" onclick="showRotaView('weekly',this)">📅 Weekly View</button>
           <button class="gov-tab" onclick="showRotaView('monthly',this)">🗓️ Monthly View</button>
           <button class="gov-tab" onclick="showRotaView('list',this)">📋 List View</button>
+          <button class="gov-tab" onclick="showRotaView('coverage',this)">⚠️ Coverage Check</button>
         </div>
 
         <!-- Week navigator -->
@@ -772,6 +773,22 @@
                 <tbody id="rota-list-table"><tr><td colspan="11" class="loading">Loading...</td></tr></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- COVERAGE CHECK -->
+        <div id="rota-coverage" class="gov-section">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:12px;">
+              <div class="card-title" style="margin-bottom:0;">Coverage Check</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="btn btn-cancel" style="padding:8px 16px;" onclick="coverageChangeDay(-1)">← Previous Day</button>
+                <input type="date" id="coverage-date" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onchange="loadCoverageCheck()" />
+                <button class="btn btn-cancel" style="padding:8px 16px;" onclick="coverageChangeDay(1)">Next Day →</button>
+              </div>
+            </div>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Every active client who has no visit at all scheduled on this day. This doesn't know who's supposed to have a visit today and who isn't - it's a prompt to double-check each one, not an automatic verdict.</p>
+            <div id="coverage-check-list">Loading...</div>
           </div>
         </div>
 
@@ -5154,7 +5171,8 @@ const TRAINING_MODULES = [
     document.querySelectorAll('#page-rota .gov-tab').forEach(b => b.classList.remove('active'));
     document.getElementById('rota-' + view).classList.add('active');
     btn.classList.add('active');
-    renderRota();
+    document.getElementById('rota-nav').style.display = (view === 'coverage') ? 'none' : 'flex';
+    if (view === 'coverage') { loadCoverageCheck(); } else { renderRota(); }
   }
 
   function rotaNavigate(dir) {
@@ -5164,6 +5182,61 @@ const TRAINING_MODULES = [
       rotaCurrentDate.setMonth(rotaCurrentDate.getMonth() + dir);
     }
     renderRota();
+  }
+
+  let coverageCurrentDate = new Date();
+
+  function coverageChangeDay(dir) {
+    coverageCurrentDate.setDate(coverageCurrentDate.getDate() + dir);
+    document.getElementById('coverage-date').value = localISODate(coverageCurrentDate);
+    loadCoverageCheck();
+  }
+
+  async function loadCoverageCheck() {
+    const dateEl = document.getElementById('coverage-date');
+    if (!dateEl.value) dateEl.value = localISODate(coverageCurrentDate);
+    else coverageCurrentDate = new Date(dateEl.value + 'T00:00:00');
+    const dateStr = dateEl.value;
+
+    const listEl = document.getElementById('coverage-check-list');
+    listEl.innerHTML = 'Loading...';
+
+    const [{ data: clients, error: clientsErr }, { data: shifts, error: shiftsErr }] = await Promise.all([
+      db.from('residents').select('id, first_name, last_name').eq('status', 'active'),
+      db.from('rota_shifts').select('client_name').eq('shift_date', dateStr).neq('status', 'cancelled'),
+    ]);
+
+    if (clientsErr || shiftsErr) {
+      listEl.innerHTML = `<p style="color:var(--red);">Error: ${(clientsErr || shiftsErr).message}</p>`;
+      return;
+    }
+
+    const coveredNames = new Set((shifts || []).map(s => (s.client_name || '').trim().toLowerCase()));
+    const missing = (clients || []).filter(c => {
+      const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim().toLowerCase();
+      return fullName && !coveredNames.has(fullName);
+    });
+
+    const dateFmt = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    if (!missing.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:32px;"><div style="font-size:36px;margin-bottom:8px;">✅</div><div style="font-weight:600;color:var(--green);">Every active client has at least one visit scheduled for ${dateFmt}.</div></div>`;
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">⚠️ ${missing.length} active client${missing.length > 1 ? 's have' : ' has'} no visit scheduled for ${dateFmt}. Check each one - some may genuinely not need a visit today.</div>
+      ${missing.map(c => {
+        const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+        const safeName = fullName.replace(/'/g, "\\'");
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+          <strong>${fullName}</strong>
+          <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="openShiftForDate('${dateStr}','','${safeName}')">+ Add Shift</button>
+        </div>
+      `;
+      }).join('')}
+    `;
   }
 
   function rotaGoToToday() {
@@ -5762,9 +5835,10 @@ const TRAINING_MODULES = [
   }
 
   // ── SHIFT CRUD ──
-  function openShiftForDate(date, staff) {
+  function openShiftForDate(date, staff, client) {
     document.getElementById('sh-date').value = date;
     document.getElementById('sh-staff').value = staff || '';
+    document.getElementById('sh-client').value = client || '';
     document.getElementById('sh-edit-id').value = '';
     document.getElementById('sh-delete-btn').style.display = 'none';
     document.getElementById('shift-modal-title').textContent = 'Add Shift';
