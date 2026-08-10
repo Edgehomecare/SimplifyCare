@@ -5216,6 +5216,15 @@ const TRAINING_MODULES = [
 
   const DOW_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+  function isFortnightlyWeekMatch(dateStr, referenceDateStr) {
+    if (!referenceDateStr) return true; // no reference set - can't determine, don't block
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    const ref = new Date(referenceDateStr + 'T00:00:00');
+    const target = new Date(dateStr + 'T00:00:00');
+    const weeksDiff = Math.round((target - ref) / oneWeekMs);
+    return weeksDiff % 2 === 0;
+  }
+
   async function loadCoverageCheck() {
     const dateEl = document.getElementById('coverage-date');
     if (!dateEl.value) dateEl.value = localISODate(coverageCurrentDate);
@@ -5226,7 +5235,7 @@ const TRAINING_MODULES = [
     listEl.innerHTML = 'Loading...';
 
     const [{ data: clients, error: clientsErr }, { data: shifts, error: shiftsErr }] = await Promise.all([
-      db.from('residents').select('id, first_name, last_name, expected_visit_days').eq('status', 'active'),
+      db.from('residents').select('id, first_name, last_name, expected_visit_days, expected_visits_per_day, visit_count_overrides, visit_frequency, fortnight_reference_date').eq('status', 'active'),
       db.from('rota_shifts').select('client_name').eq('shift_date', dateStr).neq('status', 'cancelled'),
     ]);
 
@@ -5236,26 +5245,42 @@ const TRAINING_MODULES = [
     }
 
     const dow = DOW_ABBR[new Date(dateStr + 'T00:00:00').getDay()];
-    const coveredNames = new Set((shifts || []).map(s => (s.client_name || '').trim().toLowerCase()));
+    const shiftNames = (shifts || []).map(s => (s.client_name || '').trim().toLowerCase());
+
+    // Counts visits whose rota name STARTS WITH the client's full name, so
+    // variants like "Margaret Woodley sleep in" still count towards
+    // "Margaret Woodley"'s total instead of being missed as a different client.
+    function countVisitsFor(fullNameLower) {
+      return shiftNames.filter(n => n === fullNameLower || n.startsWith(fullNameLower + ' ')).length;
+    }
 
     const missing = [];
     const unconfigured = [];
     (clients || []).forEach(c => {
       const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
       if (!fullName) return;
-      const hasVisitToday = coveredNames.has(fullName.toLowerCase());
+      const fullNameLower = fullName.toLowerCase();
+      const actualCount = countVisitsFor(fullNameLower);
       const expectedDays = c.expected_visit_days || [];
-      if (!expectedDays.length) { if (!hasVisitToday) unconfigured.push({ ...c, fullName }); return; }
-      if (expectedDays.includes(dow) && !hasVisitToday) missing.push({ ...c, fullName });
+
+      if (!expectedDays.length) { if (!actualCount) unconfigured.push({ ...c, fullName, actualCount, expectedCount: c.expected_visits_per_day || 1 }); return; }
+      if (!expectedDays.includes(dow)) return;
+
+      if (c.visit_frequency === 'fortnightly' && !isFortnightlyWeekMatch(dateStr, c.fortnight_reference_date)) return;
+
+      const overrides = c.visit_count_overrides || {};
+      const expectedCount = (overrides[dow] !== undefined) ? overrides[dow] : (c.expected_visits_per_day || 1);
+      if (actualCount < expectedCount) missing.push({ ...c, fullName, actualCount, expectedCount });
     });
 
     const dateFmt = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
     function clientRow(c) {
       const safeName = c.fullName.replace(/'/g, "\\'");
+      const countNote = c.expectedCount > 1 ? `<div style="font-size:12px;color:#b45309;margin-top:2px;">${c.actualCount} of ${c.expectedCount} expected visits scheduled</div>` : '';
       return `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
-          <strong>${c.fullName}</strong>
+          <div><strong>${c.fullName}</strong>${countNote}</div>
           <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="openShiftForDate('${dateStr}','','${safeName}')">+ Add Shift</button>
         </div>`;
     }
@@ -5264,7 +5289,7 @@ const TRAINING_MODULES = [
     if (!missing.length) {
       html += `<div style="text-align:center;padding:24px;"><div style="font-size:36px;margin-bottom:8px;">✅</div><div style="font-weight:600;color:var(--green);">No missed visits found for ${dateFmt}.</div></div>`;
     } else {
-      html += `<div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">⚠️ ${missing.length} client${missing.length > 1 ? 's' : ''} expected a visit on ${dateFmt} but ${missing.length > 1 ? "aren't" : "isn't"} on the rota.</div>`;
+      html += `<div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">⚠️ ${missing.length} client${missing.length > 1 ? 's are' : ' is'} short of their expected visits on ${dateFmt}.</div>`;
       html += missing.map(clientRow).join('');
     }
     if (unconfigured.length) {
