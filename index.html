@@ -787,7 +787,7 @@
                 <button class="btn btn-cancel" style="padding:8px 16px;" onclick="coverageChangeDay(1)">Next Day →</button>
               </div>
             </div>
-            <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Every active client who has no visit at all scheduled on this day. This doesn't know who's supposed to have a visit today and who isn't - it's a prompt to double-check each one, not an automatic verdict.</p>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Compares each client's expected visit days against the rota, so only genuine gaps show up here - not clients who simply don't need a visit today. Set expected visit days on a client's profile to include them in this check.</p>
             <div id="coverage-check-list">Loading...</div>
           </div>
         </div>
@@ -1745,6 +1745,19 @@
         <div class="form-group"><label>Status</label>
           <select id="r-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="hospital">Hospital</option><option value="discharged">Discharged</option></select>
         </div>
+        <div class="form-group full">
+          <label>Expected Visit Days (used by Rota Coverage Check to flag missed visits)</label>
+          <div id="r-visit-days-group" style="display:flex;flex-wrap:wrap;gap:8px;">
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Mon" class="r-visit-day-cb"> Mon</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Tue" class="r-visit-day-cb"> Tue</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Wed" class="r-visit-day-cb"> Wed</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Thu" class="r-visit-day-cb"> Thu</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Fri" class="r-visit-day-cb"> Fri</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Sat" class="r-visit-day-cb"> Sat</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Sun" class="r-visit-day-cb"> Sun</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--teal);border-radius:8px;padding:6px 10px;cursor:pointer;background:#f0fdf9;"><input type="checkbox" id="r-visit-days-everyday" onchange="toggleEverydayVisits(this)"> Every day</label>
+          </div>
+        </div>
         <div class="form-group full"><label>Likes & Preferences</label><textarea id="r-likes" placeholder="What does the resident enjoy? Hobbies, preferences..."></textarea></div>
       </div>
     </div>
@@ -2658,9 +2671,14 @@ const TRAINING_MODULES = [
     modal.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'rt-personal'));
   }
 
+  function toggleEverydayVisits(cb) {
+    document.querySelectorAll('.r-visit-day-cb').forEach(dayCb => { dayCb.checked = cb.checked; });
+  }
+
   function resetResidentModalFields() {
     const modal = document.getElementById('resident-modal');
-    modal.querySelectorAll('input, textarea').forEach(el => { if (el.type !== 'hidden') el.value = ''; });
+    modal.querySelectorAll('input, textarea').forEach(el => { if (el.type !== 'hidden' && el.type !== 'checkbox') el.value = ''; });
+    modal.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = false; });
     modal.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
     document.getElementById('r-edit-id').value = '';
     document.getElementById('resident-modal-title').textContent = 'Add Resident';
@@ -2792,7 +2810,8 @@ const TRAINING_MODULES = [
       allergies: val('r-allergies'), dnr_status: val('r-dnr'),
       nok_name: val('r-nok-name'), nok_relationship: val('r-nok-rel'),
       nok_phone: val('r-nok-phone'), nok_email: val('r-nok-email'),
-      power_of_attorney: val('r-poa'), social_worker: val('r-sw')
+      power_of_attorney: val('r-poa'), social_worker: val('r-sw'),
+      expected_visit_days: Array.from(document.querySelectorAll('.r-visit-day-cb:checked')).map(cb => cb.value)
     };
     if (!payload.first_name || !payload.last_name) { alert('Please enter first and last name.'); return; }
     const editId = document.getElementById('r-edit-id').value;
@@ -2840,6 +2859,9 @@ const TRAINING_MODULES = [
     document.getElementById('r-keyworker').value = r.key_worker || '';
     document.getElementById('r-status').value = r.status || 'active';
     document.getElementById('r-likes').value = r.likes_preferences || '';
+    const expectedDays = r.expected_visit_days || [];
+    document.querySelectorAll('.r-visit-day-cb').forEach(cb => { cb.checked = expectedDays.includes(cb.value); });
+    document.getElementById('r-visit-days-everyday').checked = expectedDays.length === 7;
     // Care Plan
     document.getElementById('r-plan-focus').value = r.plan_focus || '';
     document.getElementById('r-goals').value = r.goals || '';
@@ -5192,6 +5214,8 @@ const TRAINING_MODULES = [
     loadCoverageCheck();
   }
 
+  const DOW_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
   async function loadCoverageCheck() {
     const dateEl = document.getElementById('coverage-date');
     if (!dateEl.value) dateEl.value = localISODate(coverageCurrentDate);
@@ -5202,7 +5226,7 @@ const TRAINING_MODULES = [
     listEl.innerHTML = 'Loading...';
 
     const [{ data: clients, error: clientsErr }, { data: shifts, error: shiftsErr }] = await Promise.all([
-      db.from('residents').select('id, first_name, last_name').eq('status', 'active'),
+      db.from('residents').select('id, first_name, last_name, expected_visit_days').eq('status', 'active'),
       db.from('rota_shifts').select('client_name').eq('shift_date', dateStr).neq('status', 'cancelled'),
     ]);
 
@@ -5211,32 +5235,45 @@ const TRAINING_MODULES = [
       return;
     }
 
+    const dow = DOW_ABBR[new Date(dateStr + 'T00:00:00').getDay()];
     const coveredNames = new Set((shifts || []).map(s => (s.client_name || '').trim().toLowerCase()));
-    const missing = (clients || []).filter(c => {
-      const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim().toLowerCase();
-      return fullName && !coveredNames.has(fullName);
+
+    const missing = [];
+    const unconfigured = [];
+    (clients || []).forEach(c => {
+      const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+      if (!fullName) return;
+      const hasVisitToday = coveredNames.has(fullName.toLowerCase());
+      const expectedDays = c.expected_visit_days || [];
+      if (!expectedDays.length) { if (!hasVisitToday) unconfigured.push({ ...c, fullName }); return; }
+      if (expectedDays.includes(dow) && !hasVisitToday) missing.push({ ...c, fullName });
     });
 
     const dateFmt = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    if (!missing.length) {
-      listEl.innerHTML = `<div style="text-align:center;padding:32px;"><div style="font-size:36px;margin-bottom:8px;">✅</div><div style="font-weight:600;color:var(--green);">Every active client has at least one visit scheduled for ${dateFmt}.</div></div>`;
-      return;
+    function clientRow(c) {
+      const safeName = c.fullName.replace(/'/g, "\\'");
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+          <strong>${c.fullName}</strong>
+          <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="openShiftForDate('${dateStr}','','${safeName}')">+ Add Shift</button>
+        </div>`;
     }
 
-    listEl.innerHTML = `
-      <div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">⚠️ ${missing.length} active client${missing.length > 1 ? 's have' : ' has'} no visit scheduled for ${dateFmt}. Check each one - some may genuinely not need a visit today.</div>
-      ${missing.map(c => {
-        const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
-        const safeName = fullName.replace(/'/g, "\\'");
-        return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
-          <strong>${fullName}</strong>
-          <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="openShiftForDate('${dateStr}','','${safeName}')">+ Add Shift</button>
-        </div>
-      `;
-      }).join('')}
-    `;
+    let html = '';
+    if (!missing.length) {
+      html += `<div style="text-align:center;padding:24px;"><div style="font-size:36px;margin-bottom:8px;">✅</div><div style="font-weight:600;color:var(--green);">No missed visits found for ${dateFmt}.</div></div>`;
+    } else {
+      html += `<div style="background:#fff7e0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">⚠️ ${missing.length} client${missing.length > 1 ? 's' : ''} expected a visit on ${dateFmt} but ${missing.length > 1 ? "aren't" : "isn't"} on the rota.</div>`;
+      html += missing.map(clientRow).join('');
+    }
+    if (unconfigured.length) {
+      html += `<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">❔ ${unconfigured.length} active client${unconfigured.length > 1 ? 's have not' : ' has not'} had their expected visit days set up yet, so they can't be checked. Edit their profile to set which days they normally need a visit.</div>
+        ${unconfigured.map(clientRow).join('')}
+      </div>`;
+    }
+    listEl.innerHTML = html;
   }
 
   function rotaGoToToday() {
