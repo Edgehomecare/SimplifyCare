@@ -1776,6 +1776,14 @@
         <div class="form-group full"><label>Daily Support — Morning Routine</label><textarea class="fmt-textarea" id="r-morning" placeholder="Support required in the morning..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Evening Routine</label><textarea class="fmt-textarea" id="r-evening" placeholder="Support required in the evening..."></textarea></div>
         <div class="form-group full"><label>Daily Support — Bedtime Routine</label><textarea class="fmt-textarea" id="r-bedtime" placeholder="Support required at bedtime..."></textarea></div>
+        <div class="form-group full" style="background:var(--teal-light);border-radius:10px;padding:14px;margin-bottom:4px;margin-top:8px;">
+          <label style="color:var(--teal-dark);font-weight:700;">📝 Agreed Tasks &amp; Outcomes</label>
+          <div style="font-weight:400;font-size:12px;color:var(--teal-dark);margin-top:4px;">Pair each task with its agreed outcome, e.g. "Assist with hair washing and showering" → "Maintain dignity and respect". Group rows by visit type.</div>
+        </div>
+        <div class="form-group full">
+          <div id="r-task-outcomes-list"></div>
+          <button type="button" class="btn btn-cancel" style="margin-top:4px;padding:6px 14px;font-size:12px;" onclick="addTaskOutcomeRow()">+ Add Task</button>
+        </div>
         <div class="form-group full"><label>Risks Without Support</label><textarea class="fmt-textarea" id="r-risks" placeholder="What risks would this person face if the current support/care were not provided..."></textarea></div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
         <div class="form-group full">
@@ -2685,6 +2693,72 @@ const TRAINING_MODULES = [
     const medList = document.getElementById('rt-med-list');
     if (medList) medList.innerHTML = '<p style="color:var(--muted);font-size:13px;">Save the resident first, then add medications.</p>';
     currentEditResidentName = null;
+    const toList = document.getElementById('r-task-outcomes-list');
+    if (toList) toList.innerHTML = '';
+    taskOutcomeRowCounter = 0;
+  }
+
+  // ── AGREED TASKS & OUTCOMES ──
+  let taskOutcomeRowCounter = 0;
+  const TASK_OUTCOME_SECTIONS = ['Morning Visit', 'Lunchtime Visit', 'Teatime Visit', 'Evening Visit', 'Overnight', 'Enabling', 'Other'];
+
+  function addTaskOutcomeRow(section = '', task = '', outcome = '') {
+    const list = document.getElementById('r-task-outcomes-list');
+    if (!list) return;
+    const rowId = 'to-row-' + (taskOutcomeRowCounter++);
+    const wrap = document.createElement('div');
+    wrap.id = rowId;
+    wrap.className = 'task-outcome-row';
+    wrap.style.cssText = 'display:grid;grid-template-columns:140px 1fr 1fr 32px;gap:8px;align-items:start;margin-bottom:8px;';
+    wrap.innerHTML = `
+      <select class="to-section" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;">
+        ${TASK_OUTCOME_SECTIONS.map(s => `<option ${s === section ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <textarea class="to-task" placeholder="Task, e.g. Support Rachel in the shower" style="min-height:38px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;">${task}</textarea>
+      <textarea class="to-outcome" placeholder="Agreed outcome, e.g. Maintain dignity and respect" style="min-height:38px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;">${outcome}</textarea>
+      <button type="button" onclick="document.getElementById('${rowId}').remove()" style="background:none;border:none;color:#dc2626;font-size:16px;cursor:pointer;padding:6px;" title="Remove row">✕</button>
+    `;
+    list.appendChild(wrap);
+  }
+
+  function collectTaskOutcomes() {
+    return Array.from(document.querySelectorAll('#r-task-outcomes-list .task-outcome-row')).map(row => ({
+      section: row.querySelector('.to-section').value,
+      task: row.querySelector('.to-task').value.trim(),
+      outcome: row.querySelector('.to-outcome').value.trim()
+    })).filter(r => r.task || r.outcome);
+  }
+
+  function loadTaskOutcomeRows(items) {
+    const list = document.getElementById('r-task-outcomes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    taskOutcomeRowCounter = 0;
+    (items || []).forEach(it => addTaskOutcomeRow(it.section, it.task, it.outcome));
+  }
+
+  function renderTaskOutcomeTable(items) {
+    if (!items || !items.length) return '';
+    const groups = {};
+    items.forEach(it => { const s = it.section || 'Other'; (groups[s] = groups[s] || []).push(it); });
+    const sections = Object.keys(groups).sort((a, b) => TASK_OUTCOME_SECTIONS.indexOf(a) - TASK_OUTCOME_SECTIONS.indexOf(b));
+    return `<div style="grid-column:1/-1;margin-top:4px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📝 Agreed Tasks &amp; Outcomes</div>
+      ${sections.map(s => `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;">${s}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr>
+              <th style="text-align:left;background:var(--bg);padding:8px;border:1px solid var(--border);width:60%;">Agreed Task</th>
+              <th style="text-align:left;background:var(--bg);padding:8px;border:1px solid var(--border);">Agreed Outcome</th>
+            </tr></thead>
+            <tbody>
+              ${groups[s].map(it => `<tr><td style="padding:8px;border:1px solid var(--border);white-space:pre-wrap;">${it.task || '—'}</td><td style="padding:8px;border:1px solid var(--border);white-space:pre-wrap;">${it.outcome || '—'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('')}
+    </div>`;
   }
 
   function switchProfileTab(el, panelId) {
@@ -2802,6 +2876,7 @@ const TRAINING_MODULES = [
       morning_routine: val('r-morning'),
       evening_routine: val('r-evening'), bedtime_routine: val('r-bedtime'),
       risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
+      task_outcomes: collectTaskOutcomes(),
       life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
       communication_style: val('r-comm-style'), important_people: val('r-important-people'),
       good_day_looks_like: val('r-good-day'), behaviour_notes: val('r-behaviour'),
@@ -2877,6 +2952,7 @@ const TRAINING_MODULES = [
     document.getElementById('r-bedtime').value = r.bedtime_routine || '';
     document.getElementById('r-risks').value = r.risk_summary || '';
     document.getElementById('r-review-date').value = r.review_date || '';
+    loadTaskOutcomeRows(r.task_outcomes || []);
     document.getElementById('r-careplan-file').value = '';
     document.getElementById('r-careplan-file-label').textContent = 'Choose file or click to browse';
     const cpCurrent = document.getElementById('r-careplan-file-current');
@@ -2916,10 +2992,12 @@ const TRAINING_MODULES = [
     loadResidents();
   }
 
+  let currentViewResidentTaskOutcomes = [];
   async function viewResident(id) {
     currentViewResidentId = id;
     const { data: r, error } = await db.from('residents').select('*').eq('id', id).single();
     if (error || !r) { alert('Could not load resident profile.'); return; }
+    currentViewResidentTaskOutcomes = r.task_outcomes || [];
 
     document.getElementById('view-resident-title').textContent = `${r.first_name || ''} ${r.last_name || ''}`;
 
@@ -2987,6 +3065,7 @@ const TRAINING_MODULES = [
           ${vrFieldFullFormatted('Daily Support — Bedtime Routine', r.bedtime_routine)}
           ${vrFieldFullFormatted('Risks Without Support', r.risk_summary)}
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
+          ${renderTaskOutcomeTable(r.task_outcomes)}
         </div>
         <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Care plan document</div>
@@ -3329,6 +3408,25 @@ const TRAINING_MODULES = [
     editResident(currentViewResidentId);
   }
 
+  function renderPrintTaskOutcomeSection() {
+    const items = currentViewResidentTaskOutcomes;
+    if (!items || !items.length) return '';
+    const groups = {};
+    items.forEach(it => { const s = it.section || 'Other'; (groups[s] = groups[s] || []).push(it); });
+    const sections = Object.keys(groups).sort((a, b) => TASK_OUTCOME_SECTIONS.indexOf(a) - TASK_OUTCOME_SECTIONS.indexOf(b));
+    return `
+  <div class="section">
+    <div class="section-title">📝 Agreed Tasks &amp; Outcomes</div>
+    ${sections.map(s => `
+      <div class="to-group-title">${s}</div>
+      <table class="to-table">
+        <thead><tr><th style="width:60%;">Agreed Task</th><th>Agreed Outcome</th></tr></thead>
+        <tbody>${groups[s].map(it => `<tr><td>${it.task || '—'}</td><td>${it.outcome || '—'}</td></tr>`).join('')}</tbody>
+      </table>
+    `).join('')}
+  </div>`;
+  }
+
   function printCarePlan() {
     const name = document.getElementById('view-resident-title').textContent;
     const content = document.getElementById('vr-content');
@@ -3384,6 +3482,12 @@ const TRAINING_MODULES = [
 
     /* Footer */
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8; }
+
+    /* Task/outcome table */
+    .to-group-title { font-size: 9pt; font-weight: 700; color: #0d9488; margin: 10px 0 4px; }
+    .to-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 6px; }
+    .to-table th { text-align: left; background: #f1f5f9; padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.3px; color: #475569; }
+    .to-table td { padding: 6px 8px; border: 1px solid #e2e8f0; white-space: pre-wrap; }
 
     /* Review box */
     .review-box { border: 2px dashed #0d9488; border-radius: 6px; padding: 12px; margin-top: 20px; }
@@ -3459,6 +3563,8 @@ const TRAINING_MODULES = [
       <div class="field"><div class="field-label">DNR / DNAR Status</div><div class="field-value">${fields['DNR / DNAR'] || 'Not set'}</div></div>
     </div>
   </div>
+
+  ${renderPrintTaskOutcomeSection()}
 
   <!-- Contacts -->
   <div class="section">
