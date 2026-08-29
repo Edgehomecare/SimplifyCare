@@ -1730,6 +1730,7 @@
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-medications')">💊 Medications</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-medical')">Medical</div>
       <div class="profile-tab" onclick="switchProfileTab(this,'rt-contacts')">Contacts</div>
+      <div class="profile-tab" onclick="switchProfileTab(this,'rt-consent')">🖊️ Consent</div>
     </div>
     <div id="rt-personal" class="tab-panel active">
       <div class="form-grid">
@@ -1834,6 +1835,24 @@
         <div class="form-group"><label>NOK Email</label><input id="r-nok-email" placeholder="Email address" /></div>
         <div class="form-group full"><label>Power of Attorney</label><input id="r-poa" placeholder="Name of POA if applicable" /></div>
         <div class="form-group full"><label>Social Worker</label><input id="r-sw" placeholder="Social worker name and contact" /></div>
+      </div>
+    </div>
+    <div id="rt-consent" class="tab-panel">
+      <div class="form-grid">
+        <div class="form-group full" style="background:var(--teal-light);border-radius:10px;padding:14px;margin-bottom:4px;">
+          <label style="color:var(--teal-dark);font-weight:700;">🖊️ Consent Form for Service Users</label>
+          <div style="font-weight:400;font-size:12px;color:var(--teal-dark);margin-top:4px;">I agree to Edge Homecare Services Ltd holding my data securely in accordance with the General Data Protection Regulation, and confirm I have received a copy of the Privacy Statement. I am aware that all my data held on file is confidential, however it may need to be accessed by other healthcare professionals to ensure the service I receive is of a high standard. I understand that my data may be released when Edge Homecare Services Ltd are required to do so for legal or regulatory purposes.</div>
+        </div>
+        <div id="r-consent-items"></div>
+        <div class="form-group full"><label>Additional Notes</label><textarea id="r-consent-notes" placeholder="Any additional points explained or agreed with the client..."></textarea></div>
+        <div class="form-group full" style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;"><label style="font-weight:700;">Client Agreement</label></div>
+        <div class="form-group"><label>Client Name</label><input id="r-consent-client-name" placeholder="Full name" /></div>
+        <div class="form-group"><label>Client Signed (type full name)</label><input id="r-consent-client-sig" placeholder="Signature" /></div>
+        <div class="form-group"><label>Date</label><input type="date" id="r-consent-client-date" /></div>
+        <div class="form-group full" style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;"><label style="font-weight:700;">Witnessed By (Coordinator)</label></div>
+        <div class="form-group"><label>Coordinator Name</label><input id="r-consent-witness-name" placeholder="Full name" /></div>
+        <div class="form-group"><label>Coordinator Signed (type full name)</label><input id="r-consent-witness-sig" placeholder="Signature" /></div>
+        <div class="form-group"><label>Date</label><input type="date" id="r-consent-witness-date" /></div>
       </div>
     </div>
     <div class="form-actions">
@@ -2696,6 +2715,7 @@ const TRAINING_MODULES = [
     const toList = document.getElementById('r-task-outcomes-list');
     if (toList) toList.innerHTML = '';
     taskOutcomeRowCounter = 0;
+    renderConsentItemsEditable({});
   }
 
   // ── AGREED TASKS & OUTCOMES ──
@@ -2759,6 +2779,91 @@ const TRAINING_MODULES = [
         </div>
       `).join('')}
     </div>`;
+  }
+
+  // ── CONSENT FORM ──
+  const CONSENT_ITEMS = [
+    { key: 'data_gdpr', label: 'I agree to Edge Homecare Services Ltd holding my data securely in accordance with the General Data Protection Regulation, and confirm I have received a copy of the Privacy Statement.' },
+    { key: 'contact_numbers', label: 'The contact telephone numbers for the office and Emergency On-Call service have been explained to me.' },
+    { key: 'time_window', label: 'The 15-minute ruling either side of visit time has been explained to me.' },
+    { key: 'settling_in', label: 'I understand allocated carers could take up to 4 weeks to establish a pattern.' },
+    { key: 'carer_change', label: 'In the event of a carer being absent, I understand another carer may attend the visit, possibly at a slightly different time.' },
+    { key: 'right_to_cancel', label: 'My right to cancel has been explained to me.' }
+  ];
+
+  function renderConsentItemsEditable(answers = {}) {
+    const list = document.getElementById('r-consent-items');
+    if (!list) return;
+    list.innerHTML = CONSENT_ITEMS.map(it => `
+      <div class="form-group full" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:2px;">
+        <label style="font-weight:400;">${it.label}</label>
+        <div style="display:flex;gap:16px;margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;cursor:pointer;"><input type="radio" name="r-consent-${it.key}" value="Yes" ${answers[it.key] === 'Yes' ? 'checked' : ''}> Yes</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;cursor:pointer;"><input type="radio" name="r-consent-${it.key}" value="No" ${answers[it.key] === 'No' ? 'checked' : ''}> No</label>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function collectConsentForm() {
+    const items = CONSENT_ITEMS.map(it => {
+      const checked = document.querySelector(`input[name="r-consent-${it.key}"]:checked`);
+      return { key: it.key, label: it.label, answer: checked ? checked.value : null };
+    });
+    return {
+      items,
+      notes: val('r-consent-notes'),
+      client_name: val('r-consent-client-name'),
+      client_signature: val('r-consent-client-sig'),
+      client_date: val('r-consent-client-date') || null,
+      witness_name: val('r-consent-witness-name'),
+      witness_signature: val('r-consent-witness-sig'),
+      witness_date: val('r-consent-witness-date') || null
+    };
+  }
+
+  function loadConsentForm(cf) {
+    cf = cf || {};
+    const answers = {};
+    (cf.items || []).forEach(it => { if (it.key) answers[it.key] = it.answer; });
+    renderConsentItemsEditable(answers);
+    document.getElementById('r-consent-notes').value = cf.notes || '';
+    document.getElementById('r-consent-client-name').value = cf.client_name || '';
+    document.getElementById('r-consent-client-sig').value = cf.client_signature || '';
+    document.getElementById('r-consent-client-date').value = cf.client_date || '';
+    document.getElementById('r-consent-witness-name').value = cf.witness_name || '';
+    document.getElementById('r-consent-witness-sig').value = cf.witness_signature || '';
+    document.getElementById('r-consent-witness-date').value = cf.witness_date || '';
+  }
+
+  function renderConsentView(cf) {
+    if (!cf || !cf.items || !cf.items.length) return '<p style="color:var(--muted);font-size:13px;">No consent form recorded yet.</p>';
+    const badge = ans => ans === 'Yes'
+      ? '<span style="background:#dcfce7;color:#15803d;font-weight:700;padding:3px 10px;border-radius:12px;font-size:12px;">Yes</span>'
+      : ans === 'No'
+        ? '<span style="background:#fee2e2;color:#dc2626;font-weight:700;padding:3px 10px;border-radius:12px;font-size:12px;">No</span>'
+        : '<span style="background:var(--bg);color:var(--muted);font-weight:700;padding:3px 10px;border-radius:12px;font-size:12px;">Not answered</span>';
+    return `
+      ${cf.items.map(it => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--bg);border-radius:8px;padding:10px 14px;margin-bottom:8px;">
+          <div style="font-size:13px;color:var(--navy);">${it.label}</div>
+          <div style="flex-shrink:0;">${badge(it.answer)}</div>
+        </div>
+      `).join('')}
+      ${cf.notes ? `<div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Additional Notes</div><div style="font-size:13px;color:var(--navy);white-space:pre-wrap;">${cf.notes}</div></div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+        <div style="background:var(--teal-light);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Client Agreement</div>
+          <div style="font-size:13px;color:var(--navy);">${cf.client_name || '—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Signed: ${cf.client_signature || '—'}${cf.client_date ? ' · ' + formatDate(cf.client_date) : ''}</div>
+        </div>
+        <div style="background:var(--teal-light);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Witnessed By (Coordinator)</div>
+          <div style="font-size:13px;color:var(--navy);">${cf.witness_name || '—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Signed: ${cf.witness_signature || '—'}${cf.witness_date ? ' · ' + formatDate(cf.witness_date) : ''}</div>
+        </div>
+      </div>
+    `;
   }
 
   function switchProfileTab(el, panelId) {
@@ -2877,6 +2982,7 @@ const TRAINING_MODULES = [
       evening_routine: val('r-evening'), bedtime_routine: val('r-bedtime'),
       risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
       task_outcomes: collectTaskOutcomes(),
+      consent_form: collectConsentForm(),
       life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
       communication_style: val('r-comm-style'), important_people: val('r-important-people'),
       good_day_looks_like: val('r-good-day'), behaviour_notes: val('r-behaviour'),
@@ -2979,6 +3085,8 @@ const TRAINING_MODULES = [
     document.getElementById('r-nok-email').value = r.nok_email || '';
     document.getElementById('r-poa').value = r.power_of_attorney || '';
     document.getElementById('r-sw').value = r.social_worker || '';
+    // Consent
+    loadConsentForm(r.consent_form);
     openModal('resident-modal');
     resetResidentModalTabs();
     attachFormattingToolbars();
@@ -3032,6 +3140,7 @@ const TRAINING_MODULES = [
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medications')">📅 MAR Chart</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medical')">💊 Medical</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-contacts')">📞 Contacts</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-consent')">🖊️ Consent</div>
       </div>
 
       <!-- PERSONAL -->
@@ -3126,6 +3235,11 @@ const TRAINING_MODULES = [
         </div>
         <div class="card-title" style="margin-top:20px;">👪 Family Portal</div>
         <div id="vr-family-portal" style="background:var(--bg);border-radius:10px;padding:14px;font-size:13px;color:var(--muted);">Loading...</div>
+      </div>
+
+      <!-- CONSENT -->
+      <div id="vr-consent" class="tab-panel">
+        ${renderConsentView(r.consent_form)}
       </div>
     `;
 
