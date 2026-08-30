@@ -1786,6 +1786,14 @@
           <button type="button" class="btn btn-cancel" style="margin-top:4px;padding:6px 14px;font-size:12px;" onclick="addTaskOutcomeRow()">+ Add Task</button>
         </div>
         <div class="form-group full"><label>Risks Without Support</label><textarea class="fmt-textarea" id="r-risks" placeholder="What risks would this person face if the current support/care were not provided..."></textarea></div>
+        <div class="form-group full" style="background:#fef2f2;border-radius:10px;padding:14px;margin-bottom:4px;margin-top:8px;">
+          <label style="color:#b91c1c;font-weight:700;">⚠️ Risk Assessment</label>
+          <div style="font-weight:400;font-size:12px;color:#b91c1c;margin-top:4px;">Break risks down by area, e.g. "Access to the Home" → associated risks → actions to reduce risk.</div>
+        </div>
+        <div class="form-group full">
+          <div id="r-risk-assessment-list"></div>
+          <button type="button" class="btn btn-cancel" style="margin-top:4px;padding:6px 14px;font-size:12px;" onclick="addRiskAssessmentRow()">+ Add Risk Area</button>
+        </div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
         <div class="form-group full">
           <label>Ready-made Care Plan Document (optional)</label>
@@ -2716,6 +2724,9 @@ const TRAINING_MODULES = [
     if (toList) toList.innerHTML = '';
     taskOutcomeRowCounter = 0;
     renderConsentItemsEditable({});
+    const riskList = document.getElementById('r-risk-assessment-list');
+    if (riskList) riskList.innerHTML = '';
+    riskRowCounter = 0;
   }
 
   // ── AGREED TASKS & OUTCOMES ──
@@ -2866,6 +2877,69 @@ const TRAINING_MODULES = [
     `;
   }
 
+  // ── RISK ASSESSMENT ──
+  let riskRowCounter = 0;
+  const RISK_CATEGORIES = ['Access to the Home', 'Environment within the Home', 'Mobility & Falls', 'Medication', 'Lone Working', 'Behaviour that Challenges', 'Equipment', 'Other'];
+
+  function addRiskAssessmentRow(category = '', description = '', risks = '', actions = '') {
+    const list = document.getElementById('r-risk-assessment-list');
+    if (!list) return;
+    const rowId = 'risk-row-' + (riskRowCounter++);
+    const wrap = document.createElement('div');
+    wrap.id = rowId;
+    wrap.className = 'risk-assessment-row';
+    wrap.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;';
+    wrap.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <select class="risk-category" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;">
+          ${RISK_CATEGORIES.map(c => `<option ${c === category ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+        <button type="button" onclick="document.getElementById('${rowId}').remove()" style="background:none;border:none;color:#dc2626;font-size:16px;cursor:pointer;padding:4px 8px;" title="Remove row">✕</button>
+      </div>
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Description / Factors</label>
+      <textarea class="risk-description" placeholder="e.g. How the carer accesses the home, or environmental factors present" style="width:100%;min-height:38px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;margin:4px 0 8px;">${description}</textarea>
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Associated Risks</label>
+      <textarea class="risk-risks" placeholder="e.g. Unable to gain access to the home" style="width:100%;min-height:38px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;margin:4px 0 8px;">${risks}</textarea>
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Actions to Reduce Risk</label>
+      <textarea class="risk-actions" placeholder="e.g. Carer to phone the home phone and family will answer the door" style="width:100%;min-height:38px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;margin-top:4px;">${actions}</textarea>
+    `;
+    list.appendChild(wrap);
+  }
+
+  function collectRiskAssessments() {
+    return Array.from(document.querySelectorAll('#r-risk-assessment-list .risk-assessment-row')).map(row => ({
+      category: row.querySelector('.risk-category').value,
+      description: row.querySelector('.risk-description').value.trim(),
+      risks: row.querySelector('.risk-risks').value.trim(),
+      actions: row.querySelector('.risk-actions').value.trim()
+    })).filter(r => r.description || r.risks || r.actions);
+  }
+
+  function loadRiskAssessmentRows(items) {
+    const list = document.getElementById('r-risk-assessment-list');
+    if (!list) return;
+    list.innerHTML = '';
+    riskRowCounter = 0;
+    (items || []).forEach(it => addRiskAssessmentRow(it.category, it.description, it.risks, it.actions));
+  }
+
+  function renderRiskAssessmentView(items) {
+    if (!items || !items.length) return '';
+    return `<div style="grid-column:1/-1;margin-top:4px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">⚠️ Risk Assessment</div>
+      ${items.map(it => `
+        <div style="border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:8px;">${it.category || 'Other'}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr><td style="width:34%;padding:6px 8px;border:1px solid var(--border);background:var(--bg);font-weight:700;">Description / Factors</td><td style="padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap;">${it.description || '—'}</td></tr>
+            <tr><td style="padding:6px 8px;border:1px solid var(--border);background:var(--bg);font-weight:700;">Associated Risks</td><td style="padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap;">${it.risks || '—'}</td></tr>
+            <tr><td style="padding:6px 8px;border:1px solid var(--border);background:var(--bg);font-weight:700;">Actions to Reduce Risk</td><td style="padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap;">${it.actions || '—'}</td></tr>
+          </table>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
   function switchProfileTab(el, panelId) {
     const modal = el.closest('.modal');
     modal.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
@@ -2983,6 +3057,7 @@ const TRAINING_MODULES = [
       risk_summary: val('r-risks'), review_date: val('r-review-date') || null,
       task_outcomes: collectTaskOutcomes(),
       consent_form: collectConsentForm(),
+      risk_assessments: collectRiskAssessments(),
       life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
       communication_style: val('r-comm-style'), important_people: val('r-important-people'),
       good_day_looks_like: val('r-good-day'), behaviour_notes: val('r-behaviour'),
@@ -3059,6 +3134,7 @@ const TRAINING_MODULES = [
     document.getElementById('r-risks').value = r.risk_summary || '';
     document.getElementById('r-review-date').value = r.review_date || '';
     loadTaskOutcomeRows(r.task_outcomes || []);
+    loadRiskAssessmentRows(r.risk_assessments || []);
     document.getElementById('r-careplan-file').value = '';
     document.getElementById('r-careplan-file-label').textContent = 'Choose file or click to browse';
     const cpCurrent = document.getElementById('r-careplan-file-current');
@@ -3101,11 +3177,13 @@ const TRAINING_MODULES = [
   }
 
   let currentViewResidentTaskOutcomes = [];
+  let currentViewResidentRiskAssessments = [];
   async function viewResident(id) {
     currentViewResidentId = id;
     const { data: r, error } = await db.from('residents').select('*').eq('id', id).single();
     if (error || !r) { alert('Could not load resident profile.'); return; }
     currentViewResidentTaskOutcomes = r.task_outcomes || [];
+    currentViewResidentRiskAssessments = r.risk_assessments || [];
 
     document.getElementById('view-resident-title').textContent = `${r.first_name || ''} ${r.last_name || ''}`;
 
@@ -3175,6 +3253,7 @@ const TRAINING_MODULES = [
           ${vrFieldFullFormatted('Risks Without Support', r.risk_summary)}
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
           ${renderTaskOutcomeTable(r.task_outcomes)}
+          ${renderRiskAssessmentView(r.risk_assessments)}
         </div>
         <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Care plan document</div>
@@ -3541,6 +3620,23 @@ const TRAINING_MODULES = [
   </div>`;
   }
 
+  function renderPrintRiskAssessmentSection() {
+    const items = currentViewResidentRiskAssessments;
+    if (!items || !items.length) return '';
+    return `
+  <div class="section">
+    <div class="section-title">⚠️ Risk Assessment</div>
+    ${items.map(it => `
+      <div class="to-group-title">${it.category || 'Other'}</div>
+      <table class="to-table">
+        <tr><td style="width:30%;font-weight:700;background:#f1f5f9;">Description / Factors</td><td>${it.description || '—'}</td></tr>
+        <tr><td style="font-weight:700;background:#f1f5f9;">Associated Risks</td><td>${it.risks || '—'}</td></tr>
+        <tr><td style="font-weight:700;background:#f1f5f9;">Actions to Reduce Risk</td><td>${it.actions || '—'}</td></tr>
+      </table>
+    `).join('')}
+  </div>`;
+  }
+
   function printCarePlan() {
     const name = document.getElementById('view-resident-title').textContent;
     const content = document.getElementById('vr-content');
@@ -3679,6 +3775,7 @@ const TRAINING_MODULES = [
   </div>
 
   ${renderPrintTaskOutcomeSection()}
+  ${renderPrintRiskAssessmentSection()}
 
   <!-- Contacts -->
   <div class="section">
