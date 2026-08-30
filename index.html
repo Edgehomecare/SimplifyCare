@@ -1810,6 +1810,18 @@
           <button type="button" class="btn btn-cancel" style="margin-top:4px;padding:6px 14px;font-size:12px;" onclick="addRiskAssessmentRow()">+ Add Risk Area</button>
         </div>
         <div class="form-group"><label>Care Plan Review Date</label><input type="date" id="r-review-date" /></div>
+        <div class="form-group full" style="background:var(--teal-light);border-radius:10px;padding:14px;margin-bottom:4px;margin-top:8px;">
+          <label style="color:var(--teal-dark);font-weight:700;">🖊️ Care Plan Sign-Off</label>
+          <div style="font-weight:400;font-size:12px;color:var(--teal-dark);margin-top:4px;">Confirm the client (or their representative) has agreed this care plan, witnessed by the coordinator who put it together.</div>
+        </div>
+        <div class="form-group full" style="border-bottom:1px dashed var(--border);padding-bottom:12px;"><label style="font-weight:700;">Client / Representative Agreement</label></div>
+        <div class="form-group"><label>Name</label><input id="r-signoff-client-name" placeholder="Full name" /></div>
+        <div class="form-group"><label>Signed (type full name)</label><input id="r-signoff-client-sig" placeholder="Signature" /></div>
+        <div class="form-group"><label>Date</label><input type="date" id="r-signoff-client-date" /></div>
+        <div class="form-group full" style="border-bottom:1px dashed var(--border);padding-bottom:12px;margin-top:6px;"><label style="font-weight:700;">Witnessed By (Coordinator)</label></div>
+        <div class="form-group"><label>Coordinator Name</label><input id="r-signoff-coord-name" placeholder="Full name" /></div>
+        <div class="form-group"><label>Signed (type full name)</label><input id="r-signoff-coord-sig" placeholder="Signature" /></div>
+        <div class="form-group"><label>Date</label><input type="date" id="r-signoff-coord-date" /></div>
         <div class="form-group full">
           <label>Ready-made Care Plan Document (optional)</label>
           <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('r-careplan-file').click()">
@@ -2776,6 +2788,7 @@ const TRAINING_MODULES = [
     const riskList = document.getElementById('r-risk-assessment-list');
     if (riskList) riskList.innerHTML = '';
     riskRowCounter = 0;
+    loadCarePlanSignoff({});
   }
 
   // ── AGREED TASKS & OUTCOMES ──
@@ -3115,6 +3128,47 @@ const TRAINING_MODULES = [
     `;
   }
 
+  // ── CARE PLAN SIGN-OFF ──
+  function collectCarePlanSignoff() {
+    return {
+      client_name: val('r-signoff-client-name'),
+      client_signature: val('r-signoff-client-sig'),
+      client_date: val('r-signoff-client-date') || null,
+      coordinator_name: val('r-signoff-coord-name'),
+      coordinator_signature: val('r-signoff-coord-sig'),
+      coordinator_date: val('r-signoff-coord-date') || null
+    };
+  }
+
+  function loadCarePlanSignoff(so) {
+    so = so || {};
+    document.getElementById('r-signoff-client-name').value = so.client_name || '';
+    document.getElementById('r-signoff-client-sig').value = so.client_signature || '';
+    document.getElementById('r-signoff-client-date').value = so.client_date || '';
+    document.getElementById('r-signoff-coord-name').value = so.coordinator_name || '';
+    document.getElementById('r-signoff-coord-sig').value = so.coordinator_signature || '';
+    document.getElementById('r-signoff-coord-date').value = so.coordinator_date || '';
+  }
+
+  function renderCarePlanSignoffView(so) {
+    if (!so || (!so.client_name && !so.coordinator_name)) return '';
+    return `<div style="grid-column:1/-1;margin-top:4px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🖊️ Care Plan Sign-Off</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="background:var(--teal-light);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Client / Representative Agreement</div>
+          <div style="font-size:13px;color:var(--navy);">${so.client_name || '—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Signed: ${so.client_signature || '—'}${so.client_date ? ' · ' + formatDate(so.client_date) : ''}</div>
+        </div>
+        <div style="background:var(--teal-light);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Witnessed By (Coordinator)</div>
+          <div style="font-size:13px;color:var(--navy);">${so.coordinator_name || '—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Signed: ${so.coordinator_signature || '—'}${so.coordinator_date ? ' · ' + formatDate(so.coordinator_date) : ''}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function switchProfileTab(el, panelId) {
     const modal = el.closest('.modal');
     modal.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
@@ -3233,6 +3287,7 @@ const TRAINING_MODULES = [
       task_outcomes: collectTaskOutcomes(),
       consent_form: collectConsentForm(),
       risk_assessments: collectRiskAssessments(),
+      care_plan_signoff: collectCarePlanSignoff(),
       life_history_notes: val('r-life-history'), dislikes: val('r-dislikes'),
       communication_style: val('r-comm-style'), important_people: val('r-important-people'),
       good_day_looks_like: val('r-good-day'), behaviour_notes: val('r-behaviour'),
@@ -3310,6 +3365,7 @@ const TRAINING_MODULES = [
     document.getElementById('r-review-date').value = r.review_date || '';
     loadTaskOutcomeRows(r.task_outcomes || []);
     loadRiskAssessmentRows(r.risk_assessments || []);
+    loadCarePlanSignoff(r.care_plan_signoff || {});
     document.getElementById('r-careplan-file').value = '';
     document.getElementById('r-careplan-file-label').textContent = 'Choose file or click to browse';
     const cpCurrent = document.getElementById('r-careplan-file-current');
@@ -3353,12 +3409,14 @@ const TRAINING_MODULES = [
 
   let currentViewResidentTaskOutcomes = [];
   let currentViewResidentRiskAssessments = [];
+  let currentViewResidentSignoff = {};
   async function viewResident(id) {
     currentViewResidentId = id;
     const { data: r, error } = await db.from('residents').select('*').eq('id', id).single();
     if (error || !r) { alert('Could not load resident profile.'); return; }
     currentViewResidentTaskOutcomes = r.task_outcomes || [];
     currentViewResidentRiskAssessments = r.risk_assessments || [];
+    currentViewResidentSignoff = r.care_plan_signoff || {};
 
     document.getElementById('view-resident-title').textContent = `${r.first_name || ''} ${r.last_name || ''}`;
 
@@ -3429,6 +3487,7 @@ const TRAINING_MODULES = [
           ${vrField('Care Plan Review Date', formatDate(r.review_date))}
           ${renderTaskOutcomeTable(r.task_outcomes)}
           ${renderRiskAssessmentView(r.risk_assessments)}
+          ${renderCarePlanSignoffView(r.care_plan_signoff)}
         </div>
         <div style="margin-top:16px;background:var(--teal-light);border-radius:10px;padding:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">Care plan document</div>
@@ -3974,13 +4033,25 @@ const TRAINING_MODULES = [
     </div>
     <div class="sig-box">
       <div class="sig-label">Service user / representative agreement</div>
+      ${currentViewResidentSignoff.client_name ? `
+      <div class="sig-line">${currentViewResidentSignoff.client_name}</div>
+      <div class="sig-line" style="margin-top:4px;">Signed: ${currentViewResidentSignoff.client_signature || '—'}</div>
+      <div class="sig-line" style="margin-top:4px;">Date: ${currentViewResidentSignoff.client_date ? formatDate(currentViewResidentSignoff.client_date) : '_______________'}</div>
+      ` : `
       <div class="sig-line">Name &amp; Signature</div>
       <div class="sig-line" style="margin-top:8px;">Date: _______________</div>
+      `}
     </div>
     <div class="sig-box">
-      <div class="sig-label">Reviewed by (Manager)</div>
+      <div class="sig-label">Witnessed by (Coordinator)</div>
+      ${currentViewResidentSignoff.coordinator_name ? `
+      <div class="sig-line">${currentViewResidentSignoff.coordinator_name}</div>
+      <div class="sig-line" style="margin-top:4px;">Signed: ${currentViewResidentSignoff.coordinator_signature || '—'}</div>
+      <div class="sig-line" style="margin-top:4px;">Date: ${currentViewResidentSignoff.coordinator_date ? formatDate(currentViewResidentSignoff.coordinator_date) : '_______________'}</div>
+      ` : `
       <div class="sig-line">Name &amp; Signature</div>
       <div class="sig-line" style="margin-top:8px;">Date: _______________</div>
+      `}
     </div>
   </div>
 
