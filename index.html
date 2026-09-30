@@ -398,7 +398,7 @@
         <div class="nav-item" onclick="showPage('emergency-contacts')">
           <span class="icon">📞</span> Emergency Contacts
         </div>
-        <div class="nav-item admin-only" onclick="showPage('incidents')">
+        <div class="nav-item" onclick="showPage('incidents')">
           <span class="icon">🚨</span> Incidents
         </div>
         <div class="nav-section admin-only">Organisation</div>
@@ -634,15 +634,25 @@
         <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div>
             <h1>Incidents</h1>
-            <p>Report and track all incidents and near misses</p>
+            <p>Report and track all incidents, accidents and near misses</p>
           </div>
-          <button class="btn-add" onclick="openModal('incident-modal')">+ Report Incident</button>
+          <button class="btn-add" onclick="openIncidentModal()">+ Report Incident</button>
+        </div>
+        <div class="staff-only" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:20px;gap:12px;align-items:flex-start;">
+          <div style="font-size:20px;line-height:1;">⚠️</div>
+          <div style="font-size:13px;color:var(--navy);"><strong>Make the person safe first.</strong> If anyone is in immediate danger call <strong>999</strong>. Then phone the office, and report here before the end of your shift — including near misses and anything that "nearly" went wrong. If you think someone is being abused or neglected, tell the office the same day. Reporting is never about blame.</div>
+        </div>
+        <div class="stats-grid admin-only" id="inc-summary">
+          <div class="stat-card red"><div class="label">Open incidents</div><div class="value" id="inc-open">—</div><div class="sub">not yet closed</div></div>
+          <div class="stat-card amber"><div class="label">CQC notifications</div><div class="value" id="inc-cqc">—</div><div class="sub">flagged, not yet sent</div></div>
+          <div class="stat-card amber"><div class="label">Duty of Candour</div><div class="value" id="inc-doc">—</div><div class="sub">written notice outstanding</div></div>
+          <div class="stat-card teal"><div class="label">This month</div><div class="value" id="inc-month">—</div><div class="sub">incidents &amp; near misses</div></div>
         </div>
         <div class="card">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Date</th><th>Resident</th><th>Type</th><th>Severity</th><th>Reported By</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody id="incidents-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+              <thead><tr><th>Date</th><th>Resident</th><th>Type</th><th>Harm / severity</th><th>Reported By</th><th>Flags</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="incidents-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1012,10 +1022,12 @@
           <button class="gov-tab active" onclick="showGovSection('overview',this)">Overview</button>
           <button class="gov-tab" onclick="showGovSection('policies',this)">Policies &amp; procedures</button>
           <button class="gov-tab" onclick="showGovSection('kpis',this)">Monthly KPIs</button>
-          <button class="gov-tab" onclick="showGovSection('audits',this)">Monthly audits</button>
+          <button class="gov-tab" onclick="showGovSection('schedule',this)">Audit &amp; QA schedule</button>
+          <button class="gov-tab" onclick="showGovSection('audits',this)">Audit log</button>
+          <button class="gov-tab" onclick="showGovSection('qa',this)">Quality checks</button>
           <button class="gov-tab" onclick="showGovSection('actions',this)">Action plans</button>
           <button class="gov-tab" onclick="showGovSection('complaints',this)">Complaints &amp; compliments</button>
-          <button class="gov-tab" onclick="showGovSection('medication',this)">Medication audits</button>
+          <button class="gov-tab" onclick="showGovSection('medication',this)">Medication governance</button>
           <button class="gov-tab" onclick="showGovSection('supervisions',this)">Supervisions</button>
           <button class="gov-tab" onclick="showGovSection('risks',this)">Risk register</button>
           <button class="gov-tab" onclick="showGovSection('safeguarding',this)">Safeguarding</button>
@@ -1032,6 +1044,8 @@
             <div class="stat-card red"><div class="label">Open complaints</div><div class="value" id="ov-complaints">—</div><div class="sub">in progress</div></div>
             <div class="stat-card red"><div class="label">High risks</div><div class="value" id="ov-risks">—</div><div class="sub">on register</div></div>
             <div class="stat-card amber"><div class="label">Safeguarding</div><div class="value" id="ov-safeguarding">—</div><div class="sub">open referrals</div></div>
+            <div class="stat-card red"><div class="label">Scheduled checks overdue</div><div class="value" id="ov-schedule">—</div><div class="sub">audits &amp; QA</div></div>
+            <div class="stat-card red"><div class="label">Open incidents</div><div class="value" id="ov-incidents">—</div><div class="sub" id="ov-incidents-sub">—</div></div>
           </div>
           <div class="card"><div class="card-title">Alerts &amp; overdue items</div><div id="alert-list"><p style="color:var(--muted);text-align:center;padding:24px;">No overdue items — great work!</p></div></div>
           <div class="card">
@@ -1040,16 +1054,7 @@
               <span style="font-size:12px;color:var(--muted);" id="summary-date"></span>
             </div>
             <div class="table-wrap"><table><thead><tr><th>Area</th><th>Status</th><th>Last reviewed</th><th>Notes</th></tr></thead>
-            <tbody id="health-table">
-              <tr><td>Policies &amp; procedures</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Monthly KPIs</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Monthly audits</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Action plans</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Complaints</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Medication audits</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Risk register</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-              <tr><td>Safeguarding</td><td><span class="badge badge-blue">No data</span></td><td>—</td><td>—</td></tr>
-            </tbody></table></div>
+            <tbody id="health-table"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -1076,10 +1081,44 @@
           </div>
         </div>
 
+        <!-- AUDIT & QA SCHEDULE -->
+        <div id="gov-schedule" class="gov-section">
+          <div style="background:var(--teal-light);border:1px solid #99d8cc;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--navy);">
+            <strong>How this works:</strong> this is your planned programme of audits and quality checks. Each item has a frequency and a next-due date. When you complete one, press <em>Record</em> — the result is saved to the Audit log or Quality checks, any actions go to the Action plan, and the next-due date rolls forward automatically. Overdue items appear on the Overview.
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+              <div class="card-title" style="margin-bottom:0;">Audit &amp; quality assurance schedule</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select id="sch-filter" onchange="renderGovSchedule()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"><option value="all">All items</option><option value="audit">Audits only</option><option value="qa">Quality checks only</option><option value="due">Overdue / due in 14 days</option></select>
+                <button class="btn btn-cancel" id="sch-seed-btn" style="display:none;" onclick="seedGovSchedule()">Load recommended schedule</button>
+                <button class="btn-add" onclick="openScheduleModal()">+ Add item</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Item</th><th>Type</th><th>Frequency</th><th>SAF</th><th>Owner</th><th>Last done</th><th>Next due</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sch-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">Loading…</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- QUALITY CHECKS -->
+        <div id="gov-qa" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card teal"><div class="label">Checks this month</div><div class="value" id="qa-month">0</div></div>
+            <div class="stat-card green"><div class="label">Spot checks (90 days)</div><div class="value" id="qa-spot">0</div></div>
+            <div class="stat-card amber"><div class="label">Carers without spot check</div><div class="value" id="qa-nospot">—</div><div class="sub">in last 3 months</div></div>
+            <div class="stat-card red"><div class="label">Requires improvement</div><div class="value" id="qa-ri">0</div><div class="sub">last 90 days</div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Quality checks log</div><button class="btn-add" onclick="openQAModal()">+ Record quality check</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Client</th><th>Carer observed</th><th>By</th><th>Rating</th><th>Findings</th><th></th></tr></thead>
+            <tbody id="qa-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No quality checks recorded yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+
         <!-- AUDITS -->
         <div id="gov-audits" class="gov-section">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Monthly audit schedule</div><button class="btn-add" onclick="openGovModal('audit-modal')">+ Record audit</button></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Audit log</div><button class="btn-add" onclick="openAuditModal()">+ Record audit</button></div>
             <div id="audit-list"><p style="color:var(--muted);text-align:center;padding:24px;">No audits recorded yet</p></div>
           </div>
         </div>
@@ -1115,8 +1154,25 @@
 
         <!-- MEDICATION AUDITS -->
         <div id="gov-medication" class="gov-section">
+          <div class="stats-grid">
+            <div class="stat-card teal"><div class="label">Medication audits</div><div class="value" id="mg-audits">0</div><div class="sub">last 90 days</div></div>
+            <div class="stat-card red"><div class="label">Medication errors</div><div class="value" id="mg-errors">0</div><div class="sub">reported this month</div></div>
+            <div class="stat-card amber"><div class="label">Competency overdue</div><div class="value" id="mg-comp-overdue">0</div><div class="sub">annual reassessment</div></div>
+            <div class="stat-card amber"><div class="label">Carers not assessed</div><div class="value" id="mg-comp-none">—</div><div class="sub">no competency on file</div></div>
+          </div>
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Medication audit log</div><button class="btn-add" onclick="openGovModal('med-modal')">+ Record audit</button></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Medication competency register</div><button class="btn-add" onclick="openMedCompModal()">+ Record assessment</button></div>
+            <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px;">NICE SC1 expects staff who administer medicines to be trained and have their competence assessed at least annually. Carers marked <em>not yet competent</em> must not administer until reassessed.</p>
+            <div class="table-wrap"><table><thead><tr><th>Carer</th><th>Assessed</th><th>Assessor</th><th>Observed rounds</th><th>Outcome</th><th>Next due</th><th>Status</th><th></th></tr></thead>
+            <tbody id="medcomp-table"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No competency assessments recorded yet</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Medication errors &amp; near misses (from Incidents)</div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Harm</th><th>Reported by</th><th>Lessons learned</th><th>Status</th></tr></thead>
+            <tbody id="mederr-table"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">No medication errors reported</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Medication (MAR) audit log</div><button class="btn-add" onclick="openMedAuditModal()">+ Record audit</button></div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Auditor</th><th>MAR accurate</th><th>Stock correct</th><th>Errors found</th><th>Actions required</th><th>Score</th><th></th></tr></thead>
             <tbody id="med-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No medication audits recorded yet</td></tr></tbody></table></div>
           </div>
@@ -1134,17 +1190,23 @@
         <!-- RISK REGISTER -->
         <div id="gov-risks" class="gov-section">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Risk register</div><button class="btn-add" onclick="openGovModal('risk-modal')">+ Add risk</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Risk</th><th>Category</th><th>Likelihood</th><th>Impact</th><th>Score</th><th>Rating</th><th>Controls in place</th><th>Owner</th><th>Review date</th><th></th></tr></thead>
-            <tbody id="risk-table"><tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr></tbody></table></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Organisational risk register</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><select id="risk-filter" onchange="renderGovRisks()" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;"><option value="live">Open &amp; monitoring</option><option value="all">All (incl. closed)</option></select><button class="btn btn-cancel" id="risk-seed-btn" style="display:none;" onclick="seedGovRisks()">Load starter risks</button><button class="btn-add" onclick="openRiskModal()">+ Add risk</button></div></div>
+            <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px;">Score = likelihood × impact (1–25). <strong>Inherent</strong> is the risk before controls; <strong>residual</strong> is what's left after them. 15+ High · 8–14 Medium · 1–7 Low. Client-level risks stay in each client's care plan — this register is for risks to the <em>service</em>.</p>
+            <div class="table-wrap"><table><thead><tr><th>Risk</th><th>Category</th><th>Inherent</th><th>Controls in place</th><th>Residual</th><th>Owner</th><th>Next review</th><th>Status</th><th></th></tr></thead>
+            <tbody id="risk-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr></tbody></table></div>
           </div>
         </div>
 
         <!-- SAFEGUARDING -->
         <div id="gov-safeguarding" class="gov-section">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Safeguarding log</div><button class="btn-add" onclick="openGovModal('sfg-modal')">+ Log referral</button></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Resident</th><th>Type of concern</th><th>Referred to</th><th>Referred by</th><th>Outcome</th><th>Learning</th><th>Status</th><th></th></tr></thead>
+            <div class="card-title">Safeguarding pathway</div>
+            <div id="sfg-pathway" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
+            <div style="margin-top:14px;font-size:12px;color:var(--navy);background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;"><strong>Remember:</strong> abuse or allegations of abuse involving someone you support must be notified to CQC without delay (Regulation 18). If a crime may have been committed, contact the police. Always record the person's own views and what outcome they want (Making Safeguarding Personal).</div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div class="card-title" style="margin-bottom:0;">Safeguarding log</div><button class="btn-add" onclick="openSfgModal()">+ Log concern</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Type of concern</th><th>Local authority</th><th>LA ref</th><th>Stage</th><th>CQC notified</th><th>Status</th><th></th></tr></thead>
             <tbody id="sfg-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr></tbody></table></div>
           </div>
         </div>
@@ -1522,6 +1584,61 @@
 </div>
 
 <!-- ═══════════ GOVERNANCE MODALS ═══════════ -->
+<datalist id="gov-residents-dl"></datalist>
+<datalist id="gov-staff-dl"></datalist>
+
+<div id="schedule-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2 id="sch-modal-title">Add schedule item</h2><button class="modal-close" onclick="closeGovModal('schedule-modal')">✕</button></div>
+  <input type="hidden" id="sch-edit-id" />
+  <div class="form-grid">
+    <div class="form-group full"><label>Title *</label><input id="sch-title" placeholder="e.g. MAR chart audit" /></div>
+    <div class="form-group"><label>Type</label><select id="sch-kind"><option value="audit">Audit</option><option value="qa">Quality check</option></select></div>
+    <div class="form-group"><label>Frequency</label><select id="sch-freq"><option>Weekly</option><option selected>Monthly</option><option>Quarterly</option><option>Six-monthly</option><option>Annual</option></select></div>
+    <div class="form-group"><label>SAF key question</label><select id="sch-saf"><option>Safe</option><option>Effective</option><option>Caring</option><option>Responsive</option><option>Well-led</option></select></div>
+    <div class="form-group"><label>Owner</label><input id="sch-owner" placeholder="Name or role" list="gov-staff-dl" /></div>
+    <div class="form-group"><label>Last done</label><input type="date" id="sch-last" /></div>
+    <div class="form-group"><label>Next due</label><input type="date" id="sch-next" /></div>
+    <div class="form-group full"><label>Method — how it's done</label><textarea id="sch-method" placeholder="Sample size, tool used, what is checked..."></textarea></div>
+    <div class="form-group full"><label>Evidence produced</label><input id="sch-evidence" placeholder="e.g. Completed audit tool + action plan" /></div>
+    <div class="form-group"><label>Active?</label><select id="sch-active"><option value="true">Active</option><option value="false">Paused</option></select></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('schedule-modal')">Cancel</button><button class="btn btn-save" onclick="saveScheduleItem()">Save</button></div>
+</div></div>
+
+<div id="qa-modal" class="modal-overlay"><div class="modal" style="max-width:720px;">
+  <div class="modal-header"><h2>Record quality check</h2><button class="modal-close" onclick="closeGovModal('qa-modal')">✕</button></div>
+  <input type="hidden" id="qa-schedule-id" />
+  <div id="qa-schedule-note" style="display:none;background:var(--teal-light);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;color:var(--teal-dark);"></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Type of check *</label><select id="qa-type" onchange="renderQAChecklist()"><option>Unannounced spot check</option><option>Telephone quality monitoring</option><option>Client review visit</option><option>Client / family satisfaction survey</option><option>Staff survey</option><option>Mock inspection / self-assessment</option><option>Other</option></select></div>
+    <div class="form-group"><label>Date *</label><input type="date" id="qa-date" /></div>
+    <div class="form-group"><label>Client</label><input id="qa-client" placeholder="Client name" list="gov-residents-dl" /></div>
+    <div class="form-group"><label>Carer observed</label><input id="qa-staff" placeholder="Carer name" list="gov-staff-dl" /></div>
+    <div class="form-group"><label>Carried out by</label><input id="qa-by" placeholder="Name" list="gov-staff-dl" /></div>
+    <div class="form-group"><label>Overall rating</label><select id="qa-rating"><option>Good</option><option>Outstanding</option><option>Requires improvement</option><option>Inadequate</option></select></div>
+    <div class="form-group full"><label>Checklist</label><div id="qa-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:13px;"></div></div>
+    <div class="form-group full"><label>Findings</label><textarea id="qa-findings" placeholder="What was observed..."></textarea></div>
+    <div class="form-group full"><label>Client / family feedback</label><textarea id="qa-feedback" placeholder="In their own words where possible..."></textarea></div>
+    <div class="form-group full"><label>Actions required</label><textarea id="qa-actions" placeholder="One action per line..."></textarea></div>
+    <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-weight:500;"><input type="checkbox" id="qa-to-actions" checked style="width:auto;" /> Add each action to the Action plan</label></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('qa-modal')">Cancel</button><button class="btn btn-save" onclick="saveQACheck()">Save check</button></div>
+</div></div>
+
+<div id="medcomp-modal" class="modal-overlay"><div class="modal">
+  <div class="modal-header"><h2>Medication competency assessment</h2><button class="modal-close" onclick="closeGovModal('medcomp-modal')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Carer *</label><select id="mc-staff"></select></div>
+    <div class="form-group"><label>Date assessed *</label><input type="date" id="mc-date" onchange="mcDefaultNext()" /></div>
+    <div class="form-group"><label>Assessor</label><input id="mc-assessor" placeholder="Name" list="gov-staff-dl" /></div>
+    <div class="form-group"><label>Observed medication rounds</label><input type="number" id="mc-rounds" min="0" placeholder="e.g. 3" /></div>
+    <div class="form-group"><label>Outcome</label><select id="mc-outcome"><option>Competent</option><option>Not yet competent — further training</option><option>Not yet competent — must not administer</option></select></div>
+    <div class="form-group"><label>Next reassessment due</label><input type="date" id="mc-next" /></div>
+    <div class="form-group full"><label>Notes</label><textarea id="mc-notes" placeholder="Areas observed: 6 rights, MAR recording, refusals, PRN, storage, infection control..."></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('medcomp-modal')">Cancel</button><button class="btn btn-save" onclick="saveMedComp()">Save assessment</button></div>
+</div></div>
+
 <div id="policy-modal" class="modal-overlay"><div class="modal">
   <div class="modal-header"><h2>Add policy / procedure</h2><button class="modal-close" onclick="closeGovModal('policy-modal')">✕</button></div>
   <div class="form-grid">
@@ -1566,15 +1683,18 @@
 
 <div id="audit-modal" class="modal-overlay"><div class="modal">
   <div class="modal-header"><h2>Record audit</h2><button class="modal-close" onclick="closeGovModal('audit-modal')">✕</button></div>
+  <input type="hidden" id="aud-schedule-id" />
+  <div id="aud-schedule-note" style="display:none;background:var(--teal-light);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;color:var(--teal-dark);"></div>
   <div class="form-grid">
-    <div class="form-group"><label>Audit type *</label><select id="aud-type"><option>Medication audit</option><option>Care plan audit</option><option>Infection control audit</option><option>Health &amp; safety audit</option><option>Lone working audit</option><option>Equality &amp; diversity audit</option><option>Environmental audit</option><option>Quality monitoring visit</option><option>Other</option></select></div>
+    <div class="form-group"><label>Audit type *</label><select id="aud-type"><option>Medication audit</option><option>Care plan audit</option><option>Infection control audit</option><option>Health &amp; safety audit</option><option>Lone working audit</option><option>Equality &amp; diversity audit</option><option>Environmental audit</option><option>Quality monitoring visit</option><option>MAR chart audit</option><option>Daily records audit</option><option>Call monitoring audit</option><option>Staff files / safer recruitment audit</option><option>Training compliance audit</option><option>Supervision &amp; appraisal audit</option><option>Incidents &amp; safeguarding analysis</option><option>Complaints review</option><option>Consent &amp; MCA audit</option><option>Information governance audit</option><option>Policy review audit</option><option>Other</option></select></div>
     <div class="form-group"><label>Date conducted</label><input type="date" id="aud-date" /></div>
     <div class="form-group"><label>Conducted by</label><input id="aud-by" placeholder="Name" /></div>
     <div class="form-group"><label>Score (%) or N/A</label><input id="aud-score" placeholder="e.g. 87" /></div>
     <div class="form-group"><label>RAG rating</label><select id="aud-rag"><option value="green">Green — compliant</option><option value="amber">Amber — minor concerns</option><option value="red">Red — significant concerns</option></select></div>
     <div class="form-group"><label>Next audit due</label><input type="date" id="aud-next" /></div>
     <div class="form-group full"><label>Findings / summary</label><textarea id="aud-findings" placeholder="Summary of what was found..."></textarea></div>
-    <div class="form-group full"><label>Actions required</label><textarea id="aud-actions-text" placeholder="List any actions arising from this audit..."></textarea></div>
+    <div class="form-group full"><label>Actions required</label><textarea id="aud-actions-text" placeholder="One action per line..."></textarea></div>
+    <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-weight:500;"><input type="checkbox" id="aud-to-actions" checked style="width:auto;" /> Add each action to the Action plan (owner &amp; due date can be set there)</label></div>
     <div class="form-group full"><label>Upload Audit Report (optional)</label>
       <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('aud-file').click()">
         <div style="font-size:22px;">📎</div>
@@ -1635,8 +1755,8 @@
   <div class="modal-header"><h2>Record medication audit</h2><button class="modal-close" onclick="closeGovModal('med-modal')">✕</button></div>
   <div class="form-grid">
     <div class="form-group"><label>Date *</label><input type="date" id="med-date" /></div>
-    <div class="form-group"><label>Resident</label><input id="med-resident" placeholder="Name" /></div>
-    <div class="form-group"><label>Auditor</label><input id="med-auditor" placeholder="Name" /></div>
+    <div class="form-group"><label>Resident</label><input id="med-resident" placeholder="Name" list="gov-residents-dl" /></div>
+    <div class="form-group"><label>Auditor</label><input id="med-auditor" placeholder="Name" list="gov-staff-dl" /></div>
     <div class="form-group"><label>MAR sheet accurate?</label><select id="med-mar"><option>Yes</option><option>No — errors found</option><option>Partial</option></select></div>
     <div class="form-group"><label>Stock count correct?</label><select id="med-stock"><option>Yes</option><option>No — discrepancy found</option><option>N/A</option></select></div>
     <div class="form-group"><label>Number of errors found</label><input type="number" id="med-errors" placeholder="0" /></div>
@@ -1675,35 +1795,60 @@
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sup-view-modal')">Close</button></div>
 </div></div>
 
-<div id="risk-modal" class="modal-overlay"><div class="modal">
-  <div class="modal-header"><h2>Add risk</h2><button class="modal-close" onclick="closeGovModal('risk-modal')">✕</button></div>
+<div id="risk-modal" class="modal-overlay"><div class="modal" style="max-width:720px;">
+  <div class="modal-header"><h2 id="risk-modal-title">Add risk</h2><button class="modal-close" onclick="closeGovModal('risk-modal')">✕</button></div>
+  <input type="hidden" id="risk-edit-id" />
   <div class="form-grid">
-    <div class="form-group full"><label>Risk description *</label><textarea id="risk-desc" placeholder="Describe the risk..."></textarea></div>
-    <div class="form-group"><label>Category</label><select id="risk-cat"><option>Clinical / care</option><option>Medication</option><option>Staffing</option><option>Financial</option><option>Premises</option><option>Information governance</option><option>Regulatory</option><option>Reputational</option><option>Other</option></select></div>
-    <div class="form-group"><label>Likelihood (1–5)</label><select id="risk-like"><option value="1">1 — Rare</option><option value="2">2 — Unlikely</option><option value="3">3 — Possible</option><option value="4">4 — Likely</option><option value="5">5 — Almost certain</option></select></div>
-    <div class="form-group"><label>Impact (1–5)</label><select id="risk-impact"><option value="1">1 — Negligible</option><option value="2">2 — Minor</option><option value="3">3 — Moderate</option><option value="4">4 — Major</option><option value="5">5 — Catastrophic</option></select></div>
-    <div class="form-group"><label>Risk owner</label><input id="risk-owner" placeholder="Name or role" /></div>
-    <div class="form-group"><label>Review date</label><input type="date" id="risk-review" /></div>
+    <div class="form-group full"><label>Risk description *</label><textarea id="risk-desc" placeholder="Describe the risk — what could happen, and what would the consequence be?"></textarea></div>
+    <div class="form-group"><label>Category</label><select id="risk-cat"><option>Clinical / care</option><option>Medication</option><option>Safeguarding</option><option>Staffing</option><option>Financial</option><option>Premises</option><option>Information governance</option><option>Business continuity</option><option>Regulatory</option><option>Reputational</option><option>Other</option></select></div>
+    <div class="form-group"><label>Status</label><select id="risk-status"><option>Open</option><option>Monitoring</option><option>Closed</option></select></div>
+    <div class="form-group"><label>Date identified</label><input type="date" id="risk-identified" /></div>
+    <div class="form-group"><label>Risk owner</label><input id="risk-owner" placeholder="Name or role" list="gov-staff-dl" /></div>
+    <div class="form-group full" style="margin-top:4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Inherent risk — before controls</label></div>
+    <div class="form-group"><label>Likelihood (1–5)</label><select id="risk-like" onchange="updateRiskPreview()"><option value="1">1 — Rare</option><option value="2">2 — Unlikely</option><option value="3">3 — Possible</option><option value="4">4 — Likely</option><option value="5">5 — Almost certain</option></select></div>
+    <div class="form-group"><label>Impact (1–5)</label><select id="risk-impact" onchange="updateRiskPreview()"><option value="1">1 — Negligible</option><option value="2">2 — Minor</option><option value="3">3 — Moderate</option><option value="4">4 — Major</option><option value="5">5 — Catastrophic</option></select></div>
     <div class="form-group full"><label>Controls already in place</label><textarea id="risk-controls" placeholder="What is already being done to manage this risk?"></textarea></div>
-    <div class="form-group full"><label>Further action required</label><textarea id="risk-actions" placeholder="What additional steps are needed?"></textarea></div>
+    <div class="form-group full" style="margin-top:4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Residual risk — after controls</label></div>
+    <div class="form-group"><label>Residual likelihood</label><select id="risk-rlike" onchange="updateRiskPreview()"><option value="">Same as inherent</option><option value="1">1 — Rare</option><option value="2">2 — Unlikely</option><option value="3">3 — Possible</option><option value="4">4 — Likely</option><option value="5">5 — Almost certain</option></select></div>
+    <div class="form-group"><label>Residual impact</label><select id="risk-rimpact" onchange="updateRiskPreview()"><option value="">Same as inherent</option><option value="1">1 — Negligible</option><option value="2">2 — Minor</option><option value="3">3 — Moderate</option><option value="4">4 — Major</option><option value="5">5 — Catastrophic</option></select></div>
+    <div class="form-group full"><div id="risk-preview" style="font-size:13px;padding:10px 14px;border-radius:8px;background:var(--bg);"></div></div>
+    <div class="form-group full"><label>Further action required</label><textarea id="risk-actions" placeholder="What additional steps are needed to reduce this risk further?"></textarea></div>
+    <div class="form-group"><label>Last reviewed</label><input type="date" id="risk-lastrev" /></div>
+    <div class="form-group"><label>Next review date</label><input type="date" id="risk-review" /></div>
   </div>
   <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('risk-modal')">Cancel</button><button class="btn btn-save" onclick="saveRisk()">Save risk</button></div>
 </div></div>
 
-<div id="sfg-modal" class="modal-overlay"><div class="modal">
-  <div class="modal-header"><h2>Log safeguarding referral</h2><button class="modal-close" onclick="closeGovModal('sfg-modal')">✕</button></div>
+<div id="sfg-modal" class="modal-overlay"><div class="modal" style="max-width:760px;">
+  <div class="modal-header"><h2 id="sfg-modal-title">Log safeguarding concern</h2><button class="modal-close" onclick="closeGovModal('sfg-modal')">✕</button></div>
+  <input type="hidden" id="sfg-edit-id" /><input type="hidden" id="sfg-incident-id" />
   <div class="form-grid">
+    <div class="form-group full" style="margin-bottom:-4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">1 · The concern</label></div>
     <div class="form-group"><label>Date of concern *</label><input type="date" id="sfg-date" /></div>
-    <div class="form-group"><label>Resident concerned</label><input id="sfg-resident" placeholder="Name" /></div>
-    <div class="form-group"><label>Type of concern</label><select id="sfg-type"><option>Physical abuse</option><option>Emotional abuse</option><option>Financial abuse</option><option>Neglect</option><option>Sexual abuse</option><option>Self-neglect</option><option>Domestic abuse</option><option>Discriminatory abuse</option><option>Institutional abuse</option><option>Other</option></select></div>
-    <div class="form-group"><label>Referred to</label><select id="sfg-referred"><option>Local authority safeguarding</option><option>Police</option><option>CQC</option><option>GP</option><option>Other</option></select></div>
-    <div class="form-group"><label>Referred by (staff name)</label><input id="sfg-by" placeholder="Name" /></div>
+    <div class="form-group"><label>Client concerned</label><input id="sfg-resident" placeholder="Name" list="gov-residents-dl" /></div>
+    <div class="form-group"><label>Type of concern</label><select id="sfg-type"><option>Physical abuse</option><option>Emotional / psychological abuse</option><option>Financial or material abuse</option><option>Neglect / acts of omission</option><option>Self-neglect</option><option>Sexual abuse</option><option>Domestic abuse</option><option>Discriminatory abuse</option><option>Organisational abuse</option><option>Modern slavery</option><option>Other</option></select></div>
+    <div class="form-group"><label>Alleged source of harm</label><select id="sfg-source"><option value="">— Select —</option><option>Family member / carer</option><option>Member of our staff</option><option>Other professional</option><option>Another person / neighbour</option><option>Stranger / unknown</option><option>Self (self-neglect)</option><option>Not yet known</option></select></div>
+    <div class="form-group"><label>Raised by (staff name)</label><input id="sfg-by" placeholder="Name" list="gov-staff-dl" /></div>
+    <div class="form-group"><label>Stage</label><select id="sfg-stage"></select></div>
+    <div class="form-group full"><label>Details of concern</label><textarea id="sfg-details" placeholder="What was seen, heard or disclosed — facts, the person's own words where possible, date and time..."></textarea></div>
+    <div class="form-group full"><label>Immediate actions taken to keep the person safe</label><textarea id="sfg-immediate" placeholder="e.g. medical attention sought, staff member removed from rota, police called..."></textarea></div>
+    <div class="form-group full"><label>The person's views and desired outcome (Making Safeguarding Personal)</label><textarea id="sfg-views" placeholder="What does the person want to happen? Were they asked? If not, why not?"></textarea></div>
+    <div class="form-group"><label>Mental capacity</label><select id="sfg-capacity"><option value="">— Select —</option><option>Has capacity — consent sought</option><option>Lacks capacity — best interests decision</option><option>Advocate involved</option><option>Capacity not yet assessed</option><option>Overridden — risk to others / vital interests</option></select></div>
+    <div class="form-group full" style="margin:6px 0 -4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">2 · Referral &amp; notifications</label></div>
+    <div class="form-group"><label>Local authority</label><select id="sfg-la"><option value="">— Select —</option><option>Gateshead</option><option>Newcastle upon Tyne</option><option>North Tyneside</option><option>Northumberland</option><option>Other</option></select></div>
+    <div class="form-group"><label>Referred to</label><select id="sfg-referred"><option>Local authority safeguarding</option><option>Police</option><option>Local authority &amp; police</option><option>Not referred — managed internally (record rationale)</option><option>Other</option></select></div>
+    <div class="form-group"><label>Referral date &amp; time</label><input type="datetime-local" id="sfg-refdt" /></div>
+    <div class="form-group"><label>LA reference</label><input id="sfg-laref" placeholder="Reference number" /></div>
+    <div class="form-group"><label>Police involved?</label><select id="sfg-police"><option value="">No</option><option>Yes</option></select></div>
+    <div class="form-group"><label>CQC notified (date)</label><input type="date" id="sfg-cqcdate" /></div>
+    <div class="form-group"><label>CQC reference</label><input id="sfg-cqcref" placeholder="Notification reference" /></div>
+    <div class="form-group full" style="margin:6px 0 -4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">3 · Outcome &amp; learning</label></div>
     <div class="form-group"><label>Status</label><select id="sfg-status"><option>Open</option><option>Under investigation</option><option>Closed — no further action</option><option>Closed — action taken</option></select></div>
-    <div class="form-group full"><label>Details of concern</label><textarea id="sfg-details" placeholder="Describe what happened..."></textarea></div>
-    <div class="form-group full"><label>Outcome</label><textarea id="sfg-outcome" placeholder="What was the outcome of the referral?"></textarea></div>
+    <div class="form-group"><label>Date closed</label><input type="date" id="sfg-closed" /></div>
+    <div class="form-group full"><label>Outcome</label><textarea id="sfg-outcome" placeholder="Outcome of the enquiry / protection plan agreed"></textarea></div>
     <div class="form-group full"><label>Learning — what changed as a result?</label><textarea id="sfg-learning" placeholder="Policy updates, training, process changes..."></textarea></div>
   </div>
-  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sfg-modal')">Cancel</button><button class="btn btn-save" onclick="saveSafeguarding()">Save referral</button></div>
+  <div class="form-actions"><button class="btn btn-cancel" onclick="closeGovModal('sfg-modal')">Cancel</button><button class="btn btn-save" onclick="saveSafeguarding()">Save</button></div>
 </div></div>
 
 <div id="meeting-modal" class="modal-overlay"><div class="modal">
@@ -2208,34 +2353,63 @@
 <div class="modal-overlay" id="incident-modal">
   <div class="modal">
     <div class="modal-header">
-      <h2>Report Incident</h2>
+      <h2 id="inc-modal-title">Report Incident</h2>
       <button class="modal-close" onclick="closeModal('incident-modal')">✕</button>
     </div>
-    <input type="hidden" id="i-edit-id" />
+    <input type="hidden" id="i-edit-id" /><input type="hidden" id="i-sfg-id" />
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="i-date" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="i-time" /></div>
-      <div class="form-group"><label>Resident Involved</label><input id="i-resident" placeholder="Resident name" /></div>
+      <div class="form-group"><label>Client involved</label><input id="i-resident" placeholder="Client name" list="gov-residents-dl" /></div>
+      <div class="form-group"><label>Location</label><input id="i-location" placeholder="e.g. Client's kitchen, community" /></div>
       <div class="form-group"><label>Incident Type *</label>
         <select id="i-type">
           <option value="">Select type</option>
           <option>Fall</option><option>Medication Error</option><option>Safeguarding</option>
-          <option>Near Miss</option><option>Behaviour</option><option>Injury</option>
-          <option>Property Damage</option><option>Complaint</option><option>Other</option>
+          <option>Near Miss</option><option>Behaviour</option><option>Injury</option><option>Choking</option><option>Missing Person</option>
+          <option>Property Damage</option><option>Missed / Late Visit</option><option>Injury to Staff</option><option>Pressure Damage</option><option>Hospital Admission</option><option>Death</option><option>Data Breach</option><option>Complaint</option><option>Other</option>
         </select>
       </div>
       <div class="form-group"><label>Severity</label>
         <select id="i-severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
       </div>
+      <div class="form-group"><label>Harm caused</label>
+        <select id="i-harm" onchange="incidentPrompts()"><option value="">— Select —</option><option>No harm (near miss)</option><option>Low harm</option><option>Moderate harm</option><option>Severe harm</option><option>Death</option></select>
+      </div>
       <div class="form-group"><label>Reported By</label><input id="i-reporter" placeholder="Staff member name" /></div>
+      <div class="form-group"><label>Other staff present / witnesses</label><input id="i-witnesses" placeholder="Names" /></div>
       <div class="form-group full"><label>Description *</label><textarea id="i-description" placeholder="Describe what happened, when, where, and who was involved..."></textarea></div>
       <div class="form-group full"><label>Immediate Actions Taken</label><textarea id="i-actions" placeholder="What was done immediately after the incident?"></textarea></div>
-      <div class="form-group"><label>CQC Notifiable?</label>
-        <select id="i-cqc"><option value="no">No</option><option value="yes">Yes</option><option value="unsure">Unsure</option></select>
+      <div class="form-group"><label>Next of kin informed?</label><select id="i-nok"><option value="">— Select —</option><option>Yes</option><option>No</option><option>Not applicable</option><option>Client declined</option></select></div>
+      <div class="form-group"><label>GP / 111 / 999 contacted?</label><select id="i-gp"><option value="">— Select —</option><option>999 called</option><option>111 called</option><option>GP informed</option><option>Not required</option></select></div>
+      <div class="form-group full"><label>Office / manager informed?</label><select id="i-mgr"><option value="">— Select —</option><option>Yes — by phone</option><option>Not yet</option></select></div>
+      <div id="inc-prompts" class="form-group full" style="display:none;"></div>
+      <div class="form-group full admin-only" style="margin:6px 0 -4px;"><label style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Management review — office use</label></div>
+      <div class="form-group admin-only"><label>CQC Notifiable?</label>
+        <select id="i-cqc" onchange="incidentPrompts()"><option value="no">No</option><option value="yes">Yes</option><option value="unsure">Unsure</option></select>
       </div>
-      <div class="form-group"><label>Status</label>
+      <div class="form-group admin-only"><label>Notification type</label>
+        <select id="i-cqc-type"><option value="">— Select —</option><option>Death of a person using the service (Reg 16)</option><option>Serious injury (Reg 18)</option><option>Abuse or allegation of abuse (Reg 18)</option><option>Incident reported to / investigated by police (Reg 18)</option><option>Event that stops the service running safely (Reg 18)</option></select>
+      </div>
+      <div class="form-group admin-only"><label>CQC notified (date)</label><input type="date" id="i-cqc-date" /></div>
+      <div class="form-group admin-only"><label>CQC reference</label><input id="i-cqc-ref" placeholder="Notification reference" /></div>
+      <div class="form-group admin-only"><label>Duty of Candour applies?</label>
+        <select id="i-doc" onchange="incidentPrompts()"><option value="">Not assessed</option><option>No</option><option>Yes</option></select>
+      </div>
+      <div class="form-group admin-only"><label>RIDDOR reportable?</label><select id="i-riddor"><option value="">No / not assessed</option><option>Yes</option></select></div>
+      <div class="form-group admin-only"><label>DoC — verbal notification date</label><input type="date" id="i-doc-verbal" /></div>
+      <div class="form-group admin-only"><label>DoC — written notification date</label><input type="date" id="i-doc-written" /></div>
+      <div class="form-group admin-only"><label>RIDDOR reported (date)</label><input type="date" id="i-riddor-date" /></div>
+      <div class="form-group admin-only"><label>Safeguarding referral?</label><select id="i-sfg"><option value="">No</option><option>Yes</option><option>Considered — not required</option></select></div>
+      <div class="form-group full admin-only"><label>Investigation</label><textarea id="i-investigation" placeholder="Who investigated, what was reviewed, who was spoken to..."></textarea></div>
+      <div class="form-group full admin-only"><label>Root cause / contributing factors</label><textarea id="i-rootcause" placeholder="Why did this happen? People, process, environment, equipment..."></textarea></div>
+      <div class="form-group full admin-only"><label>Lessons learned</label><textarea id="i-lessons" placeholder="What will we do differently? How has this been shared with the team?"></textarea></div>
+      <div class="form-group full admin-only"><label>Follow-up actions</label><textarea id="i-followup" placeholder="One action per line — these can be sent to the Action plan"></textarea></div>
+      <div class="form-group admin-only"><label>Status</label>
         <select id="i-status"><option value="open">Open</option><option value="investigating">Investigating</option><option value="closed">Closed</option></select>
       </div>
+      <div class="form-group admin-only"><label>Date closed</label><input type="date" id="i-closed" /></div>
+      <div class="form-group full admin-only"><label style="display:flex;align-items:center;gap:8px;font-weight:500;"><input type="checkbox" id="i-to-actions" style="width:auto;" /> Add follow-up actions to the Action plan when saving</label></div>
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('incident-modal')">Cancel</button>
@@ -2721,7 +2895,7 @@ const TRAINING_MODULES = [
 
   // ── NAVIGATION ──
   function showPage(name, e) {
-    const staffAllowedPages = ['daily-notes', 'my-rota', 'my-training', 'emergency-contacts'];
+    const staffAllowedPages = ['daily-notes', 'my-rota', 'my-training', 'emergency-contacts', 'incidents'];
     if (currentRole && currentRole !== 'admin' && !staffAllowedPages.includes(name)) {
       name = 'my-rota';
       e = null;
@@ -4732,67 +4906,167 @@ const TRAINING_MODULES = [
   }
 
   // ── INCIDENTS ──
+  // ── INCIDENTS (reporting + management review) ──
+  const INC_STAFF_FIELDS = {
+    'i-date':'incident_date','i-time':'incident_time','i-resident':'resident_name','i-location':'location',
+    'i-type':'incident_type','i-severity':'severity','i-harm':'harm_level','i-reporter':'reported_by',
+    'i-witnesses':'witnesses','i-description':'description','i-actions':'immediate_actions',
+    'i-nok':'nok_notified','i-gp':'gp_notified','i-mgr':'manager_notified'
+  };
+  const INC_ADMIN_FIELDS = {
+    'i-cqc':'cqc_notifiable','i-cqc-type':'cqc_notification_type','i-cqc-date':'cqc_notified_date','i-cqc-ref':'cqc_reference',
+    'i-doc':'doc_applies','i-doc-verbal':'doc_verbal_date','i-doc-written':'doc_written_date',
+    'i-riddor':'riddor','i-riddor-date':'riddor_reported_date','i-sfg':'safeguarding_referral',
+    'i-investigation':'investigation','i-rootcause':'root_cause','i-lessons':'lessons_learned',
+    'i-followup':'follow_up_actions','i-status':'status','i-closed':'closed_date'
+  };
+  let _incidentsCache = [];
+
+  function incDate(i) { return i.incident_date || i.date_of_incident || null; }
+  function incFlags(i) {
+    const f = [];
+    if (i.cqc_notifiable === 'yes' && !i.cqc_notified_date) f.push('<span class="badge badge-red" title="Flagged as CQC notifiable but no notification date recorded">CQC due</span>');
+    if (i.cqc_notifiable === 'unsure') f.push('<span class="badge badge-amber">CQC?</span>');
+    if (i.doc_applies === 'Yes' && !i.doc_written_date) f.push('<span class="badge badge-red" title="Duty of Candour written notification not yet recorded">DoC due</span>');
+    if (i.riddor === 'Yes' && !i.riddor_reported_date) f.push('<span class="badge badge-red">RIDDOR due</span>');
+    if (i.safeguarding_id) f.push('<span class="badge badge-blue">Safeguarding linked</span>');
+    else if (i.incident_type === 'Safeguarding' || i.safeguarding_referral === 'Yes') f.push('<span class="badge badge-amber">Safeguarding?</span>');
+    return f.join(' ') || '—';
+  }
+  function incHarmBadge(i) {
+    if (!i.harm_level) return severityBadge(i.severity);
+    const cls = /Death|Severe/.test(i.harm_level) ? 'badge-red' : /Moderate/.test(i.harm_level) ? 'badge-amber' : 'badge-green';
+    return `<span class="badge ${cls}">${escapeHtml(i.harm_level)}</span>`;
+  }
+
   async function loadIncidents() {
+    const isAdmin = currentRole === 'admin';
     const { data } = await db.from('incidents').select('*').order('created_at', { ascending: false });
-    const list = data || [];
+    _incidentsCache = (data || []).sort((a, b) => new Date(incDate(b) || b.created_at) - new Date(incDate(a) || a.created_at));
+    const list = _incidentsCache;
+    if (isAdmin) {
+      const thisMonth = localISODate(new Date()).slice(0, 7);
+      document.getElementById('inc-open').textContent = list.filter(i => i.status !== 'closed').length;
+      document.getElementById('inc-cqc').textContent = list.filter(i => i.cqc_notifiable === 'yes' && !i.cqc_notified_date).length;
+      document.getElementById('inc-doc').textContent = list.filter(i => i.doc_applies === 'Yes' && !i.doc_written_date).length;
+      document.getElementById('inc-month').textContent = list.filter(i => (incDate(i) || '').startsWith(thisMonth)).length;
+    }
     const tb = document.getElementById('incidents-table');
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">🚨</div><p>No incidents reported</p></div></td></tr>'; return; }
+    if (!list.length) { tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="emoji">🚨</div><p>${isAdmin ? 'No incidents reported' : 'You have not reported any incidents'}</p></div></td></tr>`; return; }
     tb.innerHTML = list.map(i => `
       <tr>
-        <td>${formatDate(i.incident_date)}</td>
-        <td>${i.resident_name || '—'}</td>
-        <td>${i.incident_type || '—'}</td>
-        <td>${severityBadge(i.severity)}</td>
-        <td>${i.reported_by || '—'}</td>
+        <td>${formatDate(incDate(i))}</td>
+        <td>${escapeHtml(i.resident_name || i.resident_involved || '—')}</td>
+        <td>${escapeHtml(i.incident_type || '—')}</td>
+        <td>${incHarmBadge(i)}</td>
+        <td>${escapeHtml(i.reported_by || '—')}</td>
+        <td style="white-space:normal;">${isAdmin ? incFlags(i) : '—'}</td>
         <td>${statusBadge(i.status)}</td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editIncident('${i.id}')">Edit</button>
-          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteIncident('${i.id}')">Delete</button>
+          ${isAdmin ? `<button class="btn btn-save" style="padding:5px 12px;font-size:12px;" onclick="editIncident('${i.id}')">Review</button>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;" onclick="deleteIncident('${i.id}')">Delete</button>` : '<span style="font-size:12px;color:var(--muted);">Sent to office</span>'}
         </td>
       </tr>`).join('');
   }
 
+  function openIncidentModal() {
+    Object.keys({ ...INC_STAFF_FIELDS, ...INC_ADMIN_FIELDS }).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('i-edit-id').value = '';
+    document.getElementById('i-sfg-id').value = '';
+    document.getElementById('i-severity').value = 'low';
+    document.getElementById('i-cqc').value = 'no';
+    document.getElementById('i-status').value = 'open';
+    document.getElementById('i-to-actions').checked = false;
+    document.getElementById('i-date').value = localISODate(new Date());
+    if (currentRole !== 'admin' && currentStaffFullName) document.getElementById('i-reporter').value = currentStaffFullName;
+    document.getElementById('inc-modal-title').textContent = 'Report Incident';
+    govLoadLookups();
+    incidentPrompts();
+    openModal('incident-modal');
+  }
+
+  function incidentPrompts() {
+    const isAdmin = currentRole === 'admin';
+    const type = val('i-type'), harm = val('i-harm'), cqc = val('i-cqc'), doc = val('i-doc');
+    const msgs = [];
+    if (type === 'Safeguarding') msgs.push(isAdmin
+      ? '🛡️ <strong>Safeguarding:</strong> decide on a local authority referral today. Abuse or an allegation of abuse must also be notified to CQC. After saving you can open a linked safeguarding record.'
+      : '🛡️ <strong>Safeguarding:</strong> phone the office today as well as reporting here. If the person is in danger call 999.');
+    if (/Moderate|Severe|Death/.test(harm)) msgs.push(isAdmin
+      ? '⚖️ <strong>Duty of Candour (Reg 20)</strong> is likely to apply to moderate harm or worse: tell the person / family as soon as reasonably practicable, apologise, and follow up in writing. Record both dates.'
+      : '⚖️ Harm has been caused — make sure the office knows straight away by phone.');
+    if (isAdmin && (harm === 'Death' || type === 'Death')) msgs.push('📨 <strong>CQC notification:</strong> the death of a person using the service must be notified without delay (Reg 16).');
+    else if (isAdmin && harm === 'Severe harm') msgs.push('📨 <strong>CQC notification:</strong> serious injury is likely to be notifiable (Reg 18).');
+    if (type === 'Medication Error') msgs.push('💊 <strong>Medication error:</strong> seek advice from 111 or the GP if there is any doubt about the person\'s safety. This will appear in Medication governance.');
+    if (isAdmin && type === 'Injury to Staff') msgs.push('🦺 <strong>RIDDOR:</strong> check whether this is reportable to the HSE (e.g. over-7-day incapacitation, specified injuries).');
+    if (type === 'Data Breach') msgs.push(isAdmin
+      ? '🔒 <strong>Data breach:</strong> if reportable, the ICO must be told within 72 hours of becoming aware.'
+      : '🔒 <strong>Data breach:</strong> tell the office immediately.');
+    if (isAdmin && cqc === 'yes' && !val('i-cqc-date')) msgs.push('📨 Marked as CQC notifiable — remember to record the date sent and reference once submitted.');
+    if (isAdmin && doc === 'Yes' && !val('i-doc-written')) msgs.push('⚖️ Duty of Candour applies — written notification date not yet recorded.');
+    const box = document.getElementById('inc-prompts');
+    if (!msgs.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = '';
+    box.innerHTML = `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--navy);display:flex;flex-direction:column;gap:6px;">${msgs.map(m => `<div>${m}</div>`).join('')}</div>`;
+  }
+  document.addEventListener('change', e => { if (e.target && e.target.id === 'i-type') incidentPrompts(); });
+
   async function saveIncident() {
-    const payload = {
-      incident_date: val('i-date'), incident_time: val('i-time'),
-      resident_name: val('i-resident'), incident_type: val('i-type'),
-      severity: val('i-severity'), reported_by: val('i-reporter'),
-      description: val('i-description'), immediate_actions: val('i-actions'),
-      cqc_notifiable: val('i-cqc'), status: val('i-status')
-    };
-    if (!payload.incident_date || !payload.incident_type) { alert('Please fill in date and incident type.'); return; }
+    const isAdmin = currentRole === 'admin';
+    const payload = {};
+    const fields = isAdmin ? { ...INC_STAFF_FIELDS, ...INC_ADMIN_FIELDS } : INC_STAFF_FIELDS;
+    Object.entries(fields).forEach(([id, col]) => { const v = val(id); payload[col] = v === '' ? null : v; });
+    if (!payload.incident_date || !payload.incident_type || !payload.description) { alert('Please fill in the date, incident type and what happened.'); return; }
     const editId = document.getElementById('i-edit-id').value;
-    let error;
-    if (editId) {
-      ({ error } = await db.from('incidents').update(payload).eq('id', editId));
-    } else {
+    let error, saved;
+    if (!isAdmin) {
+      if (!currentStaffId) { alert('Your login is not linked to a staff record, so the report cannot be filed. Please phone the office.'); return; }
+      payload.reporter_staff_id = currentStaffId;
+      payload.status = 'open';
       ({ error } = await db.from('incidents').insert([payload]));
+    } else if (editId) {
+      ({ data: saved, error } = await db.from('incidents').update(payload).eq('id', editId).select().single());
+    } else {
+      ({ data: saved, error } = await db.from('incidents').insert([payload]).select().single());
     }
     if (error) { alert('Error: ' + error.message); return; }
-    document.getElementById('i-edit-id').value = '';
     closeModal('incident-modal');
-    loadIncidents();
+    if (!isAdmin) {
+      alert('Thank you — your report has been sent to the office.' + (payload.incident_type === 'Safeguarding' ? '\n\nPlease also phone the office today about this safeguarding concern.' : ''));
+      loadIncidents();
+      return;
+    }
+    if (document.getElementById('i-to-actions').checked && payload.follow_up_actions) {
+      const pr = /Severe|Death|Moderate/.test(payload.harm_level || '') ? 'High' : 'Medium';
+      await createGovActionsFromText(payload.follow_up_actions, 'Incident', pr, `Incident ${formatDate(payload.incident_date)} — ${payload.incident_type}`);
+    }
+    await loadIncidents();
+    if (saved && !saved.safeguarding_id && (payload.incident_type === 'Safeguarding' || payload.safeguarding_referral === 'Yes')) {
+      if (confirm('Open a linked safeguarding record for this incident now?')) {
+        openSfgModal(null, { incident_id: saved.id, date: payload.incident_date, resident: payload.resident_name, details: payload.description, immediate_actions: payload.immediate_actions, by: payload.reported_by });
+      }
+    }
   }
 
   async function editIncident(id) {
     const { data: i } = await db.from('incidents').select('*').eq('id', id).single();
     if (!i) return;
+    await govLoadLookups();
+    const fill = { ...i, incident_date: incDate(i), resident_name: i.resident_name || i.resident_involved, description: i.description || i.what_happened, incident_time: i.incident_time || i.time_of_incident };
+    Object.entries({ ...INC_STAFF_FIELDS, ...INC_ADMIN_FIELDS }).forEach(([fid, col]) => { const el = document.getElementById(fid); if (el) el.value = fill[col] ?? ''; });
+    if (!i.severity) document.getElementById('i-severity').value = 'low';
+    if (!i.cqc_notifiable) document.getElementById('i-cqc').value = 'no';
+    if (!i.status) document.getElementById('i-status').value = 'open';
     document.getElementById('i-edit-id').value = id;
-    document.getElementById('i-date').value = i.incident_date || '';
-    document.getElementById('i-time').value = i.incident_time || '';
-    document.getElementById('i-resident').value = i.resident_name || '';
-    document.getElementById('i-type').value = i.incident_type || '';
-    document.getElementById('i-severity').value = i.severity || 'low';
-    document.getElementById('i-reporter').value = i.reported_by || '';
-    document.getElementById('i-description').value = i.description || '';
-    document.getElementById('i-actions').value = i.immediate_actions || '';
-    document.getElementById('i-cqc').value = i.cqc_notifiable || 'no';
-    document.getElementById('i-status').value = i.status || 'open';
+    document.getElementById('i-sfg-id').value = i.safeguarding_id || '';
+    document.getElementById('i-to-actions').checked = false;
+    document.getElementById('inc-modal-title').textContent = 'Incident — management review';
+    incidentPrompts();
     openModal('incident-modal');
   }
 
   async function deleteIncident(id) {
-    if (!confirm('Delete this incident report? This cannot be undone.')) return;
+    if (!confirm('Delete this incident report? This cannot be undone.\n\nFor inspection purposes it is usually better to close an incident than delete it.')) return;
     await db.from('incidents').delete().eq('id', id);
     loadIncidents();
   }
@@ -7038,7 +7312,41 @@ const TRAINING_MODULES = [
     policies: [], kpis: [], audits: [], actions: [],
     complaints: [], compliments: [], // loaded from Supabase — see loadGovComplaints()
     medAudits: [], supervisions: [], risks: [], safeguarding: [], meetings: [],
+    schedule: [], qa: [], medComp: [], incidents: [],
   };
+  let govResidentNames = [], govStaffList = [];
+  async function govLoadLookups() {
+    const [r, s] = await Promise.all([
+      db.from('residents').select('first_name,last_name,preferred_name,status'),
+      db.from('staff').select('id,full_name,first_name,last_name,role,status')
+    ]);
+    govResidentNames = (r.data || []).filter(x => !/discharg|deceas|inactive|ended/i.test(x.status || ''))
+      .map(x => [x.first_name, x.last_name].filter(Boolean).join(' ')).filter(Boolean).sort();
+    govStaffList = (s.data || []).filter(x => (x.status || 'active').toLowerCase() === 'active')
+      .map(x => ({ ...x, name: x.full_name || [x.first_name, x.last_name].filter(Boolean).join(' ') }))
+      .filter(x => x.name).sort((a, b) => a.name.localeCompare(b.name));
+    document.getElementById('gov-residents-dl').innerHTML = govResidentNames.map(n => `<option value="${escapeHtml(n)}">`).join('');
+    document.getElementById('gov-staff-dl').innerHTML = govStaffList.map(x => `<option value="${escapeHtml(x.name)}">`).join('');
+  }
+  function govCarers() { return govStaffList.filter(x => /care worker|carer|senior/i.test(x.role || '')); }
+  function govToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+  function govDaysFrom(n) { const d = govToday(); d.setDate(d.getDate() + n); return localISODate(d); }
+  function govAddFreq(dateStr, freq) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (freq === 'Weekly') d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + ({ Monthly: 1, Quarterly: 3, 'Six-monthly': 6, Annual: 12 }[freq] || 1));
+    return localISODate(d);
+  }
+  // Turns "one action per line" text into Action plan rows, so findings never get lost.
+  async function createGovActionsFromText(text, source, priority, context) {
+    const lines = (text || '').split(/\n+/).map(l => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(l => l.length > 2);
+    if (!lines.length) return;
+    const due = govDaysFrom(30);
+    const rows = lines.map(l => ({ title: l.slice(0, 120), description: l, source, priority, status: 'Open', target_date: due, notes: context || '' }));
+    const { error } = await db.from('governance_actions').insert(rows);
+    if (error) { alert('Saved, but the actions could not be added to the Action plan: ' + error.message); return; }
+    await loadGovActions();
+  }
   function govSave(key){ localStorage.setItem('gov_'+key, JSON.stringify(govStore[key])); }
 
   function showGovSection(id, btn){
@@ -7057,33 +7365,96 @@ const TRAINING_MODULES = [
   function govPriorityBadge(p){ const map={High:'badge-red',Medium:'badge-amber',Low:'badge-green'}; return `<span class="badge ${map[p]||'badge-blue'}">${p}</span>`; }
   function govDel(storeKey, id, rerender){ if(!confirm('Delete this record?')) return; govStore[storeKey]=govStore[storeKey].filter(i=>i.id!==id); govSave(storeKey); rerender(); }
 
+  function govRiskScores(r) {
+    const l = parseInt(r.likelihood) || 0, i = parseInt(r.impact) || 0;
+    const rl = parseInt(r.residual_likelihood) || l, ri = parseInt(r.residual_impact) || i;
+    return { inherent: l * i, residual: rl * ri };
+  }
+  function govScheduleOverdue() { const t = govToday(); return govStore.schedule.filter(s => s.active !== false && s.next_due && new Date(s.next_due + 'T00:00:00') < t); }
+  function govSfgNeedsCqc(s) { return !/Closed/.test(s.status || '') && !s.cqc_notified_date && !/Self-neglect/.test(s.type || ''); }
+
   function updateGovOverview(){
     document.getElementById('summary-date').textContent='As of '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-    const today=new Date(); today.setHours(0,0,0,0);
+    const today=govToday();
     const polDue=govStore.policies.filter(p=>{ if(!p.due) return false; return new Date(p.due)<=new Date(today.getTime()+30*86400000); }).length;
     document.getElementById('ov-policies').textContent=polDue;
-    const thisMonth=new Date().toISOString().slice(0,7);
+    const thisMonth=localISODate(new Date()).slice(0,7);
     const monthKpis=govStore.kpis.filter(k=>k.month===thisMonth);
     const onTarget=monthKpis.filter(k=>parseFloat(k.actual)>=parseFloat(k.target)).length;
     document.getElementById('ov-kpis').textContent=monthKpis.length?`${onTarget}/${monthKpis.length}`:'—';
-    document.getElementById('ov-audits').textContent=govStore.audits.filter(a=>a.date&&a.date.startsWith(thisMonth)).length;
-    document.getElementById('ov-actions').textContent=govStore.actions.filter(a=>a.status==='Open'||a.status==='In progress').length;
+    document.getElementById('ov-audits').textContent=govStore.audits.filter(a=>a.date&&a.date.startsWith(thisMonth)).length + govStore.qa.filter(q=>q.date&&q.date.startsWith(thisMonth)).length;
+    document.getElementById('ov-actions').textContent=govStore.actions.filter(a=>a.status==='Open'||a.status==='In progress'||a.status==='Overdue').length;
     document.getElementById('ov-complaints').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length;
-    document.getElementById('ov-risks').textContent=govStore.risks.filter(r=>(parseInt(r.likelihood)*parseInt(r.impact))>=12).length;
-    document.getElementById('ov-safeguarding').textContent=govStore.safeguarding.filter(s=>s.status==='Open'||s.status==='Under investigation').length;
+    document.getElementById('ov-risks').textContent=govStore.risks.filter(r=>r.status!=='Closed'&&govRiskScores(r).residual>=15).length;
+    document.getElementById('ov-safeguarding').textContent=govStore.safeguarding.filter(s=>!/Closed/.test(s.status||'')).length;
+    document.getElementById('ov-schedule').textContent=govStore.schedule.length?govScheduleOverdue().length:'—';
+    const openInc=govStore.incidents.filter(i=>i.status!=='closed');
+    document.getElementById('ov-incidents').textContent=openInc.length;
+    const notif=govStore.incidents.filter(i=>(i.cqc_notifiable==='yes'&&!i.cqc_notified_date)||(i.doc_applies==='Yes'&&!i.doc_written_date)).length;
+    document.getElementById('ov-incidents-sub').textContent=notif?`${notif} notification${notif>1?'s':''} outstanding`:'no notifications outstanding';
     buildGovAlerts();
+    renderGovHealth();
   }
 
   function buildGovAlerts(){
     const alerts=[];
-    const today=new Date(); today.setHours(0,0,0,0);
+    const today=govToday();
     const soon=new Date(today.getTime()+14*86400000);
-    govStore.actions.filter(a=>a.status!=='Completed'&&a.due).forEach(a=>{ const d=new Date(a.due); if(d<today) alerts.push({level:'red',text:`Action overdue: "${a.desc.slice(0,60)}..." — was due ${govFmtDate(a.due)}`}); else if(d<=soon) alerts.push({level:'amber',text:`Action due soon: "${a.desc.slice(0,60)}..." — due ${govFmtDate(a.due)}`}); });
+    const d8=s=>new Date(s+'T00:00:00');
+    govStore.incidents.forEach(i=>{
+      const when=formatDate(incDate(i));
+      if(i.cqc_notifiable==='yes'&&!i.cqc_notified_date) alerts.push({level:'red',text:`CQC notification not recorded — ${i.incident_type||'incident'} on ${when}${i.resident_name?' ('+i.resident_name+')':''}`});
+      if(i.doc_applies==='Yes'&&!i.doc_written_date) alerts.push({level:'red',text:`Duty of Candour written notice outstanding — ${i.incident_type||'incident'} on ${when}`});
+      if(i.riddor==='Yes'&&!i.riddor_reported_date) alerts.push({level:'red',text:`RIDDOR report not recorded — incident on ${when}`});
+      if(i.status!=='closed'&&(i.incident_type==='Safeguarding'||i.safeguarding_referral==='Yes')&&!i.safeguarding_id) alerts.push({level:'amber',text:`Safeguarding incident on ${when} has no linked safeguarding record`});
+    });
+    govStore.safeguarding.filter(govSfgNeedsCqc).forEach(s=>alerts.push({level:'amber',text:`Safeguarding (${s.type}) ${govFmtDate(s.date)}: CQC notification date not recorded — confirm whether notifiable`}));
+    govScheduleOverdue().forEach(s=>alerts.push({level:'red',text:`${s.kind==='qa'?'Quality check':'Audit'} overdue: ${s.title} — was due ${govFmtDate(s.next_due)}`}));
+    govStore.schedule.filter(s=>s.active!==false&&s.next_due&&d8(s.next_due)>=today&&d8(s.next_due)<=soon).forEach(s=>alerts.push({level:'amber',text:`${s.kind==='qa'?'Quality check':'Audit'} due soon: ${s.title} — ${govFmtDate(s.next_due)}`}));
+    govStore.actions.filter(a=>a.status!=='Completed'&&a.due).forEach(a=>{ const d=new Date(a.due); const t=(a.desc||'').slice(0,70); if(d<today) alerts.push({level:'red',text:`Action overdue: "${t}" — was due ${govFmtDate(a.due)}`}); else if(d<=soon) alerts.push({level:'amber',text:`Action due soon: "${t}" — due ${govFmtDate(a.due)}`}); });
+    govStore.medComp.forEach(m=>{ if(m.next_due&&d8(m.next_due)<today) alerts.push({level:'red',text:`Medication competency reassessment overdue: ${m.staff_name}`}); });
+    govStore.risks.filter(r=>r.status!=='Closed'&&r.review&&d8(r.review)<today).forEach(r=>alerts.push({level:'amber',text:`Risk review overdue: ${(r.desc||'').slice(0,70)}`}));
     govStore.complaints.filter(c=>c.status==='Open'&&c.due).forEach(c=>{ if(new Date(c.due)<today) alerts.push({level:'red',text:`Complaint response overdue — received ${govFmtDate(c.date)}`}); });
     govStore.policies.filter(p=>p.due).forEach(p=>{ const d=new Date(p.due); if(d<today) alerts.push({level:'red',text:`Policy overdue for review: ${p.name}`}); else if(d<=new Date(today.getTime()+30*86400000)) alerts.push({level:'amber',text:`Policy review due soon: ${p.name} — due ${govFmtDate(p.due)}`}); });
+    alerts.sort((a,b)=>(a.level==='red'?0:1)-(b.level==='red'?0:1));
     const al=document.getElementById('alert-list');
     if(!alerts.length){ al.innerHTML='<p style="color:var(--muted);text-align:center;padding:24px;">No overdue items — great work!</p>'; return; }
-    al.innerHTML=alerts.map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);"><span class="badge badge-${a.level}">${a.level==='red'?'Overdue':'Due soon'}</span><span style="font-size:13px;">${a.text}</span></div>`).join('');
+    al.innerHTML=alerts.map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);"><span class="badge badge-${a.level}" style="flex-shrink:0;">${a.level==='red'?'Action now':'Due soon'}</span><span style="font-size:13px;">${escapeHtml(a.text)}</span></div>`).join('');
+    const badge=document.getElementById('inspection-badge');
+    const reds=alerts.filter(a=>a.level==='red').length;
+    if(badge){
+      badge.innerHTML = reds ? `<span style="width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block;"></span> ${reds} item${reds>1?'s':''} need attention` : `<span style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;"></span> Nothing overdue`;
+      badge.style.background = reds ? '#fee2e2' : '#dcfce7'; badge.style.color = reds ? '#b91c1c' : '#15803d'; badge.style.borderColor = reds ? '#fecaca' : '#bbf7d0';
+    }
+  }
+
+  function renderGovHealth(){
+    const today=govToday(), d8=s=>s?new Date(String(s).slice(0,10)+'T00:00:00'):null;
+    const latest=(arr,key)=>arr.map(x=>x[key]).filter(Boolean).sort().slice(-1)[0]||null;
+    const row=(area,status,last,notes)=>{ const m={green:['badge-green','On track'],amber:['badge-amber','Attention'],red:['badge-red','Overdue'],blue:['badge-blue','No data']}[status]; return `<tr><td>${area}</td><td><span class="badge ${m[0]}">${m[1]}</span></td><td>${last?govFmtDate(last):'—'}</td><td style="font-size:12px;">${notes}</td></tr>`; };
+    const rows=[];
+    const polOver=govStore.policies.filter(p=>p.due&&d8(p.due)<today).length;
+    rows.push(row('Policies &amp; procedures',!govStore.policies.length?'blue':polOver?'red':'green',latest(govStore.policies,'reviewed'),`${govStore.policies.length} policies${polOver?`, ${polOver} overdue review`:''}`));
+    const thisMonth=localISODate(new Date()).slice(0,7); const mk=govStore.kpis.filter(k=>k.month===thisMonth);
+    rows.push(row('Monthly KPIs',!govStore.kpis.length?'blue':mk.length?'green':'amber',null,mk.length?`${mk.length} recorded this month`:'None recorded this month'));
+    const schOver=govScheduleOverdue().length;
+    rows.push(row('Audit &amp; QA schedule',!govStore.schedule.length?'blue':schOver?'red':'green',latest(govStore.schedule,'last_done'),`${govStore.schedule.filter(s=>s.active!==false).length} active items${schOver?`, ${schOver} overdue`:''}`));
+    rows.push(row('Audit log',!govStore.audits.length?'blue':'green',latest(govStore.audits,'date'),`${govStore.audits.length} audits on file`));
+    const riQa=govStore.qa.filter(q=>/Requires|Inadequate/.test(q.rating||'')).length;
+    rows.push(row('Quality checks',!govStore.qa.length?'blue':riQa?'amber':'green',latest(govStore.qa,'date'),`${govStore.qa.length} checks on file${riQa?`, ${riQa} requiring improvement`:''}`));
+    const actOver=govStore.actions.filter(a=>a.status!=='Completed'&&a.due&&d8(a.due)<today).length, actOpen=govStore.actions.filter(a=>a.status!=='Completed').length;
+    rows.push(row('Action plans',!govStore.actions.length?'blue':actOver?'red':actOpen?'amber':'green',latest(govStore.actions,'created_at'),`${actOpen} open${actOver?`, ${actOver} overdue`:''}`));
+    const incNotif=govStore.incidents.filter(i=>(i.cqc_notifiable==='yes'&&!i.cqc_notified_date)||(i.doc_applies==='Yes'&&!i.doc_written_date)).length, incOpen=govStore.incidents.filter(i=>i.status!=='closed').length;
+    rows.push(row('Incidents',!govStore.incidents.length?'blue':incNotif?'red':incOpen?'amber':'green',govStore.incidents.map(incDate).filter(Boolean).sort().slice(-1)[0],`${incOpen} open${incNotif?`, ${incNotif} notification(s) outstanding`:''}`));
+    const cmpOpen=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length;
+    rows.push(row('Complaints',!govStore.complaints.length?'blue':cmpOpen?'amber':'green',latest(govStore.complaints,'date'),`${cmpOpen} open`));
+    const mcOver=govStore.medComp.filter(m=>m.next_due&&d8(m.next_due)<today).length;
+    rows.push(row('Medication governance',!govStore.medAudits.length&&!govStore.medComp.length?'blue':mcOver?'red':'green',latest(govStore.medAudits,'date'),`${govStore.medAudits.length} MAR audits, ${govStore.medComp.length} competency records${mcOver?`, ${mcOver} overdue`:''}`));
+    const live=govStore.risks.filter(r=>r.status!=='Closed'), high=live.filter(r=>govRiskScores(r).residual>=15).length, rOver=live.filter(r=>r.review&&d8(r.review)<today).length;
+    rows.push(row('Risk register',!govStore.risks.length?'blue':rOver?'red':high?'amber':'green',latest(govStore.risks,'last_reviewed'),`${live.length} live risks${high?`, ${high} high`:''}${rOver?`, ${rOver} reviews overdue`:''}`));
+    const sOpen=govStore.safeguarding.filter(s=>!/Closed/.test(s.status||'')).length, sCqc=govStore.safeguarding.filter(govSfgNeedsCqc).length;
+    rows.push(row('Safeguarding',!govStore.safeguarding.length?'blue':sCqc?'amber':'green',latest(govStore.safeguarding,'date'),`${sOpen} open${sCqc?`, ${sCqc} without CQC notification date`:''}`));
+    document.getElementById('health-table').innerHTML=rows.join('');
   }
 
   // Policies
@@ -7813,6 +8184,21 @@ const TRAINING_MODULES = [
     renderGovAudits();
     updateGovOverview();
   }
+  function openAuditModal(scheduleItem){
+    govLoadLookups();
+    document.getElementById('aud-schedule-id').value = scheduleItem ? scheduleItem.id : '';
+    const note = document.getElementById('aud-schedule-note');
+    if (scheduleItem) {
+      note.style.display=''; note.innerHTML = `Completing scheduled audit: <strong>${escapeHtml(scheduleItem.title)}</strong>${scheduleItem.method?`<br><span style="font-size:12px;">${escapeHtml(scheduleItem.method)}</span>`:''}`;
+      const sel=document.getElementById('aud-type'); const match=[...sel.options].find(o=>o.text.toLowerCase()===scheduleItem.title.toLowerCase());
+      if (match) sel.value = match.text; else { const o=new Option(scheduleItem.title, scheduleItem.title); sel.add(o, 0); sel.value = scheduleItem.title; }
+      if (scheduleItem.owner) document.getElementById('aud-by').value = scheduleItem.owner;
+      document.getElementById('aud-next').value = govAddFreq(localISODate(new Date()), scheduleItem.frequency);
+    } else { note.style.display='none'; }
+    document.getElementById('aud-date').value = localISODate(new Date());
+    document.getElementById('aud-to-actions').checked = true;
+    openGovModal('audit-modal');
+  }
   async function saveAudit(){
     const type=document.getElementById('aud-type').value;
     let filePath = '';
@@ -7822,9 +8208,16 @@ const TRAINING_MODULES = [
       const { error: ue } = await db.storage.from('documents').upload(filePath, file, { upsert: true });
       if (ue) { alert('File upload failed: ' + ue.message); filePath = ''; }
     }
-    const payload = {type,date:document.getElementById('aud-date').value||null,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value||null,findings:document.getElementById('aud-findings').value,actions_text:document.getElementById('aud-actions-text').value,file_path:filePath};
+    const scheduleId = document.getElementById('aud-schedule-id').value || null;
+    const payload = {type,date:document.getElementById('aud-date').value||null,by:document.getElementById('aud-by').value,score:document.getElementById('aud-score').value,rag:document.getElementById('aud-rag').value,next:document.getElementById('aud-next').value||null,findings:document.getElementById('aud-findings').value,actions_text:document.getElementById('aud-actions-text').value,file_path:filePath,schedule_id:scheduleId};
+    if (!payload.date) { alert('Please enter the date the audit was conducted'); return; }
     const { error } = await db.from('governance_audits').insert([payload]);
     if (error) { alert('Could not save audit: ' + error.message); return; }
+    if (scheduleId) await completeScheduleItem(scheduleId, payload.date, payload.next);
+    if (document.getElementById('aud-to-actions').checked && payload.actions_text) {
+      await createGovActionsFromText(payload.actions_text, 'Audit', payload.rag==='red'?'High':payload.rag==='amber'?'Medium':'Low', `${type} — ${govFmtDate(payload.date)}`);
+    }
+    document.getElementById('aud-schedule-id').value='';
     closeGovModal('audit-modal');
     ['aud-date','aud-by','aud-score','aud-next','aud-findings','aud-actions-text'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('aud-file').value=''; document.getElementById('aud-file-label').textContent='Click to upload audit document';
@@ -7846,14 +8239,19 @@ const TRAINING_MODULES = [
   // Actions
   async function loadGovActions(){
     const { data, error } = await db.from('governance_actions').select('*').order('created_at', { ascending: false });
-    if (!error) govStore.actions = (data || []).map(a => ({ ...a, desc: a.desc }));
+    if (!error) govStore.actions = (data || []).map(a => {
+      const due = a.target_date || null;
+      const overdue = a.status !== 'Completed' && due && new Date(due + 'T00:00:00') < govToday();
+      return { ...a, desc: a.description || a.title || '', due, status: overdue && a.status === 'Open' ? 'Overdue' : a.status };
+    });
     renderGovActions();
     updateGovOverview();
   }
   async function saveGovAction(){
     const desc=document.getElementById('act-desc').value.trim();
     if(!desc){alert('Please describe the action');return;}
-    const payload = {desc,source:document.getElementById('act-source').value,priority:document.getElementById('act-priority').value,owner:document.getElementById('act-owner').value,due:document.getElementById('act-due').value||null,status:document.getElementById('act-status').value,notes:document.getElementById('act-notes').value};
+    const status=document.getElementById('act-status').value;
+    const payload = {title:desc.slice(0,120),description:desc,source:document.getElementById('act-source').value,priority:document.getElementById('act-priority').value,owner:document.getElementById('act-owner').value,target_date:document.getElementById('act-due').value||null,status,completed_date:status==='Completed'?localISODate(new Date()):null,notes:document.getElementById('act-notes').value};
     const { error } = await db.from('governance_actions').insert([payload]);
     if (error) { alert('Could not save action: ' + error.message); return; }
     closeGovModal('action-modal');
@@ -7866,7 +8264,16 @@ const TRAINING_MODULES = [
     if (error) { alert('Could not delete: ' + error.message); return; }
     await loadGovActions();
   }
-  function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovAction('${a.id}')">Delete</button></td></tr>`).join(''); }
+  function renderGovActions(){ const tb=document.getElementById('action-table'); if(!govStore.actions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No actions recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.actions].sort((a,b)=>({Open:0,'In progress':1,Overdue:2,Completed:3}[a.status]||0)-({Open:0,'In progress':1,Overdue:2,Completed:3}[b.status]||0)).map(a=>`<tr><td><strong style="font-size:13px;">${a.desc}</strong>${a.notes?`<br><span style="font-size:12px;color:var(--muted);">${a.notes}</span>`:''}</td><td><span class="badge badge-blue">${a.source}</span></td><td>${govPriorityBadge(a.priority)}</td><td>${a.owner||'—'}</td><td>${govFmtDate(a.due)}</td><td>${govStatusBadge(a.status)}</td><td style="display:flex;gap:6px;">${a.status!=='Completed'?`<button class="btn btn-save" style="padding:4px 10px;font-size:12px;" onclick="completeGovAction('${a.id}')">✓ Done</button>`:''}<button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovAction('${a.id}')">Delete</button></td></tr>`).join(''); }
+  async function completeGovAction(id){
+    const note = prompt('Evidence of completion (optional) — what was done?');
+    if (note === null) return;
+    const a = govStore.actions.find(x=>x.id===id);
+    const notes = note ? ((a && a.notes ? a.notes + '\n' : '') + 'Completed: ' + note) : (a ? a.notes : null);
+    const { error } = await db.from('governance_actions').update({ status:'Completed', completed_date: localISODate(new Date()), notes, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { alert('Could not update: ' + error.message); return; }
+    await loadGovActions();
+  }
 
   // Complaints & compliments
   async function loadGovComplaints(){
@@ -7918,10 +8325,72 @@ const TRAINING_MODULES = [
   function renderGovComplaints(){ const thisMonth=new Date().toISOString().slice(0,7); document.getElementById('comp-month').textContent=govStore.complaints.filter(c=>c.date&&c.date.startsWith(thisMonth)).length; document.getElementById('comp-open').textContent=govStore.complaints.filter(c=>c.status==='Open'||c.status==='Under investigation').length; document.getElementById('comp-resolved').textContent=govStore.complaints.filter(c=>c.status==='Resolved').length; document.getElementById('comp-compliments').textContent=govStore.compliments.length; const tb=document.getElementById('complaint-table'); if(!govStore.complaints.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No complaints logged</td></tr>';}else{tb.innerHTML=[...govStore.complaints].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.raised}</td><td>${c.nature}</td><td>${c.assigned||'—'}</td><td>${govFmtDate(c.due)}</td><td>${govStatusBadge(c.status)}</td><td>${c.escalated?`<span class="badge badge-red">${c.escalated}</span>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovComplaint('${c.id}')">Delete</button></td></tr>`).join('');} const tb2=document.getElementById('compliment-table'); if(!govStore.compliments.length){tb2.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No compliments logged yet</td></tr>';}else{tb2.innerHTML=[...govStore.compliments].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>`<tr><td>${govFmtDate(c.date)}</td><td>${c.source}</td><td>${c.re}</td><td>${c.staff||'—'}</td><td>${c.details}</td></tr>`).join('');} }
 
   // Medication audits
+  function openMedAuditModal(){ govLoadLookups(); document.getElementById('med-date').value = localISODate(new Date()); openGovModal('med-modal'); }
   async function loadGovMed(){
-    const { data, error } = await db.from('governance_med_audits').select('*').order('date', { ascending: false });
-    if (!error) govStore.medAudits = data || [];
+    const [a, c] = await Promise.all([
+      db.from('governance_med_audits').select('*').order('date', { ascending: false }),
+      db.from('governance_med_competency').select('*').order('assessed_date', { ascending: false })
+    ]);
+    if (!a.error) govStore.medAudits = a.data || [];
+    if (!c.error) govStore.medComp = c.data || [];
     renderGovMed();
+    renderMedGovernance();
+    updateGovOverview();
+  }
+  function latestMedCompPerStaff(){
+    const m = {};
+    govStore.medComp.forEach(r => { const k = r.staff_id || r.staff_name; if (!m[k] || (r.assessed_date||'') > (m[k].assessed_date||'')) m[k] = r; });
+    return Object.values(m);
+  }
+  function renderMedGovernance(){
+    const today = govToday(), d8 = s => new Date(s + 'T00:00:00');
+    const ninety = govDaysFrom(-90), thisMonth = localISODate(new Date()).slice(0,7);
+    document.getElementById('mg-audits').textContent = govStore.medAudits.filter(m => (m.date||'') >= ninety).length;
+    const errs = govStore.incidents.filter(i => i.incident_type === 'Medication Error');
+    document.getElementById('mg-errors').textContent = errs.filter(i => (incDate(i)||'').startsWith(thisMonth)).length;
+    const latest = latestMedCompPerStaff();
+    document.getElementById('mg-comp-overdue').textContent = latest.filter(r => r.next_due && d8(r.next_due) < today).length;
+    const assessed = new Set(latest.map(r => r.staff_id));
+    const carers = govCarers();
+    document.getElementById('mg-comp-none').textContent = carers.length ? carers.filter(c => !assessed.has(c.id)).length : '—';
+    const tb = document.getElementById('medcomp-table');
+    if (!latest.length) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No competency assessments recorded yet</td></tr>';
+    else tb.innerHTML = latest.sort((a,b)=>(a.next_due||'').localeCompare(b.next_due||'')).map(r => {
+      const over = r.next_due && d8(r.next_due) < today; const soon = r.next_due && !over && d8(r.next_due) <= new Date(today.getTime()+30*86400000);
+      const oc = /^Competent/.test(r.outcome||'') ? 'badge-green' : /must not/.test(r.outcome||'') ? 'badge-red' : 'badge-amber';
+      return `<tr><td><strong>${escapeHtml(r.staff_name||'—')}</strong></td><td>${govFmtDate(r.assessed_date)}</td><td>${escapeHtml(r.assessor||'—')}</td><td style="text-align:center;">${r.observed_rounds ?? '—'}</td><td><span class="badge ${oc}">${escapeHtml(r.outcome||'—')}</span></td><td>${govFmtDate(r.next_due)}</td><td>${over?'<span class="badge badge-red">Overdue</span>':soon?'<span class="badge badge-amber">Due soon</span>':'<span class="badge badge-green">In date</span>'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteMedComp('${r.id}')">Delete</button></td></tr>`;
+    }).join('');
+    const eb = document.getElementById('mederr-table');
+    if (!errs.length) eb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">No medication errors reported</td></tr>';
+    else eb.innerHTML = errs.slice(0, 25).map(i => `<tr><td>${formatDate(incDate(i))}</td><td>${escapeHtml(i.resident_name||'—')}</td><td>${incHarmBadge(i)}</td><td>${escapeHtml(i.reported_by||'—')}</td><td style="font-size:12px;">${escapeHtml(i.lessons_learned||'—')}</td><td>${statusBadge(i.status)}</td></tr>`).join('');
+  }
+  async function openMedCompModal(){
+    await govLoadLookups();
+    const carers = govStaffList;
+    document.getElementById('mc-staff').innerHTML = '<option value="">— Select carer —</option>' + carers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}${c.role?' — '+escapeHtml(c.role):''}</option>`).join('');
+    ['mc-assessor','mc-rounds','mc-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mc-date').value = localISODate(new Date());
+    document.getElementById('mc-outcome').value = 'Competent';
+    mcDefaultNext();
+    openGovModal('medcomp-modal');
+  }
+  function mcDefaultNext(){ const d = document.getElementById('mc-date').value; if (d) document.getElementById('mc-next').value = govAddFreq(d, 'Annual'); }
+  async function saveMedComp(){
+    const sid = document.getElementById('mc-staff').value, date = document.getElementById('mc-date').value;
+    if (!sid || !date) { alert('Please choose the carer and the assessment date'); return; }
+    const st = govStaffList.find(s => s.id === sid);
+    const rounds = parseInt(document.getElementById('mc-rounds').value);
+    const payload = { staff_id: sid, staff_name: st ? st.name : '', assessed_date: date, assessor: document.getElementById('mc-assessor').value, outcome: document.getElementById('mc-outcome').value, observed_rounds: isNaN(rounds) ? null : rounds, next_due: document.getElementById('mc-next').value || null, notes: document.getElementById('mc-notes').value };
+    const { error } = await db.from('governance_med_competency').insert([payload]);
+    if (error) { alert('Could not save: ' + error.message); return; }
+    closeGovModal('medcomp-modal');
+    await loadGovMed();
+  }
+  async function deleteMedComp(id){
+    if (!confirm('Delete this competency record?')) return;
+    const { error } = await db.from('governance_med_competency').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovMed();
   }
   async function saveMed(){
     const date=document.getElementById('med-date').value;
@@ -8037,17 +8506,61 @@ const TRAINING_MODULES = [
   async function loadGovRisks(){
     const { data, error } = await db.from('governance_risks').select('*').order('created_at', { ascending: false });
     if (!error) govStore.risks = data || [];
+    document.getElementById('risk-seed-btn').style.display = govStore.risks.length ? 'none' : '';
     renderGovRisks();
     updateGovOverview();
+  }
+  function govRiskBadge(score){ const c = score>=15?'red':score>=8?'amber':'green'; return `<span class="badge badge-${c}" style="min-width:34px;display:inline-block;text-align:center;">${score}</span>`; }
+  function updateRiskPreview(){
+    const l=+val('risk-like'), i=+val('risk-impact'), rl=+(val('risk-rlike')||l), ri=+(val('risk-rimpact')||i);
+    const lab=s=>s>=15?'High':s>=8?'Medium':'Low';
+    document.getElementById('risk-preview').innerHTML = `Inherent score <strong>${l*i}</strong> (${lab(l*i)}) → residual score <strong>${rl*ri}</strong> (${lab(rl*ri)})`;
+  }
+  function openRiskModal(id){
+    govLoadLookups();
+    const r = id ? govStore.risks.find(x => x.id === id) : null;
+    document.getElementById('risk-edit-id').value = r ? r.id : '';
+    document.getElementById('risk-modal-title').textContent = r ? 'Review risk' : 'Add risk';
+    const set=(fid,v)=>document.getElementById(fid).value = v ?? '';
+    set('risk-desc', r?.desc); set('risk-cat', r?.category || 'Clinical / care'); set('risk-status', r?.status || 'Open');
+    set('risk-identified', r?.date_identified || localISODate(new Date())); set('risk-owner', r?.owner);
+    set('risk-like', r?.likelihood || '3'); set('risk-impact', r?.impact || '3');
+    set('risk-rlike', r?.residual_likelihood || ''); set('risk-rimpact', r?.residual_impact || '');
+    set('risk-controls', r?.controls); set('risk-actions', r?.actions);
+    set('risk-lastrev', r ? localISODate(new Date()) : ''); set('risk-review', r?.review || govDaysFrom(90));
+    updateRiskPreview();
+    openGovModal('risk-modal');
   }
   async function saveRisk(){
     const desc=document.getElementById('risk-desc').value.trim();
     if(!desc){alert('Please describe the risk');return;}
-    const payload = {desc,category:document.getElementById('risk-cat').value,likelihood:document.getElementById('risk-like').value,impact:document.getElementById('risk-impact').value,owner:document.getElementById('risk-owner').value,review:document.getElementById('risk-review').value||null,controls:document.getElementById('risk-controls').value,actions:document.getElementById('risk-actions').value};
-    const { error } = await db.from('governance_risks').insert([payload]);
+    const id=document.getElementById('risk-edit-id').value;
+    const payload = {desc,category:val('risk-cat'),status:val('risk-status'),date_identified:val('risk-identified')||null,likelihood:val('risk-like'),impact:val('risk-impact'),residual_likelihood:val('risk-rlike')||null,residual_impact:val('risk-rimpact')||null,owner:val('risk-owner'),review:val('risk-review')||null,last_reviewed:val('risk-lastrev')||null,controls:val('risk-controls'),actions:val('risk-actions'),updated_at:new Date().toISOString()};
+    const { error } = id ? await db.from('governance_risks').update(payload).eq('id', id) : await db.from('governance_risks').insert([payload]);
     if (error) { alert('Could not save risk: ' + error.message); return; }
     closeGovModal('risk-modal');
-    ['risk-desc','risk-owner','risk-review','risk-controls','risk-actions'].forEach(id=>document.getElementById(id).value='');
+    await loadGovRisks();
+  }
+  const GOV_STARTER_RISKS = [
+    ['Staffing shortfall (sickness, turnover, recruitment difficulty) leads to late or missed visits','Staffing',4,4,'Rota coverage check; on-call manager; office staff trained to cover calls; ongoing recruitment','Build a bank of trained relief carers; monitor turnover monthly',3,4],
+    ['Missed or significantly late care calls cause harm to a client (e.g. missed medication, food, personal care)','Clinical / care',3,5,'Rota coverage check; care calls prioritised by risk; clients know the out-of-hours number','Record every missed call as an incident; RAG-rate clients by dependency for business continuity',2,5],
+    ['Medication errors (wrong dose, missed or duplicate dose, signing errors)','Medication',3,4,'Medication training; MAR sign-off in SimplifyCare; monthly MAR audits; medication policy','Annual competency assessment for every carer who administers',2,4],
+    ['Abuse or neglect of a client goes unrecognised or unreported','Safeguarding',2,5,'Safeguarding training and policy; whistleblowing policy; supervision; spot checks','Discuss safeguarding at every supervision and team meeting',2,5],
+    ['Lone working — carer harmed, has an accident, or is unaccounted for between visits','Staffing',2,4,'Lone working policy; environmental risk assessments; staff have office and out-of-hours numbers','Check-in procedure for late-night and new-client visits',2,3],
+    ['Falls and moving & handling injuries to clients or staff','Clinical / care',3,4,'Moving & handling training; individual risk assessments; equipment checks','Spot checks of moving & handling practice; falls reviewed monthly',2,4],
+    ['Loss, theft or inappropriate sharing of personal data (lost phone, wrong recipient, weak access control)','Information governance',2,4,'Individual logins with role-based access; auto-logout; private document storage; data protection policy; ICO registration','Annual information governance audit; DSPT submission',2,3],
+    ['Severe weather, pandemic or IT outage disrupts service delivery','Business continuity',3,4,'Business continuity plan; key client priority list; printable care plans','Test the business continuity plan annually',2,4],
+    ['Cash flow pressure from late local authority / client payments or low client numbers','Financial',3,3,'Monthly invoicing; client contract tracking; rate reviews','Track debtor days as a KPI',2,3],
+    ['Failure to meet CQC regulatory requirements (notifications, governance, records) affects rating','Regulatory',2,5,'Governance Hub; audit schedule; policies reviewed annually; Registered Manager in post','Monthly governance meeting between NI and RM',1,5],
+    ['Infection outbreak spreads between clients or staff','Clinical / care',2,4,'IPC training and policy; PPE supply; staff do not work while infectious','Quarterly IPC audit; outbreak plan in business continuity plan',2,3],
+    ['Staff driving between visits — accident, uninsured or unroadworthy vehicle','Staffing',2,4,'Driving licence, business insurance and MOT checked at recruitment','Annual re-check of driving documents',2,3]
+  ];
+  async function seedGovRisks(){
+    if (!confirm('Load 12 starter risks typical for a domiciliary care service?\n\nScores and controls are suggestions — review each one and adjust it to Edge Homecare before relying on it.')) return;
+    const today = localISODate(new Date()), rev = govDaysFrom(90);
+    const rows = GOV_STARTER_RISKS.map(r => ({ desc:r[0], category:r[1], likelihood:String(r[2]), impact:String(r[3]), controls:r[4], actions:r[5], residual_likelihood:String(r[6]), residual_impact:String(r[7]), status:'Open', owner:'Registered Manager', date_identified:today, review:rev }));
+    const { error } = await db.from('governance_risks').insert(rows);
+    if (error) { alert('Could not load starter risks: ' + error.message); return; }
     await loadGovRisks();
   }
   async function deleteGovRisk(id){
@@ -8056,24 +8569,72 @@ const TRAINING_MODULES = [
     if (error) { alert('Could not delete: ' + error.message); return; }
     await loadGovRisks();
   }
-  function renderGovRisks(){ const tb=document.getElementById('risk-table'); if(!govStore.risks.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No risks recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.risks].sort((a,b)=>(parseInt(b.likelihood)*parseInt(b.impact))-(parseInt(a.likelihood)*parseInt(a.impact))).map(r=>{ const score=parseInt(r.likelihood)*parseInt(r.impact); const rating=score>=15?'red':score>=8?'amber':'green'; return `<tr><td style="max-width:200px;font-size:13px;">${r.desc}</td><td><span class="badge badge-blue">${r.category}</span></td><td style="text-align:center;">${r.likelihood}</td><td style="text-align:center;">${r.impact}</td><td style="text-align:center;font-weight:700;">${score}</td><td><span class="badge badge-${rating}">${score>=15?'High':score>=8?'Medium':'Low'}</span></td><td style="font-size:12px;max-width:180px;">${r.controls||'—'}</td><td>${r.owner||'—'}</td><td>${govFmtDate(r.review)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovRisk('${r.id}')">Delete</button></td></tr>`; }).join(''); }
+  function renderGovRisks(){
+    const tb=document.getElementById('risk-table');
+    const filter=(document.getElementById('risk-filter')||{}).value||'live';
+    const list=govStore.risks.filter(r=>filter==='all'||r.status!=='Closed');
+    if(!list.length){tb.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">${govStore.risks.length?'No live risks':'No risks recorded yet — use “Load starter risks” to begin from a template'}</td></tr>`;return;}
+    const today=govToday();
+    tb.innerHTML=[...list].sort((a,b)=>govRiskScores(b).residual-govRiskScores(a).residual).map(r=>{
+      const s=govRiskScores(r); const over=r.review&&new Date(r.review+'T00:00:00')<today&&r.status!=='Closed';
+      const stc=r.status==='Closed'?'badge-blue':r.status==='Monitoring'?'badge-teal':'badge-amber';
+      return `<tr><td style="max-width:240px;font-size:13px;">${escapeHtml(r.desc)}${r.actions?`<div style="font-size:11px;color:var(--muted);margin-top:4px;">Next: ${escapeHtml(r.actions)}</div>`:''}</td><td><span class="badge badge-blue">${escapeHtml(r.category||'—')}</span></td><td style="text-align:center;">${govRiskBadge(s.inherent)}<div style="font-size:10px;color:var(--muted);">${r.likelihood}×${r.impact}</div></td><td style="font-size:12px;max-width:200px;">${escapeHtml(r.controls||'—')}</td><td style="text-align:center;">${govRiskBadge(s.residual)}</td><td>${escapeHtml(r.owner||'—')}</td><td>${govFmtDate(r.review)}${over?' <span class="badge badge-red">Overdue</span>':''}</td><td><span class="badge ${stc}">${r.status||'Open'}</span></td><td style="display:flex;gap:6px;"><button class="btn btn-save" style="padding:4px 10px;font-size:12px;" onclick="openRiskModal('${r.id}')">Review</button><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovRisk('${r.id}')">Delete</button></td></tr>`;
+    }).join('');
+  }
 
-  // Safeguarding
   async function loadGovSafeguarding(){
     const { data, error } = await db.from('governance_safeguarding').select('*').order('date', { ascending: false });
     if (!error) govStore.safeguarding = data || [];
+    renderSfgPathway();
     renderGovSafeguarding();
     updateGovOverview();
   }
+  const SFG_STAGES = [
+    ['Concern raised','Staff member reports to the office the same day. Record facts and the person\'s own words.'],
+    ['Immediate safety','Make the person safe. Call 999 if in danger. Preserve evidence. Remove a staff member from the rota if they are the alleged source.'],
+    ['Referral made','Refer to the local authority safeguarding team (and police if a crime). Notify CQC of abuse or allegations of abuse.'],
+    ['Enquiry (Section 42)','Local authority decides whether to make enquiries. We co-operate, share information and attend meetings.'],
+    ['Protection plan','Agree the outcome and any protection plan with the person, and update their care plan and risk assessment.'],
+    ['Closed & learning','Record the outcome, share learning with the team, and update policies or training where needed.']
+  ];
+  function renderSfgPathway(){
+    const counts = SFG_STAGES.map(([name]) => govStore.safeguarding.filter(s => (s.stage||'Concern raised') === name && !/Closed/.test(s.status||'')).length);
+    document.getElementById('sfg-pathway').innerHTML = SFG_STAGES.map(([name, txt], i) => `<div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:${counts[i]?'#fef3c7':'white'};"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-weight:700;font-size:13px;color:var(--navy);">${i+1}. ${name}</span>${counts[i]?`<span class="badge badge-amber">${counts[i]}</span>`:''}</div><div style="font-size:12px;color:var(--muted);line-height:1.4;">${txt}</div></div>`).join('');
+  }
+  function openSfgModal(id, prefill){
+    govLoadLookups();
+    const s = id ? govStore.safeguarding.find(x => x.id === id) : (prefill || null);
+    document.getElementById('sfg-stage').innerHTML = SFG_STAGES.map(([n]) => `<option>${n}</option>`).join('');
+    document.getElementById('sfg-edit-id').value = id || '';
+    document.getElementById('sfg-incident-id').value = s?.incident_id || '';
+    document.getElementById('sfg-modal-title').textContent = id ? 'Safeguarding — update' : 'Log safeguarding concern';
+    const set=(fid,v)=>document.getElementById(fid).value = v ?? '';
+    set('sfg-date', s?.date || localISODate(new Date())); set('sfg-resident', s?.resident); set('sfg-type', s?.type || 'Physical abuse');
+    set('sfg-source', s?.alleged_source); set('sfg-by', s?.by); set('sfg-stage', s?.stage || 'Concern raised');
+    set('sfg-details', s?.details); set('sfg-immediate', s?.immediate_actions); set('sfg-views', s?.person_views); set('sfg-capacity', s?.capacity_considered);
+    set('sfg-la', s?.local_authority); set('sfg-referred', s?.referred || 'Local authority safeguarding');
+    set('sfg-refdt', s?.referral_datetime ? new Date(s.referral_datetime).toISOString().slice(0,16) : '');
+    set('sfg-laref', s?.la_reference); set('sfg-police', s?.police_involved); set('sfg-cqcdate', s?.cqc_notified_date); set('sfg-cqcref', s?.cqc_reference);
+    set('sfg-status', s?.status || 'Open'); set('sfg-closed', s?.closed_date); set('sfg-outcome', s?.outcome); set('sfg-learning', s?.learning);
+    openGovModal('sfg-modal');
+  }
   async function saveSafeguarding(){
-    const date=document.getElementById('sfg-date').value;
-    if(!date){alert('Please enter the date');return;}
-    const payload = {date,resident:document.getElementById('sfg-resident').value,type:document.getElementById('sfg-type').value,referred:document.getElementById('sfg-referred').value,by:document.getElementById('sfg-by').value,status:document.getElementById('sfg-status').value,details:document.getElementById('sfg-details').value,outcome:document.getElementById('sfg-outcome').value,learning:document.getElementById('sfg-learning').value};
-    const { error } = await db.from('governance_safeguarding').insert([payload]);
-    if (error) { alert('Could not save referral: ' + error.message); return; }
+    const date=val('sfg-date');
+    if(!date){alert('Please enter the date of the concern');return;}
+    const id=val('sfg-edit-id'), incidentId=val('sfg-incident-id')||null;
+    let status=val('sfg-status'), closed=val('sfg-closed')||null, stage=val('sfg-stage');
+    if (/Closed/.test(status) && !closed) closed = localISODate(new Date());
+    if (/Closed/.test(status)) stage = 'Closed & learning';
+    const refdt = val('sfg-refdt');
+    const payload = {date,resident:val('sfg-resident'),type:val('sfg-type'),alleged_source:val('sfg-source')||null,by:val('sfg-by'),stage,details:val('sfg-details'),immediate_actions:val('sfg-immediate'),person_views:val('sfg-views'),capacity_considered:val('sfg-capacity')||null,local_authority:val('sfg-la')||null,referred:val('sfg-referred'),referral_datetime:refdt?new Date(refdt).toISOString():null,la_reference:val('sfg-laref')||null,police_involved:val('sfg-police')||null,cqc_notified_date:val('sfg-cqcdate')||null,cqc_reference:val('sfg-cqcref')||null,status,closed_date:closed,outcome:val('sfg-outcome'),learning:val('sfg-learning'),incident_id:incidentId,updated_at:new Date().toISOString()};
+    let res;
+    if (id) res = await db.from('governance_safeguarding').update(payload).eq('id', id).select().single();
+    else res = await db.from('governance_safeguarding').insert([payload]).select().single();
+    if (res.error) { alert('Could not save safeguarding record: ' + res.error.message); return; }
+    if (incidentId && res.data) await db.from('incidents').update({ safeguarding_id: res.data.id, safeguarding_referral: 'Yes' }).eq('id', incidentId);
     closeGovModal('sfg-modal');
-    ['sfg-date','sfg-resident','sfg-by','sfg-details','sfg-outcome','sfg-learning'].forEach(id=>document.getElementById(id).value='');
     await loadGovSafeguarding();
+    if (incidentId) { loadGovIncidents(); if (document.getElementById('page-incidents').classList.contains('active')) loadIncidents(); }
   }
   async function deleteGovSafeguarding(id){
     if(!confirm('Delete this safeguarding record?')) return;
@@ -8081,7 +8642,7 @@ const TRAINING_MODULES = [
     if (error) { alert('Could not delete: ' + error.message); return; }
     await loadGovSafeguarding();
   }
-  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding referrals recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${govFmtDate(s.date)}</td><td>${s.resident||'—'}</td><td><span class="badge badge-red">${s.type}</span></td><td>${s.referred}</td><td>${s.by||'—'}</td><td style="font-size:12px;">${s.outcome||'—'}</td><td style="font-size:12px;">${s.learning||'—'}</td><td>${govStatusBadge(s.status)}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovSafeguarding('${s.id}')">Delete</button></td></tr>`).join(''); }
+  function renderGovSafeguarding(){ const tb=document.getElementById('sfg-table'); if(!govStore.safeguarding.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No safeguarding concerns recorded</td></tr>';return;} tb.innerHTML=[...govStore.safeguarding].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>{ const needCqc=govSfgNeedsCqc(s); return `<tr><td>${govFmtDate(s.date)}</td><td>${escapeHtml(s.resident||'—')}</td><td><span class="badge badge-red">${escapeHtml(s.type||'—')}</span></td><td>${escapeHtml(s.local_authority||'—')}</td><td style="font-size:12px;">${escapeHtml(s.la_reference||'—')}</td><td style="font-size:12px;">${escapeHtml(s.stage||'Concern raised')}</td><td>${s.cqc_notified_date?govFmtDate(s.cqc_notified_date):needCqc?'<span class="badge badge-amber">Not recorded</span>':'—'}</td><td>${govStatusBadge(s.status)}</td><td style="display:flex;gap:6px;"><button class="btn btn-save" style="padding:4px 10px;font-size:12px;" onclick="openSfgModal('${s.id}')">Update</button><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovSafeguarding('${s.id}')">Delete</button></td></tr>`; }).join(''); }
 
   // Meetings
   async function loadGovMeetings(){
@@ -8121,13 +8682,202 @@ const TRAINING_MODULES = [
   function renderGovMeetings(){ const tb=document.getElementById('meeting-table'); if(!govStore.meetings.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">No meeting minutes recorded yet</td></tr>';return;} tb.innerHTML=[...govStore.meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>`<tr><td>${govFmtDate(m.date)}</td><td><span class="badge badge-blue">${m.type}</span></td><td>${m.chair||'—'}</td><td style="font-size:12px;">${m.attendees||'—'}</td><td style="font-size:12px;max-width:160px;">${m.decisions||'—'}</td><td style="font-size:12px;max-width:160px;">${m.actions||'—'}</td><td>${govFmtDate(m.next)}</td><td>${m.filePath?`<button onclick="openMeetingFile('${m.filePath}')" style="background:none;border:none;color:var(--teal);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;">📎 View</button>`:'—'}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteGovMeeting('${m.id}')">Delete</button></td></tr>`).join(''); }
 
   // Init governance
-  function initGovernance(){
+  // ── AUDIT & QA SCHEDULE ──
+  const GOV_SCHEDULE_TEMPLATE = [
+    ['audit','MAR chart audit','Monthly','Safe','Registered Manager','Check every client\'s MAR sign-offs in SimplifyCare against their medication schedule: gaps, refusal codes, PRN rationale, time-critical medicines, stock where held.','Medication audit record + actions'],
+    ['audit','Care plan & risk assessment audit','Monthly','Effective','Registered Manager','Audit at least a quarter of care plans each month (every plan at least quarterly) with the 32-point care plan audit tool. Check reviews are in date and reflect current needs.','Care plan audit scores + actions'],
+    ['audit','Daily records audit','Monthly','Effective','Registered Manager','Sample daily notes for each client: person-centred language, tasks match agreed outcomes, concerns escalated, times recorded.','Audit record + staff feedback'],
+    ['audit','Call monitoring audit','Monthly','Responsive','Care Coordinator','Use the Rota Coverage Check against commissioned visits; review late and missed calls, reasons, and whether anyone was affected.','Late / missed call figures for KPIs'],
+    ['audit','Incidents & safeguarding analysis','Monthly','Safe','Registered Manager','Review the month\'s incidents and safeguarding: themes, repeats, notifications sent, Duty of Candour met, lessons shared with staff.','Monthly analysis + governance meeting minutes'],
+    ['audit','Training compliance audit','Monthly','Effective','Registered Manager','Review the training compliance matrix; chase expired or due mandatory training; check Care Certificate progress for new starters.','Training matrix snapshot'],
+    ['audit','Staff files / safer recruitment audit','Quarterly','Well-led','Nominated Individual','Check each staff file: DBS, right to work and expiry dates, two references, full employment history with gaps explained, ID, contract, induction.','Staff file audit + actions'],
+    ['audit','Supervision & appraisal audit','Quarterly','Well-led','Nominated Individual','Confirm every carer has had supervision within policy timescales and an in-date annual appraisal.','Supervision register snapshot'],
+    ['audit','Infection control audit','Quarterly','Safe','Registered Manager','PPE stock and use, hand hygiene observations, waste handling, outbreak readiness, IPC training compliance.','IPC audit + actions'],
+    ['audit','Consent & MCA audit','Quarterly','Effective','Registered Manager','Consent forms signed and current; where capacity is in doubt, MCA assessments and best-interest records exist; LPA details verified.','Audit record'],
+    ['audit','Complaints review','Quarterly','Responsive','Nominated Individual','Review response timescales, outcomes, learning and themes alongside compliments.','Quarterly review summary'],
+    ['audit','Health & safety audit','Six-monthly','Safe','Registered Manager','Home environment risk assessments current, lone working procedure followed, client equipment servicing (e.g. hoists) confirmed, driving documents for staff who drive.','H&S audit + actions'],
+    ['audit','Information governance audit','Annual','Well-led','Nominated Individual','Data Security & Protection Toolkit, SimplifyCare access permissions, leavers removed, retention schedule applied, ICO registration renewed.','DSPT submission + audit'],
+    ['audit','Policy review audit','Annual','Well-led','Nominated Individual','Every policy in date and reflecting current law and guidance; staff have read and signed updated policies.','Policy register'],
+    ['qa','Unannounced spot checks','Quarterly','Safe','Care Coordinator','Observe every carer at least once a quarter: punctuality, ID, PPE, hand hygiene, follows the care plan, medication and MAR, dignity, records.','Spot check records for each carer'],
+    ['qa','Telephone quality monitoring','Monthly','Caring','Care Coordinator','Call a sample of clients or families each month so that every client is contacted at least quarterly.','Monitoring call records'],
+    ['qa','Client review visits','Six-monthly','Responsive','Registered Manager','Review each care plan in person with the client and family — and whenever needs change.','Signed, reviewed care plans'],
+    ['qa','Medication competency observations','Annual','Safe','Registered Manager','Observe each carer administering medication and record the outcome in the competency register.','Medication competency register'],
+    ['qa','Client & family satisfaction survey','Annual','Caring','Nominated Individual','Send the survey, analyse results and publish a “You said, we did” summary.','Survey results + action plan'],
+    ['qa','Staff survey','Annual','Well-led','Nominated Individual','Anonymous survey on support, training, workload and culture.','Survey results + action plan'],
+    ['qa','Governance meeting (NI & RM)','Monthly','Well-led','Nominated Individual','Work through this hub: KPIs, audits, quality checks, incidents, safeguarding, complaints, risks and actions. Minute the decisions.','Meeting minutes'],
+    ['qa','Quality report to Nominated Individual','Quarterly','Well-led','Registered Manager','Written report summarising performance, risks, learning and improvements for the quarter.','Quarterly quality report'],
+    ['qa','Mock inspection / SAF self-assessment','Six-monthly','Well-led','Nominated Individual','Self-assess against the five key questions and quality statements, gather evidence, and update the improvement plan.','Self-assessment + improvement plan']
+  ];
+  async function loadGovSchedule(){
+    const { data, error } = await db.from('governance_schedule').select('*').order('next_due', { ascending: true, nullsFirst: false });
+    if (!error) govStore.schedule = data || [];
+    document.getElementById('sch-seed-btn').style.display = govStore.schedule.length ? 'none' : '';
+    renderGovSchedule();
+    updateGovOverview();
+  }
+  function renderGovSchedule(){
+    const tb = document.getElementById('sch-table');
+    const f = (document.getElementById('sch-filter')||{}).value || 'all';
+    const today = govToday(), soon = new Date(today.getTime() + 14*86400000), d8 = s => new Date(s + 'T00:00:00');
+    let list = govStore.schedule;
+    if (f === 'audit' || f === 'qa') list = list.filter(s => s.kind === f);
+    if (f === 'due') list = list.filter(s => s.active !== false && s.next_due && d8(s.next_due) <= soon);
+    if (!list.length) { tb.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted);">${govStore.schedule.length ? 'Nothing matches this filter' : 'No schedule set up yet — use “Load recommended schedule” to start from a domiciliary care template'}</td></tr>`; return; }
+    const order = { Safe:0, Effective:1, Caring:2, Responsive:3, 'Well-led':4 };
+    tb.innerHTML = [...list].sort((a,b) => (a.active===false) - (b.active===false) || (a.next_due||'9999').localeCompare(b.next_due||'9999') || (order[a.saf]??9) - (order[b.saf]??9)).map(s => {
+      let st;
+      if (s.active === false) st = '<span class="badge badge-blue">Paused</span>';
+      else if (!s.next_due) st = '<span class="badge badge-blue">Not scheduled</span>';
+      else if (d8(s.next_due) < today) st = '<span class="badge badge-red">Overdue</span>';
+      else if (d8(s.next_due) <= soon) st = '<span class="badge badge-amber">Due soon</span>';
+      else st = '<span class="badge badge-green">On track</span>';
+      return `<tr style="${s.active===false?'opacity:.55;':''}"><td style="max-width:260px;"><strong style="font-size:13px;">${escapeHtml(s.title)}</strong>${s.method?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${escapeHtml(s.method)}</div>`:''}</td><td><span class="badge ${s.kind==='qa'?'badge-teal':'badge-blue'}">${s.kind==='qa'?'Quality check':'Audit'}</span></td><td>${escapeHtml(s.frequency||'—')}</td><td>${escapeHtml(s.saf||'—')}</td><td style="font-size:12px;">${escapeHtml(s.owner||'—')}</td><td>${govFmtDate(s.last_done)}</td><td>${govFmtDate(s.next_due)}</td><td>${st}</td><td style="display:flex;gap:6px;"><button class="btn btn-save" style="padding:4px 10px;font-size:12px;" onclick="recordScheduleItem('${s.id}')">Record</button><button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="openScheduleModal('${s.id}')">Edit</button></td></tr>`;
+    }).join('');
+  }
+  function recordScheduleItem(id){
+    const s = govStore.schedule.find(x => x.id === id); if (!s) return;
+    if (/medication competency/i.test(s.title)) { alert('Medication competency is recorded per carer in Medication governance → competency register.\n\nThe schedule will be marked as done for today.'); completeScheduleItem(id, localISODate(new Date())); openMedCompModal(); return; }
+    if (/governance meeting/i.test(s.title)) { completeScheduleItem(id, localISODate(new Date())); openGovModal('meeting-modal'); return; }
+    if (s.kind === 'qa') openQAModal(s); else openAuditModal(s);
+  }
+  async function completeScheduleItem(id, doneDate, nextOverride){
+    const s = govStore.schedule.find(x => x.id === id); if (!s) return;
+    const next = nextOverride || govAddFreq(doneDate, s.frequency);
+    const { error } = await db.from('governance_schedule').update({ last_done: doneDate, next_due: next, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { alert('Saved, but the schedule could not be updated: ' + error.message); return; }
+    await loadGovSchedule();
+  }
+  function openScheduleModal(id){
+    govLoadLookups();
+    const s = id ? govStore.schedule.find(x => x.id === id) : null;
+    document.getElementById('sch-edit-id').value = id || '';
+    document.getElementById('sch-modal-title').textContent = s ? 'Edit schedule item' : 'Add schedule item';
+    const set=(fid,v)=>document.getElementById(fid).value = v ?? '';
+    set('sch-title', s?.title); set('sch-kind', s?.kind || 'audit'); set('sch-freq', s?.frequency || 'Monthly'); set('sch-saf', s?.saf || 'Safe');
+    set('sch-owner', s?.owner); set('sch-last', s?.last_done); set('sch-next', s?.next_due || govDaysFrom(30));
+    set('sch-method', s?.method); set('sch-evidence', s?.evidence); set('sch-active', s && s.active === false ? 'false' : 'true');
+    const modal = document.getElementById('schedule-modal');
+    let del = modal.querySelector('#sch-del-btn');
+    if (!del) { del = document.createElement('button'); del.id='sch-del-btn'; del.className='btn btn-danger'; del.textContent='Delete'; del.style.marginRight='auto'; del.onclick=()=>deleteScheduleItem(val('sch-edit-id')); modal.querySelector('.form-actions').prepend(del); }
+    del.style.display = s ? '' : 'none';
+    openGovModal('schedule-modal');
+  }
+  async function saveScheduleItem(){
+    const title = val('sch-title').trim(); if (!title) { alert('Please enter a title'); return; }
+    const id = val('sch-edit-id');
+    const payload = { title, kind: val('sch-kind'), frequency: val('sch-freq'), saf: val('sch-saf'), owner: val('sch-owner'), last_done: val('sch-last') || null, next_due: val('sch-next') || null, method: val('sch-method'), evidence: val('sch-evidence'), active: val('sch-active') === 'true', updated_at: new Date().toISOString() };
+    const { error } = id ? await db.from('governance_schedule').update(payload).eq('id', id) : await db.from('governance_schedule').insert([payload]);
+    if (error) { alert('Could not save: ' + error.message); return; }
+    closeGovModal('schedule-modal');
+    await loadGovSchedule();
+  }
+  async function deleteScheduleItem(id){
+    if (!id || !confirm('Delete this schedule item? Past audit and quality-check records are kept.')) return;
+    const { error } = await db.from('governance_schedule').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    closeGovModal('schedule-modal');
+    await loadGovSchedule();
+  }
+  async function seedGovSchedule(){
+    if (!confirm(`Load the recommended audit & quality assurance schedule (${GOV_SCHEDULE_TEMPLATE.length} items)?\n\nFirst due dates are staggered so they don't all fall at once. You can edit, pause or delete any item afterwards.`)) return;
+    const offset = { Weekly:7, Monthly:14, Quarterly:30, 'Six-monthly':60, Annual:90 };
+    const rows = GOV_SCHEDULE_TEMPLATE.map(([kind,title,frequency,saf,owner,method,evidence], i) => ({ kind, title, frequency, saf, owner, method, evidence, active: true, next_due: govDaysFrom((offset[frequency]||30) + (i % 5)) }));
+    const { error } = await db.from('governance_schedule').insert(rows);
+    if (error) { alert('Could not load schedule: ' + error.message); return; }
+    await loadGovSchedule();
+  }
+
+  // ── QUALITY CHECKS ──
+  const QA_CHECKLISTS = {
+    'Unannounced spot check': ['Arrived within the agreed time window','Wearing ID badge and uniform','Correct PPE used','Hand hygiene followed','Followed the care plan and agreed tasks','Medication given and MAR completed correctly','Treated the client with dignity and respect','Offered choice and sought consent','Daily notes completed accurately','Home left safe and secure'],
+    'Telephone quality monitoring': ['Carers arrive on time','Carers stay the full visit','Treated with dignity and respect','Know who is coming','Happy with the care received','Medication support is right','Know how to raise a concern or complaint'],
+    'Client review visit': ['Care plan reflects current needs','Risk assessments up to date','Consent reviewed and signed','Client / family involved in the review','Agreed outcomes are being met','Changes agreed and recorded']
+  };
+  function renderQAChecklist(){
+    const items = QA_CHECKLISTS[val('qa-type')] || [];
+    const box = document.getElementById('qa-checklist');
+    box.closest('.form-group').style.display = items.length ? '' : 'none';
+    box.innerHTML = items.map((t,i) => `<label style="display:flex;align-items:flex-start;gap:6px;font-weight:400;"><input type="checkbox" class="qa-cb" data-item="${escapeHtml(t)}" checked style="width:auto;margin-top:2px;"> ${escapeHtml(t)}</label>`).join('');
+  }
+  function openQAModal(scheduleItem){
+    govLoadLookups();
+    ['qa-client','qa-staff','qa-findings','qa-feedback','qa-actions'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('qa-date').value = localISODate(new Date());
+    document.getElementById('qa-rating').value = 'Good';
+    document.getElementById('qa-by').value = scheduleItem?.owner || '';
+    document.getElementById('qa-schedule-id').value = scheduleItem ? scheduleItem.id : '';
+    document.getElementById('qa-to-actions').checked = true;
+    const t = scheduleItem?.title || '';
+    const typeMap = [[/spot/i,'Unannounced spot check'],[/telephone|monitoring call/i,'Telephone quality monitoring'],[/review visit/i,'Client review visit'],[/satisfaction|client.*survey/i,'Client / family satisfaction survey'],[/staff survey/i,'Staff survey'],[/mock|self-assess/i,'Mock inspection / self-assessment']];
+    const hit = typeMap.find(([re]) => re.test(t));
+    document.getElementById('qa-type').value = hit ? hit[1] : (scheduleItem ? 'Other' : 'Unannounced spot check');
+    const note = document.getElementById('qa-schedule-note');
+    if (scheduleItem) { note.style.display = ''; note.innerHTML = `Completing scheduled check: <strong>${escapeHtml(scheduleItem.title)}</strong>`; } else note.style.display = 'none';
+    renderQAChecklist();
+    openGovModal('qa-modal');
+  }
+  async function loadGovQA(){
+    const { data, error } = await db.from('governance_qa_checks').select('*').order('date', { ascending: false });
+    if (!error) govStore.qa = data || [];
+    renderGovQA();
+    updateGovOverview();
+  }
+  function renderGovQA(){
+    const thisMonth = localISODate(new Date()).slice(0,7), ninety = govDaysFrom(-90);
+    const recent = govStore.qa.filter(q => (q.date||'') >= ninety);
+    document.getElementById('qa-month').textContent = govStore.qa.filter(q => (q.date||'').startsWith(thisMonth)).length;
+    const spots = recent.filter(q => /spot/i.test(q.check_type||''));
+    document.getElementById('qa-spot').textContent = spots.length;
+    document.getElementById('qa-ri').textContent = recent.filter(q => /Requires|Inadequate/.test(q.rating||'')).length;
+    const seen = new Set(spots.map(q => (q.staff_observed||'').trim().toLowerCase()));
+    const carers = govCarers();
+    document.getElementById('qa-nospot').textContent = carers.length ? carers.filter(c => !seen.has(c.name.trim().toLowerCase())).length : '—';
+    const tb = document.getElementById('qa-table');
+    if (!govStore.qa.length) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No quality checks recorded yet</td></tr>'; return; }
+    tb.innerHTML = govStore.qa.map(q => {
+      const cl = q.checklist && typeof q.checklist === 'object' ? Object.entries(q.checklist) : [];
+      const missed = cl.filter(([,v]) => !v).map(([k]) => k);
+      const rc = /Outstanding|Good/.test(q.rating||'') ? 'badge-green' : /Requires/.test(q.rating||'') ? 'badge-amber' : 'badge-red';
+      return `<tr><td>${govFmtDate(q.date)}</td><td><span class="badge badge-teal">${escapeHtml(q.check_type||'—')}</span></td><td>${escapeHtml(q.client||'—')}</td><td>${escapeHtml(q.staff_observed||'—')}</td><td>${escapeHtml(q.carried_out_by||'—')}</td><td><span class="badge ${rc}">${escapeHtml(q.rating||'—')}</span></td><td style="font-size:12px;max-width:240px;">${escapeHtml(q.findings||'')}${cl.length?`<div style="color:${missed.length?'#b45309':'var(--muted)'};margin-top:3px;">${cl.length-missed.length}/${cl.length} standards met${missed.length?': not met — '+escapeHtml(missed.join('; ')):''}</div>`:''}${q.feedback?`<div style="margin-top:3px;font-style:italic;">“${escapeHtml(q.feedback)}”</div>`:''}</td><td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteQACheck('${q.id}')">Delete</button></td></tr>`;
+    }).join('');
+  }
+  async function saveQACheck(){
+    const date = val('qa-date'); if (!date) { alert('Please enter the date'); return; }
+    const checklist = {}; document.querySelectorAll('#qa-checklist .qa-cb').forEach(cb => checklist[cb.dataset.item] = cb.checked);
+    const scheduleId = val('qa-schedule-id') || null;
+    const payload = { schedule_id: scheduleId, check_type: val('qa-type'), date, client: val('qa-client'), staff_observed: val('qa-staff'), carried_out_by: val('qa-by'), rating: val('qa-rating'), checklist, findings: val('qa-findings'), feedback: val('qa-feedback'), actions: val('qa-actions') };
+    const { error } = await db.from('governance_qa_checks').insert([payload]);
+    if (error) { alert('Could not save: ' + error.message); return; }
+    if (scheduleId) await completeScheduleItem(scheduleId, date);
+    if (document.getElementById('qa-to-actions').checked && payload.actions) {
+      await createGovActionsFromText(payload.actions, 'Quality check', /Inadequate/.test(payload.rating) ? 'High' : /Requires/.test(payload.rating) ? 'Medium' : 'Low', `${payload.check_type} — ${govFmtDate(date)}${payload.staff_observed ? ' — ' + payload.staff_observed : ''}`);
+    }
+    closeGovModal('qa-modal');
+    await loadGovQA();
+  }
+  async function deleteQACheck(id){
+    if (!confirm('Delete this quality check record?')) return;
+    const { error } = await db.from('governance_qa_checks').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadGovQA();
+  }
+
+  async function loadGovIncidents(){
+    const { data, error } = await db.from('incidents').select('*');
+    if (!error) govStore.incidents = (data || []).sort((a,b) => new Date(incDate(b) || b.created_at) - new Date(incDate(a) || a.created_at));
+    renderMedGovernance();
+    updateGovOverview();
+  }
+
+  async function initGovernance(){
     initGovKPIMonth();
-    document.getElementById('kpi-month').value=new Date().toISOString().slice(0,7);
+    document.getElementById('kpi-month').value=localISODate(new Date()).slice(0,7);
+    await govLoadLookups();
     updateGovOverview();
     loadGovPolicies(); loadGovKPIs(); loadGovAudits(); loadGovActions();
     loadGovComplaints(); loadGovMed(); loadGovSupervisions();
     loadGovRisks(); loadGovSafeguarding(); loadGovMeetings();
+    loadGovSchedule(); loadGovQA(); loadGovIncidents();
   }
 
   // ══════════════════════════════════════════════
