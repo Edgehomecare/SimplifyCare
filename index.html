@@ -296,7 +296,7 @@
 
 <!-- FAMILY PORTAL SCREEN (public, token-based, no login) -->
 <div id="family-portal-screen" style="display:none;min-height:100vh;background:var(--bg,#f5f7fa);align-items:center;justify-content:center;padding:20px;">
-  <div style="max-width:420px;width:100%;margin:0 auto;">
+  <div style="max-width:560px;width:100%;margin:0 auto;">
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:22px;font-weight:800;color:var(--teal,#1F7A6B);">SimplifyCare</div>
       <div style="font-size:13px;color:var(--muted,#6b7280);">Family visit updates</div>
@@ -314,6 +314,13 @@
       <h2 style="margin:0 0 4px;font-size:18px;">Recent visits</h2>
       <p style="margin:0 0 18px;font-size:13px;color:var(--muted,#6b7280);">Last 60 days</p>
       <div id="fp-visits-list"></div>
+    </div>
+
+    <div id="fp-notes-card" style="display:none;margin-top:16px;background:white;border-radius:14px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+      <h2 style="margin:0 0 4px;font-size:18px;">Daily notes</h2>
+      <p style="margin:0 0 10px;font-size:13px;color:var(--muted,#6b7280);">Last 14 days, written by the care team</p>
+      <div id="fp-notes-list"></div>
+      <p style="margin:14px 0 0;font-size:12px;color:var(--muted,#6b7280);">Questions about anything here? Please call the office rather than asking carers during visits.</p>
     </div>
   </div>
 </div>
@@ -2440,6 +2447,9 @@
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Mood & Behaviour" class="n-category-cb"> Mood & Behaviour</label>
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Medical" class="n-category-cb"> Medical</label>
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Social" class="n-category-cb"> Social</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Skin integrity" class="n-category-cb"> Skin integrity / body map</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Incident" class="n-category-cb"> Incident</label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Safeguarding concern" class="n-category-cb"> Safeguarding concern</label>
         </div>
       </div>
       <div class="form-group full">
@@ -2452,6 +2462,12 @@
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">Select some text first, then tap Italic or Highlight to mark it.</div>
       </div>
       <div class="form-group"><label>Staff Member</label><input id="n-staff" placeholder="Your name" /></div>
+      <div class="form-group full">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;cursor:pointer;">
+          <input type="checkbox" id="n-share-family" checked style="width:auto;margin-top:3px;">
+          <span><strong>Family can see this note</strong><br><span style="font-size:12px;color:var(--muted);">Only applies where the client's family portal includes daily notes. Untick for anything not suitable for family. Safeguarding, incident and skin integrity notes are never shared.</span></span>
+        </label>
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('note-modal')">Cancel</button>
@@ -3769,7 +3785,92 @@ const TRAINING_MODULES = [
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="regenerateFamilyPortal('${r.id}')">Regenerate link &amp; PIN</button>
         <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;color:var(--red);" onclick="disableFamilyPortal('${r.id}')">Turn off</button>
+      </div>
+      ${renderFamilyNotesSection(r)}`;
+    loadFamilyAccessLog(r.id);
+  }
+
+  // ── Daily notes sharing (requires a verified LPA) ──
+  function renderFamilyNotesSection(r) {
+    const v = x => escapeHtml(x || '');
+    const verified = !!r.lpa_verified_date;
+    const on = !!r.family_portal_notes_enabled;
+    const statusLine = on
+      ? `<span class="badge badge-green">Daily notes shared</span> <span style="font-size:12px;">since ${formatDate((r.family_portal_notes_enabled_at || '').slice(0,10))} (only notes written from then on, last 14 days)</span>`
+      : `<span class="badge badge-amber">Daily notes not shared</span>`;
+    return `
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);color:var(--navy);">
+        <div style="font-weight:700;margin-bottom:6px;">Daily notes for an attorney</div>
+        <div style="margin-bottom:10px;">${statusLine}</div>
+        <p style="margin:0 0 10px;font-size:12px;color:var(--muted);">Record the LPA before sharing. Check it on the OPG register or see the original or a certified copy, and save a copy in this client's Documents.</p>
+        <div class="form-grid" style="margin-bottom:8px;">
+          <div class="form-group"><label>LPA type</label>
+            <select id="lpa-type">
+              <option value="">— Select —</option>
+              <option ${r.lpa_type==='Health and Welfare'?'selected':''}>Health and Welfare</option>
+              <option ${r.lpa_type==='Property and Financial Affairs'?'selected':''}>Property and Financial Affairs</option>
+              <option ${r.lpa_type==='Both'?'selected':''}>Both</option>
+            </select></div>
+          <div class="form-group"><label>Attorney name</label><input id="lpa-holder" value="${v(r.lpa_holder_name)}" /></div>
+          <div class="form-group"><label>OPG reference</label><input id="lpa-opg" value="${v(r.lpa_opg_reference)}" /></div>
+          <div class="form-group"><label>Date verified</label><input type="date" id="lpa-vdate" value="${v(r.lpa_verified_date)}" /></div>
+          <div class="form-group"><label>Verified by</label><input id="lpa-vby" value="${v(r.lpa_verified_by)}" /></div>
+          <div class="form-group full"><label>Restrictions or instructions in the LPA</label><textarea id="lpa-restrictions" style="min-height:50px;">${v(r.lpa_restrictions)}</textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="saveLpaDetails('${r.id}')">Save LPA details</button>
+          ${on
+            ? `<button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;color:var(--red);" onclick="setFamilyNotesSharing('${r.id}', false)">Stop sharing daily notes</button>`
+            : `<button class="btn btn-save" style="padding:5px 10px;font-size:12px;" ${verified?'':'disabled title="Save a verified date first"'} onclick="setFamilyNotesSharing('${r.id}', true)">Share daily notes</button>`}
+        </div>
+        <div style="margin-top:12px;font-weight:600;font-size:12px;">Recent portal views</div>
+        <div id="fp-access-log" style="font-size:12px;color:var(--muted);">Loading...</div>
       </div>`;
+  }
+
+  async function saveLpaDetails(residentId) {
+    const payload = {
+      lpa_type: document.getElementById('lpa-type').value || null,
+      lpa_holder_name: document.getElementById('lpa-holder').value.trim() || null,
+      lpa_opg_reference: document.getElementById('lpa-opg').value.trim() || null,
+      lpa_verified_date: document.getElementById('lpa-vdate').value || null,
+      lpa_verified_by: document.getElementById('lpa-vby').value.trim() || null,
+      lpa_restrictions: document.getElementById('lpa-restrictions').value.trim() || null
+    };
+    if (payload.lpa_verified_date && !payload.lpa_verified_by) { showToast('Please add who verified the LPA.', true); return; }
+    if (!payload.lpa_verified_date) payload.family_portal_notes_enabled = false; // no verification, no sharing
+    const { data, error } = await db.from('residents').update(payload).eq('id', residentId).select().single();
+    if (error) { showToast('LPA details not saved: ' + error.message, true); return; }
+    showToast('LPA details saved');
+    renderFamilyPortalCard(data);
+  }
+
+  async function setFamilyNotesSharing(residentId, turnOn) {
+    if (turnOn) {
+      const type = document.getElementById('lpa-type').value;
+      if (type !== 'Health and Welfare' && type !== 'Both') {
+        if (!confirm('This LPA is not recorded as Health and Welfare. A Property and Financial Affairs LPA alone does not give a right to care records. Only continue if the client has consented or a best-interests decision is recorded. Continue?')) return;
+      }
+      if (!confirm('Share daily notes with the family portal? Only notes written from now on will be shown. Remind carers that the attorney may read them.')) return;
+    } else if (!confirm('Stop sharing daily notes? The family will still see visit times.')) return;
+    const payload = turnOn
+      ? { family_portal_notes_enabled: true, family_portal_notes_enabled_at: new Date().toISOString() }
+      : { family_portal_notes_enabled: false };
+    const { data, error } = await db.from('residents').update(payload).eq('id', residentId).select().single();
+    if (error) { showToast('Could not update: ' + error.message, true); return; }
+    showToast(turnOn ? 'Daily notes now shared' : 'Daily notes no longer shared');
+    renderFamilyPortalCard(data);
+  }
+
+  async function loadFamilyAccessLog(residentId) {
+    const el = document.getElementById('fp-access-log');
+    if (!el) return;
+    const { data, error } = await db.from('family_portal_access_log')
+      .select('accessed_at, notes_returned').eq('resident_id', residentId)
+      .order('accessed_at', { ascending: false }).limit(5);
+    if (error) { el.textContent = 'Could not load views.'; return; }
+    if (!data || !data.length) { el.textContent = 'No views yet.'; return; }
+    el.innerHTML = data.map(a => `<div>${new Date(a.accessed_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}: ${a.notes_returned} note${a.notes_returned === 1 ? '' : 's'} shown</div>`).join('');
   }
 
   async function enableFamilyPortal(residentId) {
@@ -3804,23 +3905,45 @@ const TRAINING_MODULES = [
 
     const btn = document.getElementById('fp-submit-btn');
     btn.disabled = true; btn.textContent = 'Checking...';
-    const { data, error } = await db.rpc('get_family_portal_visits', { p_token: window._familyPortalToken, p_pin: pin });
+    const [visitsRes, notesRes] = await Promise.all([
+      db.rpc('get_family_portal_visits', { p_token: window._familyPortalToken, p_pin: pin }),
+      db.rpc('get_family_portal_notes', { p_token: window._familyPortalToken, p_pin: pin })
+    ]);
     btn.disabled = false; btn.textContent = 'View visits';
+    const { data, error } = visitsRes;
+    const notes = (!notesRes.error && notesRes.data) ? notesRes.data : [];
 
     if (error) { errEl.textContent = 'Something went wrong. Please try again.'; errEl.style.display = 'block'; return; }
-    if (!data || !data.length) {
+    if ((!data || !data.length) && !notes.length) {
       // Could be a wrong PIN, OR a correct PIN with genuinely no visits yet — treat as wrong PIN for safety, since
       // we can't tell the difference without leaking whether the token/pin combination is valid.
       errEl.textContent = 'That PIN doesn\'t match this link, or there are no visits recorded yet. Please check the PIN and try again.';
       errEl.style.display = 'block';
       return;
     }
-    renderFamilyVisits(data);
+    renderFamilyVisits(data || []);
+    renderFamilyNotes(notes);
+  }
+
+  function renderFamilyNotes(notes) {
+    const card = document.getElementById('fp-notes-card');
+    if (!notes.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('fp-notes-list').innerHTML = notes.map(n => `
+      <div style="padding:12px 0;border-bottom:1px solid #eee;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+          <strong style="font-size:14px;">${formatDate(n.note_date)}${n.note_time ? ', ' + escapeHtml(String(n.note_time).slice(0,5)) : ''}</strong>
+          <span style="font-size:12px;color:var(--muted,#6b7280);">${escapeHtml(n.carer_first_name || '')}</span>
+        </div>
+        <div style="font-size:11px;color:var(--teal,#1F7A6B);margin:3px 0 6px;">${(n.categories || []).map(escapeHtml).join(', ')}</div>
+        <div style="font-size:14px;line-height:1.5;white-space:pre-wrap;">${renderNoteFormatting(n.note || '')}</div>
+      </div>`).join('');
   }
 
   function renderFamilyVisits(visits) {
     document.getElementById('fp-pin-card').style.display = 'none';
     document.getElementById('fp-results-card').style.display = 'block';
+    if (!visits.length) { document.getElementById('fp-visits-list').innerHTML = '<p style="font-size:13px;color:var(--muted,#6b7280);margin:0;">No visits recorded in the last 60 days.</p>'; return; }
     document.getElementById('fp-visits-list').innerHTML = visits.map(v => {
       const done = !!v.clock_out_time;
       const statusLabel = v.status === 'cancelled' ? 'Cancelled' : (done ? 'Completed' : (v.clock_in_time ? 'In progress' : 'Scheduled'));
@@ -5150,6 +5273,7 @@ const TRAINING_MODULES = [
     document.getElementById('n-resident').value = '';
     document.getElementById('n-note').value = '';
     document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = false; });
+    document.getElementById('n-share-family').checked = true;
     setTodayDate();
     openModal('note-modal');
   }
@@ -5186,6 +5310,16 @@ const TRAINING_MODULES = [
       ta.setSelectionRange(start + mlen, end + mlen + selected.length);
     }
   }
+  // Daily note categories that are never shown on the family portal
+  const FAMILY_HIDDEN_CATEGORIES = ['Safeguarding concern', 'Incident', 'Skin integrity'];
+  document.addEventListener('change', e => {
+    if (e.target && e.target.classList && e.target.classList.contains('n-category-cb')
+        && e.target.checked && FAMILY_HIDDEN_CATEGORIES.includes(e.target.value)) {
+      const share = document.getElementById('n-share-family');
+      if (share) share.checked = false;
+    }
+  });
+
   function escapeHtml(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -5213,7 +5347,9 @@ const TRAINING_MODULES = [
     const payload = {
       note_date: val('n-date'), note_time: val('n-time'),
       resident_name: val('n-resident'), categories: checkedCategories.length ? checkedCategories : ['General'],
-      note: val('n-note'), staff_name: currentRole !== 'admin' ? currentStaffFullName : val('n-staff')
+      note: val('n-note'), staff_name: currentRole !== 'admin' ? currentStaffFullName : val('n-staff'),
+      share_with_family: document.getElementById('n-share-family').checked
+        && !checkedCategories.some(c => FAMILY_HIDDEN_CATEGORIES.includes(c))
     };
     if (!payload.resident_name || !payload.note) { showToast('Please enter resident name and note.', true); return; }
     saveBtn.disabled = true;
@@ -5248,6 +5384,7 @@ const TRAINING_MODULES = [
     document.getElementById('n-resident').value = n.resident_name || '';
     const existingCategories = (n.categories && n.categories.length) ? n.categories : (n.category ? [n.category] : ['General']);
     document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = existingCategories.includes(cb.value); });
+    document.getElementById('n-share-family').checked = n.share_with_family !== false;
     document.getElementById('n-note').value = n.note || '';
     document.getElementById('n-staff').value = n.staff_name || '';
     openModal('note-modal');
