@@ -421,6 +421,9 @@
         <div class="nav-item staff-only" onclick="showPage('my-training')">
           <span class="icon">🎓</span> My Training
         </div>
+        <div class="nav-item" onclick="showPage('mileage')">
+          <span class="icon">🚗</span> Mileage
+        </div>
         <div class="nav-item admin-only" onclick="showPage('documents')">
           <span class="icon">📁</span> Documents
         </div>
@@ -688,6 +691,58 @@
               <tbody id="notes-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- MILEAGE -->
+      <div class="page" id="page-mileage">
+        <div class="page-header">
+          <h1>🚗 Mileage</h1>
+          <p>Claim business miles between visits. Paid at <strong id="mi-rate-label">55p</strong> a mile.</p>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">New claim</div>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">Add one line per journey. Don’t include your journey from home to your first visit or from your last visit home, unless the office has agreed it.</p>
+          <div id="mi-rows"></div>
+          <button type="button" class="btn btn-cancel" style="padding:6px 12px;font-size:13px;margin-top:4px;" onclick="addMileageRow()">+ Add another journey</button>
+          <div id="mi-total" style="margin-top:16px;padding:14px 16px;border-radius:10px;background:var(--bg);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:14px;color:var(--navy);"><strong id="mi-total-miles">0.0</strong> miles</span>
+            <span style="font-size:22px;font-weight:800;color:var(--teal,#1F7A6B);" id="mi-total-amount">£0.00</span>
+          </div>
+          <div class="form-actions" style="margin-top:12px;">
+            <button class="btn btn-save" id="mi-submit-btn" onclick="submitMileageClaim()">Submit claim</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;" id="mi-list-title">My claims</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="month" id="mi-month" onchange="loadMileageClaims()" style="max-width:170px;" />
+              <select id="mi-status" onchange="loadMileageClaims()" style="max-width:150px;">
+                <option value="">All statuses</option>
+                <option value="submitted">Waiting</option>
+                <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button class="btn btn-cancel admin-only" style="padding:6px 12px;font-size:13px;" onclick="exportMileageCsv()">Export for payroll</button>
+            </div>
+          </div>
+          <div id="mi-summary" class="admin-only"></div>
+          <div id="mi-list"><div class="loading">Loading...</div></div>
+        </div>
+
+        <div class="card admin-only" style="margin-top:20px;">
+          <div class="card-title">Mileage rate</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:14px;">£</span>
+            <input type="number" id="mi-rate-input" step="0.01" min="0.01" style="max-width:110px;" />
+            <span style="font-size:14px;">per mile</span>
+            <button class="btn btn-save" style="padding:6px 14px;font-size:13px;" onclick="saveMileageRate()">Save rate</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin:10px 0 0;">A new rate only applies to journeys claimed after you change it. HMRC's tax-free rate is 45p a mile for the first 10,000 business miles in a tax year (25p after that). Anything paid above that is taxable, so let your payroll provider know.</p>
         </div>
       </div>
 
@@ -2911,7 +2966,7 @@ const TRAINING_MODULES = [
 
   // ── NAVIGATION ──
   function showPage(name, e) {
-    const staffAllowedPages = ['daily-notes', 'my-rota', 'my-training', 'emergency-contacts', 'incidents'];
+    const staffAllowedPages = ['daily-notes', 'my-rota', 'my-training', 'emergency-contacts', 'incidents', 'mileage'];
     if (currentRole && currentRole !== 'admin' && !staffAllowedPages.includes(name)) {
       name = 'my-rota';
       e = null;
@@ -2940,6 +2995,7 @@ const TRAINING_MODULES = [
     if (name === 'my-rota') loadMyRota();
     if (name === 'my-training') { loadMyTraining(); loadTrainingModules(); }
     if (name === 'emergency-contacts') loadEmergencyContacts();
+    if (name === 'mileage') initMileage();
   }
 
   function switchTab(el, panelId) {
@@ -5310,6 +5366,229 @@ const TRAINING_MODULES = [
       ta.setSelectionRange(start + mlen, end + mlen + selected.length);
     }
   }
+  // ══════════════════════════════════════════════
+  // MILEAGE CLAIMS
+  // ══════════════════════════════════════════════
+  let mileageRate = 0.55;
+  let mileageClaimsCache = [];
+  const MI_STATUS = {
+    submitted: { label: 'Waiting', cls: 'badge-amber' },
+    approved: { label: 'Approved', cls: 'badge-green' },
+    paid: { label: 'Paid', cls: 'badge-teal' },
+    rejected: { label: 'Rejected', cls: 'badge-red' }
+  };
+  const gbp = n => '£' + (Number(n) || 0).toFixed(2);
+  const penceLabel = r => r < 1 ? Math.round(r * 100) + 'p' : gbp(r);
+
+  async function initMileage() {
+    const { data } = await db.from('mileage_settings').select('rate_per_mile').eq('id', 1).maybeSingle();
+    if (data && data.rate_per_mile) mileageRate = Number(data.rate_per_mile);
+    document.getElementById('mi-rate-label').textContent = penceLabel(mileageRate);
+    const rateInput = document.getElementById('mi-rate-input');
+    if (rateInput) rateInput.value = mileageRate.toFixed(2);
+    const monthEl = document.getElementById('mi-month');
+    if (!monthEl.value) monthEl.value = localISODate(new Date()).slice(0, 7);
+    document.getElementById('mi-list-title').textContent = currentRole === 'admin' ? 'All claims' : 'My claims';
+    if (!document.querySelector('#mi-rows .mi-row')) addMileageRow();
+    updateMileageTotal();
+    loadMileageClaims();
+  }
+
+  function addMileageRow() {
+    const wrap = document.getElementById('mi-rows');
+    const existing = wrap.querySelectorAll('.mi-row');
+    const last = existing[existing.length - 1];
+    const row = document.createElement('div');
+    row.className = 'mi-row';
+    row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;';
+    row.innerHTML = `
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" class="mi-date" value="${last ? last.querySelector('.mi-date').value : localISODate(new Date())}" /></div>
+        <div class="form-group"><label>Miles</label><input type="number" class="mi-miles" inputmode="decimal" step="0.1" min="0" placeholder="e.g. 4.5" oninput="updateMileageTotal()" /></div>
+        <div class="form-group"><label>From</label><input class="mi-from" placeholder="e.g. Office, or a client's area" value="${last ? escapeHtml(last.querySelector('.mi-to').value) : ''}" /></div>
+        <div class="form-group"><label>To</label><input class="mi-to" placeholder="e.g. Next visit area" /></div>
+        <div class="form-group full"><label>Reason (optional)</label><input class="mi-purpose" placeholder="e.g. Lunch visit, shopping call" /></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <span class="mi-row-amount" style="font-size:13px;color:var(--muted);">£0.00</span>
+        <button type="button" class="btn btn-cancel" style="padding:3px 10px;font-size:12px;color:var(--red);" onclick="removeMileageRow(this)">Remove</button>
+      </div>`;
+    wrap.appendChild(row);
+    updateMileageTotal();
+  }
+
+  function removeMileageRow(btn) {
+    const wrap = document.getElementById('mi-rows');
+    btn.closest('.mi-row').remove();
+    if (!wrap.querySelector('.mi-row')) addMileageRow();
+    updateMileageTotal();
+  }
+
+  function updateMileageTotal() {
+    let miles = 0;
+    document.querySelectorAll('#mi-rows .mi-row').forEach(row => {
+      const m = Math.round((parseFloat(row.querySelector('.mi-miles').value) || 0) * 10) / 10;
+      miles += m;
+      row.querySelector('.mi-row-amount').textContent = m ? `${m.toFixed(1)} miles × ${penceLabel(mileageRate)} = ${gbp(Math.round(m * mileageRate * 100 + 1e-9) / 100)}` : gbp(0);
+    });
+    document.getElementById('mi-total-miles').textContent = miles.toFixed(1);
+    let amount = 0;
+    document.querySelectorAll('#mi-rows .mi-row').forEach(row => {
+      const m = parseFloat(row.querySelector('.mi-miles').value) || 0;
+      amount += Math.round(Math.round(m * 10) / 10 * mileageRate * 100 + 1e-9) / 100;
+    });
+    document.getElementById('mi-total-amount').textContent = gbp(amount);
+  }
+
+  async function submitMileageClaim() {
+    const btn = document.getElementById('mi-submit-btn');
+    if (btn.disabled) return;
+    const rows = Array.from(document.querySelectorAll('#mi-rows .mi-row'));
+    const entries = [];
+    for (const row of rows) {
+      const miles = parseFloat(row.querySelector('.mi-miles').value);
+      const date = row.querySelector('.mi-date').value;
+      const from = row.querySelector('.mi-from').value.trim();
+      const to = row.querySelector('.mi-to').value.trim();
+      const purpose = row.querySelector('.mi-purpose').value.trim();
+      if (!miles && !from && !to) continue; // ignore an empty spare row
+      if (!date) { showToast('Please add a date for every journey.', true); return; }
+      if (!miles || miles <= 0) { showToast('Please add the miles for every journey.', true); return; }
+      if (miles > 500) { showToast('One journey is over 500 miles. Please check it.', true); return; }
+      if (date > localISODate(new Date())) { showToast('Journeys can’t be in the future.', true); return; }
+      if (!from || !to) { showToast('Please fill in From and To for every journey.', true); return; }
+      entries.push({
+        claim_date: date, from_location: from, to_location: to, purpose: purpose || null,
+        miles: Math.round(miles * 10) / 10, rate_per_mile: mileageRate,
+        staff_id: currentStaffId || null,
+        staff_name: currentStaffFullName || document.getElementById('user-name').textContent.trim()
+      });
+    }
+    if (!entries.length) { showToast('Add at least one journey first.', true); return; }
+    btn.disabled = true; btn.textContent = 'Submitting...';
+    const { error } = await db.from('mileage_claims').insert(entries);
+    btn.disabled = false; btn.textContent = 'Submit claim';
+    if (error) { showToast('Claim not submitted: ' + error.message, true); return; }
+    showToast(entries.length === 1 ? 'Journey submitted' : `${entries.length} journeys submitted`);
+    document.getElementById('mi-rows').innerHTML = '';
+    addMileageRow();
+    loadMileageClaims();
+  }
+
+  async function loadMileageClaims() {
+    const listEl = document.getElementById('mi-list');
+    const month = document.getElementById('mi-month').value;
+    const status = document.getElementById('mi-status').value;
+    let q = db.from('mileage_claims').select('*').order('claim_date', { ascending: false }).order('created_at', { ascending: false });
+    if (month) {
+      const [y, m] = month.split('-').map(Number);
+      const end = new Date(y, m, 0);
+      q = q.gte('claim_date', `${month}-01`).lte('claim_date', localISODate(end));
+    }
+    if (status) q = q.eq('status', status);
+    if (currentRole !== 'admin') q = q.eq('staff_id', currentStaffId);
+    const { data, error } = await q;
+    if (error) { listEl.innerHTML = `<p style="color:var(--red);font-size:13px;">Could not load claims: ${escapeHtml(error.message)}</p>`; return; }
+    mileageClaimsCache = data || [];
+    renderMileageSummary();
+    if (!mileageClaimsCache.length) { listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;margin:0;">No journeys for this month yet.</p>'; return; }
+    const isAdmin = currentRole === 'admin';
+    listEl.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Date</th>${isAdmin ? '<th>Staff</th>' : ''}<th>Journey</th><th style="text-align:right;">Miles</th><th style="text-align:right;">Amount</th><th>Status</th><th></th>
+      </tr></thead><tbody>
+      ${mileageClaimsCache.map(c => {
+        const st = MI_STATUS[c.status] || MI_STATUS.submitted;
+        let actions = '';
+        if (isAdmin) {
+          if (c.status === 'submitted') actions = `<button class="btn btn-save" style="padding:3px 8px;font-size:12px;" onclick="setMileageStatus('${c.id}','approved')">Approve</button> <button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;color:var(--red);" onclick="setMileageStatus('${c.id}','rejected')">Reject</button>`;
+          else if (c.status === 'approved') actions = `<button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;" onclick="setMileageStatus('${c.id}','paid')">Mark paid</button>`;
+        } else if (c.status === 'submitted') {
+          actions = `<button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;color:var(--red);" onclick="deleteMileageClaim('${c.id}')">Delete</button>`;
+        }
+        return `<tr>
+          <td style="white-space:nowrap;">${formatDate(c.claim_date)}</td>
+          ${isAdmin ? `<td>${escapeHtml(c.staff_name || '—')}</td>` : ''}
+          <td style="font-size:13px;">${escapeHtml(c.from_location || '')} to ${escapeHtml(c.to_location || '')}${c.purpose ? `<div style="font-size:11px;color:var(--muted);">${escapeHtml(c.purpose)}</div>` : ''}${c.admin_note ? `<div style="font-size:11px;color:var(--red);">Office note: ${escapeHtml(c.admin_note)}</div>` : ''}</td>
+          <td style="text-align:right;">${Number(c.miles).toFixed(1)}</td>
+          <td style="text-align:right;white-space:nowrap;">${gbp(c.amount)}${Number(c.rate_per_mile) !== mileageRate ? `<div style="font-size:10px;color:var(--muted);">at ${penceLabel(Number(c.rate_per_mile))}</div>` : ''}</td>
+          <td><span class="badge ${st.cls}">${st.label}</span></td>
+          <td style="white-space:nowrap;">${actions}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+  }
+
+  function renderMileageSummary() {
+    const el = document.getElementById('mi-summary');
+    if (!el) return;
+    if (currentRole !== 'admin') {
+      el.innerHTML = '';
+      return;
+    }
+    const counted = mileageClaimsCache.filter(c => c.status !== 'rejected');
+    if (!counted.length) { el.innerHTML = ''; return; }
+    const byStaff = {};
+    counted.forEach(c => {
+      const k = c.staff_name || 'Unknown';
+      byStaff[k] = byStaff[k] || { miles: 0, amount: 0, waiting: 0 };
+      byStaff[k].miles += Number(c.miles);
+      byStaff[k].amount += Number(c.amount);
+      if (c.status === 'submitted') byStaff[k].waiting++;
+    });
+    const totalMiles = counted.reduce((a, c) => a + Number(c.miles), 0);
+    const totalAmount = counted.reduce((a, c) => a + Number(c.amount), 0);
+    el.innerHTML = `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--navy);margin-bottom:6px;"><span>This month (excluding rejected)</span><span>${totalMiles.toFixed(1)} miles, ${gbp(totalAmount)}</span></div>
+      ${Object.entries(byStaff).sort((a, b) => b[1].amount - a[1].amount).map(([name, t]) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span>${escapeHtml(name)}${t.waiting ? ` <span class="badge badge-amber" style="font-size:10px;">${t.waiting} waiting</span>` : ''}</span><span>${t.miles.toFixed(1)} miles, ${gbp(t.amount)}</span></div>`).join('')}
+    </div>`;
+  }
+
+  async function setMileageStatus(id, status) {
+    let note = null;
+    if (status === 'rejected') {
+      note = prompt('Reason for rejecting (the carer will see this):');
+      if (note === null) return;
+    }
+    const payload = { status, reviewed_by: document.getElementById('user-name').textContent.trim(), reviewed_at: new Date().toISOString() };
+    if (note !== null) payload.admin_note = note.trim() || null;
+    const { error } = await db.from('mileage_claims').update(payload).eq('id', id);
+    if (error) { showToast('Could not update: ' + error.message, true); return; }
+    showToast(status === 'approved' ? 'Approved' : status === 'paid' ? 'Marked as paid' : 'Rejected');
+    loadMileageClaims();
+  }
+
+  async function deleteMileageClaim(id) {
+    if (!confirm('Delete this journey?')) return;
+    const { error } = await db.from('mileage_claims').delete().eq('id', id);
+    if (error) { showToast('Could not delete: ' + error.message, true); return; }
+    showToast('Journey deleted');
+    loadMileageClaims();
+  }
+
+  async function saveMileageRate() {
+    const r = parseFloat(document.getElementById('mi-rate-input').value);
+    if (!r || r <= 0 || r >= 5) { showToast('Please enter a rate such as 0.55', true); return; }
+    if (!confirm(`Change the mileage rate to ${penceLabel(r)} a mile? Journeys already claimed keep their original rate.`)) return;
+    const { error } = await db.from('mileage_settings').update({ rate_per_mile: r, updated_at: new Date().toISOString(), updated_by: document.getElementById('user-name').textContent.trim() }).eq('id', 1);
+    if (error) { showToast('Rate not saved: ' + error.message, true); return; }
+    showToast('Mileage rate saved');
+    initMileage();
+  }
+
+  function exportMileageCsv() {
+    const rows = mileageClaimsCache.filter(c => c.status === 'approved' || c.status === 'paid');
+    if (!rows.length) { showToast('No approved journeys to export for this month.', true); return; }
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [['Date', 'Staff', 'From', 'To', 'Reason', 'Miles', 'Rate', 'Amount', 'Status'].join(',')]
+      .concat(rows.map(c => [c.claim_date, c.staff_name, c.from_location, c.to_location, c.purpose, Number(c.miles).toFixed(1), Number(c.rate_per_mile).toFixed(2), Number(c.amount).toFixed(2), (MI_STATUS[c.status] || {}).label].map(esc).join(',')));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `mileage-${document.getElementById('mi-month').value || 'all'}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   // Daily note categories that are never shown on the family portal
   const FAMILY_HIDDEN_CATEGORIES = ['Safeguarding concern', 'Incident', 'Skin integrity'];
   document.addEventListener('change', e => {
