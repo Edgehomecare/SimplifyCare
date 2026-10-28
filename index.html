@@ -399,6 +399,9 @@
         <div class="nav-item admin-only" onclick="showPage('residents')">
           <span class="icon">👥</span> Residents
         </div>
+        <div class="nav-item admin-only" onclick="showPage('emar')">
+          <span class="icon">💊</span> eMAR
+        </div>
         <div class="nav-item" onclick="showPage('daily-notes')">
           <span class="icon">📋</span> Daily Notes
         </div>
@@ -665,6 +668,48 @@
               <tbody id="incidents-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- eMAR (admin overview) -->
+      <div class="page" id="page-emar">
+        <div class="page-header">
+          <h1>💊 eMAR</h1>
+          <p>Every medication due today, what's been signed, and anything that needs following up.</p>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="emarChangeDay(-1)">← Previous day</button>
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="emarGoToday()">Today</button>
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="emarChangeDay(1)">Next day →</button>
+            <input type="date" id="emar-date" onchange="emarSetDate(this.value)" style="max-width:180px;" />
+            <div id="emar-date-label" style="font-weight:700;color:var(--navy);margin-left:auto;"></div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card teal"><div class="label">Doses due</div><div class="value" id="emar-stat-due">—</div><div class="sub">regular medication</div></div>
+          <div class="stat-card green"><div class="label">Signed</div><div class="value" id="emar-stat-signed">—</div><div class="sub">given or prompted</div></div>
+          <div class="stat-card red"><div class="label">Not signed</div><div class="value" id="emar-stat-missed">—</div><div class="sub">overdue by 1 hour or more</div></div>
+          <div class="stat-card amber"><div class="label">Not given</div><div class="value" id="emar-stat-exc">—</div><div class="sub">refused, unavailable, etc.</div></div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Needs follow-up (last 7 days)</div>
+          <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px;">Doses not signed for, and doses that weren't given. Check each one with the carer, record what you did, and report medication errors through Incidents.</p>
+          <div id="emar-followup"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Medication round</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Due</th><th>Resident</th><th>Medication</th><th>Support</th><th>Status</th></tr></thead>
+            <tbody id="emar-round"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">PRN (as needed) doses</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Time</th><th>Resident</th><th>Medication</th><th>Reason / notes</th><th>Staff</th></tr></thead>
+            <tbody id="emar-prn"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
@@ -1453,7 +1498,17 @@
         </select>
       </div>
       <div class="form-group full" id="ms-times-row"><label>Times due (24hr, comma-separated)</label><input id="ms-times" placeholder="e.g. 08:00, 14:00, 20:00" /></div>
-      <div class="form-group full" id="ms-prn-row" style="display:none;"><label>When to give (PRN reason)</label><input id="ms-prn-reason" placeholder="e.g. For pain, max 4x daily" /></div>
+      <div class="form-group full" id="ms-prn-row" style="display:none;"><label>When to give (PRN reason)</label><input id="ms-prn-reason" placeholder="e.g. For pain or a temperature" /></div>
+      <div class="form-group" id="ms-prn-max-row" style="display:none;"><label>Max doses in 24 hours</label><input type="number" id="ms-prn-max" min="1" placeholder="e.g. 4" /></div>
+      <div class="form-group" id="ms-prn-gap-row" style="display:none;"><label>Minimum hours between doses</label><input type="number" id="ms-prn-gap" min="0" step="0.5" placeholder="e.g. 4" /></div>
+      <div class="form-group full"><label>Level of support *</label>
+        <select id="ms-support">
+          <option value="administer">Administer — carer gives the medication</option>
+          <option value="assist">Assist — carer helps, e.g. opens packs, pours</option>
+          <option value="prompt">Prompt — person takes it themselves, carer reminds</option>
+        </select>
+      </div>
+      <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;"><input type="checkbox" id="ms-time-critical" style="width:auto;" /> Time-critical (e.g. Parkinson's medication, insulin) — flag as overdue after 30 minutes instead of 1 hour</label></div>
       <div class="form-group full"><label>Instructions</label><textarea id="ms-instructions" placeholder="e.g. Take with food, do not crush..."></textarea></div>
       <div class="form-group"><label>Start date</label><input type="date" id="ms-start" /></div>
       <div class="form-group"><label>End date (optional)</label><input type="date" id="ms-end" /></div>
@@ -1467,24 +1522,19 @@
 
 <!-- MAR SIGN-OFF MODAL (staff: sign during a visit) -->
 <div class="modal-overlay" id="mar-sign-modal">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:440px;">
     <div class="modal-header">
       <h2 id="mar-sign-title">Sign for Medication</h2>
       <button class="modal-close" onclick="closeModal('mar-sign-modal')">✕</button>
     </div>
-    <input type="hidden" id="mar-sign-key" />
     <div style="padding:0 20px 16px;">
-      <div id="mar-sign-sub" style="color:var(--muted);font-size:13px;margin-bottom:16px;"></div>
+      <div id="mar-sign-sub" style="font-size:13px;margin-bottom:12px;"></div>
+      <div id="mar-sign-warning" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;"></div>
       <div class="form-group"><label>What happened? *</label>
-        <select id="mar-sign-code">
-          <option>Given</option>
-          <option>Refused</option>
-          <option>Not Available</option>
-          <option>Vomited</option>
-          <option>Other</option>
-        </select>
+        <select id="mar-sign-code" onchange="marSignCodeChanged()"></select>
       </div>
-      <div class="form-group"><label>Notes (optional)</label><textarea id="mar-sign-notes" placeholder="Any additional detail..."></textarea></div>
+      <div class="form-group"><label id="mar-sign-notes-label">Notes (optional)</label><textarea id="mar-sign-notes" placeholder="Any additional detail..."></textarea></div>
+      <div id="mar-sign-office-tip" style="display:none;font-size:12px;color:#92400e;margin-top:-4px;">Phone the office after recording this, so they can follow it up.</div>
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('mar-sign-modal')">Cancel</button>
@@ -2996,6 +3046,7 @@ const TRAINING_MODULES = [
     if (name === 'my-training') { loadMyTraining(); loadTrainingModules(); }
     if (name === 'emergency-contacts') loadEmergencyContacts();
     if (name === 'mileage') initMileage();
+    if (name === 'emar') initEmar();
   }
 
   function switchTab(el, panelId) {
@@ -3765,9 +3816,15 @@ const TRAINING_MODULES = [
           <button class="btn-add" style="white-space:nowrap;" onclick="openMedScheduleModal()">+ Add Medication</button>
         </div>
         <div id="vr-med-list"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
-        <div class="card-title" style="margin-top:20px;">Recent MAR history</div>
-        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Medication</th><th>Due</th><th>Outcome</th><th>Staff</th></tr></thead>
-        <tbody id="vr-mar-history"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:20px;margin-bottom:10px;">
+          <div class="card-title" style="margin:0;">Monthly MAR chart</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="month" id="vr-mar-month" onchange="loadResidentMarHistory(currentViewResidentName)" style="max-width:170px;" />
+            <button class="btn btn-cancel" style="padding:6px 12px;font-size:13px;" onclick="printMarChart()">🖨️ Print</button>
+          </div>
+        </div>
+        <div id="vr-mar-history"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+        <div id="vr-mar-cell-detail" style="margin-top:10px;"></div>
       </div>
 
       <!-- MEDICAL -->
@@ -4029,32 +4086,419 @@ const TRAINING_MODULES = [
     if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No medications on file yet.</p>'; return; }
     el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Medication</th><th>Dose</th><th>Schedule</th><th></th></tr></thead><tbody>
       ${data.map(m => `<tr>
-        <td><strong>${m.medication_name}</strong>${m.instructions ? `<div style="font-size:11px;color:var(--muted);">${m.instructions}</div>` : ''}</td>
-        <td>${m.dose || '—'}</td>
-        <td>${m.frequency_type === 'prn' ? `PRN${m.prn_reason ? ' — ' + m.prn_reason : ''}` : (m.times || []).join(', ') || '—'}</td>
+        <td><strong>${emEsc(m.medication_name)}</strong>${m.time_critical ? ' <span class="badge badge-red" title="Time-critical">⏱ Time-critical</span>' : ''}${m.instructions ? `<div style="font-size:11px;color:var(--muted);">${emEsc(m.instructions)}</div>` : ''}<div style="font-size:11px;color:var(--muted);">${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.route ? ' · ' + emEsc(m.route) : ''}</div></td>
+        <td>${emEsc(m.dose) || '—'}</td>
+        <td>${m.frequency_type === 'prn' ? `PRN${m.prn_reason ? ' — ' + emEsc(m.prn_reason) : ''}${m.prn_max_doses ? `<div style="font-size:11px;color:var(--muted);">Max ${m.prn_max_doses} in 24h${m.prn_min_gap_hours ? `, ${m.prn_min_gap_hours}h apart` : ''}</div>` : ''}` : (m.times || []).join(', ') || '—'}</td>
         <td style="white-space:nowrap;"><button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;" onclick="openMedScheduleModal('${m.id}')">Edit</button> <button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;color:var(--red);" onclick="discontinueMedication('${m.id}')">Discontinue</button></td>
       </tr>`).join('')}
     </tbody></table></div>`;
   }
 
+  // ══════════════════════════════════════════════
+  // ── eMAR (electronic Medication Administration Record) ──
+  // ══════════════════════════════════════════════
+  const EMAR_CODES = [
+    { code: 'Given',         letter: '✓', label: 'Given',                          ok: true,  bg: '#dcfce7', fg: '#15803d' },
+    { code: 'Prompted',      letter: 'P', label: 'Prompted — took it themselves',  ok: true,  bg: '#dcfce7', fg: '#15803d' },
+    { code: 'Refused',       letter: 'R', label: 'Refused',                        ok: false, bg: '#fee2e2', fg: '#b91c1c' },
+    { code: 'Not Available', letter: 'N', label: 'Not available / out of stock',   ok: false, bg: '#fee2e2', fg: '#b91c1c' },
+    { code: 'Vomited',       letter: 'V', label: 'Vomited after taking',           ok: false, bg: '#fef3c7', fg: '#92400e' },
+    { code: 'Away',          letter: 'A', label: 'Away from home / in hospital',   ok: false, bg: '#e0e7ff', fg: '#3730a3' },
+    { code: 'Withheld',      letter: 'W', label: 'Withheld on medical advice',     ok: false, bg: '#e0e7ff', fg: '#3730a3' },
+    { code: 'Other',         letter: 'O', label: 'Other (explain in notes)',       ok: false, bg: '#fef3c7', fg: '#92400e' },
+  ];
+  const EMAR_SUPPORT = { administer: 'Administer', assist: 'Assist', prompt: 'Prompt' };
+  function emarCodeInfo(code) { return EMAR_CODES.find(c => c.code === code) || { code, letter: '?', label: code, ok: false, bg: '#f1f5f9', fg: '#334155' }; }
+  function emEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function emarToMin(t) { if (!t) return null; const [h, m] = String(t).split(':'); return (+h) * 60 + (+m || 0); }
+  function emarHHMM(d) { return new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+
+  // Is this medication on the chart for this date?
+  function emarActiveOn(m, dateStr) {
+    if (m.start_date && dateStr < m.start_date) return false;
+    if (m.end_date && dateStr > m.end_date) return false;
+    if (m.status !== 'active' && !m.end_date) return false;
+    return true;
+  }
+  // Minutes after the due time before an unsigned dose counts as overdue
+  function emarGraceMins(m) { return m.time_critical ? 30 : 60; }
+  function emarIsOverdue(m, dateStr, time) {
+    const today = localISODate(new Date());
+    if (dateStr < today) return true;
+    if (dateStr > today) return false;
+    const now = new Date();
+    return (now.getHours() * 60 + now.getMinutes()) > emarToMin(time) + emarGraceMins(m);
+  }
+  // Which of a medication's due times fall within a visit (1 hour either side)
+  function emarTimesForShift(m, shift) {
+    const times = m.times || [];
+    if (!shift.start_time) return times;
+    const start = emarToMin(shift.start_time) - 60;
+    const end = (shift.end_time ? emarToMin(shift.end_time) : emarToMin(shift.start_time) + 60) + 60;
+    return times.filter(t => { const x = emarToMin(t); return x >= start && x <= end; });
+  }
+
+  // ── Carer view: medication panel under each visit on My Rota ──
+  let _myRotaShifts = [];
+  let _rotaMeds = [];
+  let _rotaMarEntries = [];
+  let _marSignCtx = null;
+
+  async function loadRotaMedications(shifts, dateStr, isToday) {
+    const names = [...new Set((shifts || []).filter(s => s.status !== 'cancelled' && s.client_name).map(s => s.client_name))];
+    if (!names.length) return;
+    const [medsRes, entriesRes] = await Promise.all([
+      db.from('resident_medications').select('*').in('resident_name', names).order('medication_name'),
+      db.from('mar_entries').select('*').in('resident_name', names).eq('scheduled_date', dateStr).order('administered_at'),
+    ]);
+    if (medsRes.error) { console.error('Could not load medications', medsRes.error); return; }
+    _rotaMeds = (medsRes.data || []).filter(m => emarActiveOn(m, dateStr));
+    _rotaMarEntries = entriesRes.data || [];
+    shifts.forEach(s => {
+      const el = document.getElementById('rota-meds-' + s.id);
+      if (el) el.innerHTML = renderRotaMedPanel(s, dateStr, isToday);
+    });
+  }
+
+  function renderRotaMedPanel(shift, dateStr, isToday) {
+    const meds = _rotaMeds.filter(m => m.resident_name === shift.client_name);
+    if (!meds.length) return '';
+    const canSign = isToday && !!shift.clock_in_time;
+    const rows = [];
+    meds.filter(m => m.frequency_type !== 'prn').forEach(m => {
+      emarTimesForShift(m, shift).forEach(t => {
+        const entry = _rotaMarEntries.find(e => e.medication_id === m.id && e.scheduled_time === t);
+        rows.push({ m, t, entry });
+      });
+    });
+    rows.sort((a, b) => emarToMin(a.t) - emarToMin(b.t));
+    const prnMeds = meds.filter(m => m.frequency_type === 'prn');
+    if (!rows.length && !prnMeds.length) return '';
+
+    const medLine = m => `<strong>${emEsc(m.medication_name)}</strong>${m.dose ? ' ' + emEsc(m.dose) : ''}${m.route ? ` <span style="color:var(--muted);">(${emEsc(m.route)})</span>` : ''}
+      ${m.time_critical ? ' <span class="badge badge-red">⏱ Time-critical</span>' : ''}
+      <div style="font-size:11px;color:var(--muted);">${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.instructions ? ' · ' + emEsc(m.instructions) : ''}</div>`;
+
+    const scheduledHtml = rows.map(({ m, t, entry }) => {
+      let right;
+      if (entry) {
+        const c = emarCodeInfo(entry.mar_code);
+        right = `<span style="background:${c.bg};color:${c.fg};border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;white-space:nowrap;">${c.letter} ${emEsc(entry.mar_code)}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${emarHHMM(entry.administered_at)} · ${emEsc(entry.staff_name || '')}</div>`;
+      } else if (canSign) {
+        right = `<button class="btn btn-primary" style="padding:6px 12px;font-size:13px;" onclick="openMarSign('${m.id}','${t}','${shift.id}')">Sign</button>`;
+      } else {
+        const overdue = emarIsOverdue(m, dateStr, t);
+        right = `<span style="font-size:12px;color:${overdue ? 'var(--red)' : 'var(--muted)'};font-weight:600;">${overdue ? 'Not signed' : 'Due'}</span>`;
+      }
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);">
+        <div style="font-size:13px;"><span style="font-weight:700;color:var(--navy);margin-right:6px;">${t}</span>${medLine(m)}</div>
+        <div style="text-align:right;">${right}</div>
+      </div>`;
+    }).join('');
+
+    const prnHtml = prnMeds.map(m => {
+      const given = _rotaMarEntries.filter(e => e.medication_id === m.id);
+      const last = given.length ? given[given.length - 1] : null;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);">
+        <div style="font-size:13px;"><span style="font-weight:700;color:var(--navy);margin-right:6px;">PRN</span>${medLine(m)}
+          <div style="font-size:11px;color:var(--muted);">${m.prn_reason ? 'When: ' + emEsc(m.prn_reason) + ' · ' : ''}${given.length ? `${given.length} recorded today, last at ${emarHHMM(last.administered_at)}` : 'None recorded today'}</div>
+        </div>
+        <div>${canSign ? `<button class="btn btn-cancel" style="padding:6px 12px;font-size:13px;white-space:nowrap;" onclick="openMarSign('${m.id}','','${shift.id}')">Record dose</button>` : ''}</div>
+      </div>`;
+    }).join('');
+
+    const hint = isToday && !shift.clock_in_time
+      ? '<div style="font-size:12px;color:#92400e;margin-bottom:6px;">Clock in to sign for medication.</div>' : '';
+    return `<div style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:8px;">
+      <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">💊 Medication</div>
+      ${hint}${scheduledHtml}${prnHtml}
+    </div>`;
+  }
+
+  function openMarSign(medId, time, shiftId) {
+    const m = _rotaMeds.find(x => x.id === medId);
+    const shift = _myRotaShifts.find(x => x.id === shiftId);
+    if (!m || !shift) return;
+    if (!currentStaffId) { showToast('Your login is not linked to a staff record, so you cannot sign. Please contact the office.', true); return; }
+    _marSignCtx = { med: m, time: time || null, shift, date: localISODate(myRotaCurrentDate) };
+    const isPrn = !time;
+    document.getElementById('mar-sign-title').textContent = isPrn ? 'Record PRN dose' : 'Sign for medication';
+    document.getElementById('mar-sign-sub').innerHTML = `
+      <div style="font-size:15px;font-weight:700;color:var(--navy);">${emEsc(m.medication_name)}${m.dose ? ' ' + emEsc(m.dose) : ''}</div>
+      <div style="color:var(--muted);">${emEsc(shift.client_name)} · ${isPrn ? 'As needed' : 'Due ' + time} · ${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.route ? ' · ' + emEsc(m.route) : ''}</div>
+      ${m.instructions ? `<div style="margin-top:6px;">${emEsc(m.instructions)}</div>` : ''}
+      ${isPrn && m.prn_reason ? `<div style="margin-top:6px;"><strong>Give when:</strong> ${emEsc(m.prn_reason)}</div>` : ''}
+      <div style="margin-top:8px;font-size:12px;color:var(--muted);">Check the 6 rights before you sign: right person, medication, dose, route, time and record.</div>`;
+
+    // Code list: PRN only records doses actually given
+    const codes = isPrn ? EMAR_CODES.filter(c => c.code === 'Given' || c.code === 'Prompted') : EMAR_CODES;
+    const defaultCode = m.support_level === 'prompt' ? 'Prompted' : 'Given';
+    document.getElementById('mar-sign-code').innerHTML = codes.map(c => `<option value="${c.code}" ${c.code === defaultCode ? 'selected' : ''}>${c.label}</option>`).join('');
+    document.getElementById('mar-sign-notes').value = '';
+
+    // PRN safety checks
+    const warnEl = document.getElementById('mar-sign-warning');
+    const warnings = [];
+    if (isPrn) {
+      const given = _rotaMarEntries.filter(e => e.medication_id === m.id);
+      if (m.prn_max_doses && given.length >= m.prn_max_doses) warnings.push(`${given.length} dose${given.length === 1 ? ' has' : 's have'} already been recorded today. The maximum is ${m.prn_max_doses} in 24 hours.`);
+      if (m.prn_min_gap_hours && given.length) {
+        const hrs = (Date.now() - new Date(given[given.length - 1].administered_at).getTime()) / 3600000;
+        if (hrs < m.prn_min_gap_hours) warnings.push(`The last dose was ${hrs < 1 ? Math.round(hrs * 60) + ' minutes' : hrs.toFixed(1) + ' hours'} ago. Doses must be at least ${m.prn_min_gap_hours} hours apart.`);
+      }
+    }
+    if (warnings.length) {
+      warnEl.innerHTML = '⚠️ <strong>Do not give this dose without checking with the office.</strong><br>' + warnings.map(emEsc).join('<br>');
+      warnEl.style.display = '';
+    } else { warnEl.style.display = 'none'; }
+    _marSignCtx.hasWarnings = warnings.length > 0;
+    marSignCodeChanged();
+    openModal('mar-sign-modal');
+  }
+
+  function marSignCodeChanged() {
+    if (!_marSignCtx) return;
+    const code = document.getElementById('mar-sign-code').value;
+    const ok = emarCodeInfo(code).ok;
+    const isPrn = !_marSignCtx.time;
+    const notesRequired = !ok || isPrn || _marSignCtx.hasWarnings;
+    document.getElementById('mar-sign-notes-label').textContent = notesRequired
+      ? (isPrn ? 'Why was it needed? *' : 'What happened and what did you do? *')
+      : 'Notes (optional)';
+    document.getElementById('mar-sign-office-tip').style.display = (!ok || _marSignCtx.hasWarnings) ? '' : 'none';
+  }
+
+  async function confirmMarSign() {
+    if (!_marSignCtx) return;
+    const { med, time, shift, date } = _marSignCtx;
+    const code = document.getElementById('mar-sign-code').value;
+    const notes = document.getElementById('mar-sign-notes').value.trim();
+    const isPrn = !time;
+    if ((!emarCodeInfo(code).ok || isPrn || _marSignCtx.hasWarnings) && !notes) {
+      showToast(isPrn ? 'Please record why the PRN dose was needed.' : 'Please add a note explaining what happened.', true);
+      return;
+    }
+    if (_marSignCtx.hasWarnings && !confirm('This dose is outside the PRN limits. Only continue if the office or a health professional has told you to give it. Continue?')) return;
+    const btn = document.getElementById('mar-sign-confirm-btn');
+    btn.disabled = true;
+    const payload = {
+      resident_id: med.resident_id,
+      resident_name: med.resident_name,
+      medication_id: med.id,
+      medication_name: med.medication_name,
+      dose: med.dose || null,
+      scheduled_date: date,
+      scheduled_time: time,
+      mar_code: code,
+      administered_at: new Date().toISOString(),
+      staff_id: currentStaffId,
+      staff_name: currentStaffFullName || (currentUser && currentUser.email),
+      shift_id: shift.id,
+      notes: notes || null,
+    };
+    const { error } = await db.from('mar_entries').insert([payload]);
+    btn.disabled = false;
+    if (error) {
+      if (error.code === '23505') showToast('This dose has already been signed for. Refresh to see who signed it.', true);
+      else showToast('Could not save: ' + error.message, true);
+      return;
+    }
+    closeModal('mar-sign-modal');
+    showToast(emarCodeInfo(code).ok ? 'Signed' : 'Recorded — please phone the office');
+    _marSignCtx = null;
+    loadRotaMedications(_myRotaShifts, date, date === localISODate(new Date()));
+  }
+
+  // ── Admin: monthly MAR chart on the resident profile ──
+  let _marChartData = null;
+
   async function loadResidentMarHistory(residentName) {
     const el = document.getElementById('vr-mar-history');
     if (!el) return;
-    const { data, error } = await db.from('mar_entries')
-      .select('*').eq('resident_name', residentName)
-      .order('administered_at', { ascending: false }).limit(30);
-    if (error) { el.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--red);padding:16px;">Could not load MAR history: ${error.message}</td></tr>`; return; }
-    if (!data || !data.length) { el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px;">No medication has been signed for yet.</td></tr>'; return; }
-    el.innerHTML = data.map(e => {
-      const codeColor = e.mar_code === 'Given' ? 'var(--green)' : (e.mar_code === 'Refused' || e.mar_code === 'Not Available' ? 'var(--red)' : 'var(--amber)');
+    const monthEl = document.getElementById('vr-mar-month');
+    if (monthEl && !monthEl.value) monthEl.value = localISODate(new Date()).slice(0, 7);
+    const month = monthEl ? monthEl.value : localISODate(new Date()).slice(0, 7);
+    const [y, mo] = month.split('-').map(Number);
+    const daysInMonth = new Date(y, mo, 0).getDate();
+    const first = `${month}-01`, last = `${month}-${String(daysInMonth).padStart(2, '0')}`;
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading...</p>';
+    document.getElementById('vr-mar-cell-detail').innerHTML = '';
+
+    const [medsRes, entriesRes] = await Promise.all([
+      db.from('resident_medications').select('*').eq('resident_name', residentName).order('medication_name'),
+      db.from('mar_entries').select('*').eq('resident_name', residentName).gte('scheduled_date', first).lte('scheduled_date', last).order('administered_at'),
+    ]);
+    if (medsRes.error || entriesRes.error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">Could not load the MAR chart: ${emEsc((medsRes.error || entriesRes.error).message)}</p>`; return; }
+    const entries = entriesRes.data || [];
+    const days = Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`);
+    const meds = (medsRes.data || []).filter(m => days.some(d => emarActiveOn(m, d)) || entries.some(e => e.medication_id === m.id));
+    _marChartData = { residentName, month, days, meds, entries };
+    if (!meds.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No medication on the chart for this month.</p>'; return; }
+    el.innerHTML = buildMarChartHtml(_marChartData, true);
+  }
+
+  function buildMarChartHtml(data, interactive) {
+    const { days, meds, entries } = data;
+    const cellStyle = 'min-width:22px;height:24px;text-align:center;font-size:11px;font-weight:700;border:1px solid var(--border,#e2e8f0);padding:0;';
+    const rows = [];
+    meds.forEach(m => {
+      const label = `<strong>${emEsc(m.medication_name)}</strong>${m.dose ? ' ' + emEsc(m.dose) : ''}${m.status !== 'active' ? ' <span style="color:#b91c1c;">(stopped)</span>' : ''}`;
+      if (m.frequency_type === 'prn') {
+        const cells = days.map(d => {
+          const n = entries.filter(e => e.medication_id === m.id && e.scheduled_date === d);
+          return `<td style="${cellStyle}${n.length ? 'background:#e0f2fe;color:#075985;cursor:pointer;' : ''}" ${interactive && n.length ? `onclick="showMarCell('${m.id}','${d}','')"` : ''} title="${n.length ? n.length + ' PRN dose(s)' : ''}">${n.length || ''}</td>`;
+        }).join('');
+        rows.push(`<tr><td style="padding:4px 8px;font-size:12px;white-space:nowrap;border:1px solid var(--border,#e2e8f0);">${label}<div style="font-size:11px;color:#64748b;">PRN — number of doses</div></td>${cells}</tr>`);
+      } else {
+        (m.times || []).forEach(t => {
+          const cells = days.map(d => {
+            const e = entries.find(x => x.medication_id === m.id && x.scheduled_date === d && x.scheduled_time === t);
+            if (e) { const c = emarCodeInfo(e.mar_code); return `<td style="${cellStyle}background:${c.bg};color:${c.fg};${interactive ? 'cursor:pointer;' : ''}" ${interactive ? `onclick="showMarCell('${m.id}','${d}','${t}')"` : ''} title="${emEsc(e.mar_code + ' — ' + (e.staff_name || ''))}">${c.letter}</td>`; }
+            if (!emarActiveOn(m, d)) return `<td style="${cellStyle}background:#f1f5f9;color:#94a3b8;">·</td>`;
+            if (emarIsOverdue(m, d, t)) return `<td style="${cellStyle}background:#fecaca;color:#991b1b;" title="Not signed">!</td>`;
+            return `<td style="${cellStyle}"></td>`;
+          }).join('');
+          rows.push(`<tr><td style="padding:4px 8px;font-size:12px;white-space:nowrap;border:1px solid var(--border,#e2e8f0);">${label}<div style="font-size:11px;color:#64748b;">${t} · ${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.time_critical ? ' · ⏱' : ''}</div></td>${cells}</tr>`);
+        });
+      }
+    });
+    const head = `<tr><th style="text-align:left;padding:4px 8px;font-size:12px;border:1px solid var(--border,#e2e8f0);">Medication</th>${days.map(d => `<th style="${cellStyle}font-weight:600;">${+d.slice(8)}</th>`).join('')}</tr>`;
+    const key = EMAR_CODES.map(c => `<span style="display:inline-block;margin:2px 8px 2px 0;"><span style="background:${c.bg};color:${c.fg};padding:1px 6px;border-radius:4px;font-weight:700;">${c.letter}</span> ${c.label}</span>`).join('')
+      + '<span style="display:inline-block;margin:2px 8px 2px 0;"><span style="background:#fecaca;color:#991b1b;padding:1px 6px;border-radius:4px;font-weight:700;">!</span> Not signed</span>'
+      + '<span style="display:inline-block;margin:2px 8px 2px 0;"><span style="background:#f1f5f9;color:#94a3b8;padding:1px 6px;border-radius:4px;font-weight:700;">·</span> Not prescribed that day</span>';
+    return `<div class="table-wrap" style="overflow-x:auto;"><table style="border-collapse:collapse;width:auto;">${head}${rows.join('')}</table></div>
+      <div style="font-size:11px;color:#64748b;margin-top:8px;">${key}</div>`;
+  }
+
+  function showMarCell(medId, date, time) {
+    if (!_marChartData) return;
+    const m = _marChartData.meds.find(x => x.id === medId);
+    const list = _marChartData.entries.filter(e => e.medication_id === medId && e.scheduled_date === date && (time ? e.scheduled_time === time : !e.scheduled_time));
+    const el = document.getElementById('vr-mar-cell-detail');
+    el.innerHTML = `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:13px;">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">${emEsc(m ? m.medication_name : '')} · ${formatDate(date)}${time ? ' · ' + time : ' · PRN'}</div>
+      ${list.map(e => `<div style="padding:6px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;">
+        <div><strong>${emEsc(e.mar_code)}</strong> at ${emarHHMM(e.administered_at)} by ${emEsc(e.staff_name || '—')}${e.notes ? `<div style="color:var(--muted);">${emEsc(e.notes)}</div>` : ''}</div>
+        <button class="btn btn-cancel" style="padding:3px 8px;font-size:12px;color:var(--red);white-space:nowrap;" onclick="deleteMarEntry('${e.id}')">Remove</button>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  async function deleteMarEntry(id) {
+    if (!confirm('Remove this MAR record? Only do this to correct a recording mistake, and note the correction in the resident\'s daily notes.')) return;
+    const { error } = await db.from('mar_entries').delete().eq('id', id);
+    if (error) { showToast('Could not remove: ' + error.message, true); return; }
+    showToast('MAR record removed');
+    loadResidentMarHistory(currentViewResidentName);
+  }
+
+  function printMarChart() {
+    if (!_marChartData || !_marChartData.meds.length) { showToast('Nothing to print for this month.', true); return; }
+    const monthLabel = new Date(_marChartData.month + '-01T00:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const w = window.open('', '_blank');
+    if (!w) { showToast('Your browser blocked the print window. Allow pop-ups for this site and try again.', true); return; }
+    w.document.write(`<!DOCTYPE html><html><head><title>MAR chart — ${emEsc(_marChartData.residentName)} — ${monthLabel}</title>
+      <style>body{font-family:Arial,sans-serif;margin:16px;color:#0f172a;} h1{font-size:18px;margin:0 0 4px;} p{margin:0 0 12px;font-size:12px;color:#475569;} @page{size:landscape;margin:10mm;} table{border-collapse:collapse;} td,th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style>
+      </head><body><h1>Medication Administration Record — ${emEsc(_marChartData.residentName)}</h1>
+      <p>${monthLabel} · Edge Homecare Services Ltd · Printed ${new Date().toLocaleString('en-GB')}</p>
+      ${buildMarChartHtml(_marChartData, false)}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  }
+
+  // ── Admin: eMAR overview page ──
+  let emarDate = new Date();
+  function initEmar() { emarDate = new Date(); loadEmar(); }
+  function emarChangeDay(delta) { emarDate.setDate(emarDate.getDate() + delta); loadEmar(); }
+  function emarGoToday() { emarDate = new Date(); loadEmar(); }
+  function emarSetDate(v) { if (v) { emarDate = new Date(v + 'T12:00:00'); loadEmar(); } }
+
+  async function loadEmar() {
+    const dateStr = localISODate(emarDate);
+    const todayStr = localISODate(new Date());
+    document.getElementById('emar-date').value = dateStr;
+    document.getElementById('emar-date-label').textContent = (dateStr === todayStr ? 'Today — ' : '') + new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    const weekAgo = new Date(emarDate); weekAgo.setDate(weekAgo.getDate() - 6);
+    const fromStr = localISODate(weekAgo);
+
+    const [medsRes, entriesRes] = await Promise.all([
+      db.from('resident_medications').select('*').order('resident_name'),
+      db.from('mar_entries').select('*').gte('scheduled_date', fromStr).lte('scheduled_date', dateStr).order('administered_at'),
+    ]);
+    const roundEl = document.getElementById('emar-round');
+    if (medsRes.error || entriesRes.error) {
+      roundEl.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px;">Could not load eMAR: ${emEsc((medsRes.error || entriesRes.error).message)}</td></tr>`;
+      return;
+    }
+    const meds = medsRes.data || [];
+    const entries = entriesRes.data || [];
+
+    // Today's round
+    const round = [];
+    meds.filter(m => m.frequency_type !== 'prn' && emarActiveOn(m, dateStr)).forEach(m => (m.times || []).forEach(t => {
+      round.push({ m, t, entry: entries.find(e => e.medication_id === m.id && e.scheduled_date === dateStr && e.scheduled_time === t) });
+    }));
+    round.sort((a, b) => emarToMin(a.t) - emarToMin(b.t) || a.m.resident_name.localeCompare(b.m.resident_name));
+    const signed = round.filter(r => r.entry && emarCodeInfo(r.entry.mar_code).ok).length;
+    const notGiven = round.filter(r => r.entry && !emarCodeInfo(r.entry.mar_code).ok).length;
+    const missed = round.filter(r => !r.entry && emarIsOverdue(r.m, dateStr, r.t)).length;
+    document.getElementById('emar-stat-due').textContent = round.length;
+    document.getElementById('emar-stat-signed').textContent = signed;
+    document.getElementById('emar-stat-missed').textContent = missed;
+    document.getElementById('emar-stat-exc').textContent = notGiven;
+
+    roundEl.innerHTML = round.length ? round.map(({ m, t, entry }) => {
+      let status;
+      if (entry) {
+        const c = emarCodeInfo(entry.mar_code);
+        status = `<span style="background:${c.bg};color:${c.fg};border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;">${c.letter} ${emEsc(entry.mar_code)}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${emarHHMM(entry.administered_at)} · ${emEsc(entry.staff_name || '')}${entry.notes ? ' · ' + emEsc(entry.notes) : ''}</div>`;
+      } else if (emarIsOverdue(m, dateStr, t)) {
+        status = '<span class="badge badge-red">Not signed</span>';
+      } else {
+        status = '<span style="font-size:12px;color:var(--muted);">Due</span>';
+      }
       return `<tr>
-        <td>${formatDate(e.scheduled_date)}</td>
-        <td>${e.medication_name}${e.dose ? ' ' + e.dose : ''}</td>
-        <td>${e.scheduled_time || 'PRN'}</td>
-        <td><span style="color:${codeColor};font-weight:600;">${e.mar_code}</span>${e.notes ? `<div style="font-size:11px;color:var(--muted);">${e.notes}</div>` : ''}</td>
-        <td>${e.staff_name || '—'}</td>
+        <td style="font-weight:700;">${t}${m.time_critical ? ' ⏱' : ''}</td>
+        <td>${emEsc(m.resident_name)}</td>
+        <td><strong>${emEsc(m.medication_name)}</strong>${m.dose ? ' ' + emEsc(m.dose) : ''}</td>
+        <td>${EMAR_SUPPORT[m.support_level] || 'Administer'}</td>
+        <td>${status}</td>
       </tr>`;
-    }).join('');
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No regular medication due on this day. Add medication from a resident\'s profile.</td></tr>';
+
+    // PRN doses today
+    const prnIds = new Set(meds.filter(m => m.frequency_type === 'prn').map(m => m.id));
+    const prnToday = entries.filter(e => e.scheduled_date === dateStr && (!e.scheduled_time || prnIds.has(e.medication_id)));
+    document.getElementById('emar-prn').innerHTML = prnToday.length ? prnToday.map(e => `<tr>
+      <td>${emarHHMM(e.administered_at)}</td><td>${emEsc(e.resident_name)}</td>
+      <td><strong>${emEsc(e.medication_name)}</strong>${e.dose ? ' ' + emEsc(e.dose) : ''}</td>
+      <td style="font-size:12px;">${emEsc(e.notes || '—')}</td><td>${emEsc(e.staff_name || '—')}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No PRN doses recorded on this day.</td></tr>';
+
+    // Follow-up over the last 7 days
+    const follow = [];
+    for (let d = new Date(weekAgo); localISODate(d) <= dateStr; d.setDate(d.getDate() + 1)) {
+      const ds = localISODate(d);
+      meds.filter(m => m.frequency_type !== 'prn' && emarActiveOn(m, ds)).forEach(m => (m.times || []).forEach(t => {
+        const e = entries.find(x => x.medication_id === m.id && x.scheduled_date === ds && x.scheduled_time === t);
+        if (!e && emarIsOverdue(m, ds, t)) follow.push({ ds, t, m, kind: 'missed' });
+        else if (e && !emarCodeInfo(e.mar_code).ok) follow.push({ ds, t, m, e, kind: 'notgiven' });
+      }));
+    }
+    follow.sort((a, b) => (b.ds + b.t).localeCompare(a.ds + a.t));
+    document.getElementById('emar-followup').innerHTML = follow.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>When</th><th>Resident</th><th>Medication</th><th>Issue</th></tr></thead><tbody>
+      ${follow.map(f => `<tr>
+        <td style="white-space:nowrap;">${formatDate(f.ds + 'T00:00:00')} ${f.t}</td>
+        <td>${emEsc(f.m.resident_name)}</td>
+        <td><strong>${emEsc(f.m.medication_name)}</strong>${f.m.dose ? ' ' + emEsc(f.m.dose) : ''}${f.m.time_critical ? ' <span class="badge badge-red">⏱</span>' : ''}</td>
+        <td>${f.kind === 'missed' ? '<span class="badge badge-red">Not signed</span>' : `<span class="badge badge-amber">${emEsc(f.e.mar_code)}</span> <span style="font-size:12px;color:var(--muted);">${emEsc(f.e.staff_name || '')}${f.e.notes ? ' — ' + emEsc(f.e.notes) : ''}</span>`}</td>
+      </tr>`).join('')}
+      </tbody></table></div>`
+      : '<p style="color:var(--green);font-size:13px;margin:0;">✓ Nothing to follow up — every dose due in the last 7 days has been signed as given or prompted.</p>';
   }
 
   function openMedScheduleModal(medId) {
@@ -4082,6 +4526,10 @@ const TRAINING_MODULES = [
         document.getElementById('ms-instructions').value = m.instructions || '';
         document.getElementById('ms-start').value = m.start_date || '';
         document.getElementById('ms-end').value = m.end_date || '';
+        document.getElementById('ms-support').value = m.support_level || 'administer';
+        document.getElementById('ms-time-critical').checked = !!m.time_critical;
+        document.getElementById('ms-prn-max').value = m.prn_max_doses || '';
+        document.getElementById('ms-prn-gap').value = m.prn_min_gap_hours || '';
         toggleMsFreqFields();
         openModal('med-schedule-modal');
       });
@@ -4095,6 +4543,10 @@ const TRAINING_MODULES = [
       document.getElementById('ms-instructions').value = '';
       document.getElementById('ms-start').value = localISODate(new Date());
       document.getElementById('ms-end').value = '';
+      document.getElementById('ms-support').value = 'administer';
+      document.getElementById('ms-time-critical').checked = false;
+      document.getElementById('ms-prn-max').value = '';
+      document.getElementById('ms-prn-gap').value = '';
       toggleMsFreqFields();
       openModal('med-schedule-modal');
     }
@@ -4104,15 +4556,25 @@ const TRAINING_MODULES = [
     const isPrn = val('ms-freq') === 'prn';
     document.getElementById('ms-times-row').style.display = isPrn ? 'none' : '';
     document.getElementById('ms-prn-row').style.display = isPrn ? '' : 'none';
+    document.getElementById('ms-prn-max-row').style.display = isPrn ? '' : 'none';
+    document.getElementById('ms-prn-gap-row').style.display = isPrn ? '' : 'none';
   }
 
   async function saveMedicationSchedule() {
     const name = val('ms-name');
     if (!name) { showToast('Please enter a medication name.', true); return; }
     const freq = val('ms-freq');
-    const times = freq === 'scheduled'
+    const rawTimes = freq === 'scheduled'
       ? val('ms-times').split(',').map(t => t.trim()).filter(Boolean)
       : [];
+    const times = [];
+    for (const t of rawTimes) {
+      const mt = t.replace('.', ':').match(/^(\d{1,2}):?(\d{2})$/);
+      if (!mt || +mt[1] > 23 || +mt[2] > 59) { showToast(`"${t}" isn't a valid time. Use 24-hour times like 08:00, 13:30.`, true); return; }
+      times.push(mt[1].padStart(2, '0') + ':' + mt[2]);
+    }
+    if (freq === 'scheduled' && !times.length) { showToast('Please enter at least one time the medication is due.', true); return; }
+    times.sort();
     const payload = {
       resident_id: document.getElementById('ms-resident-id').value,
       resident_name: document.getElementById('ms-resident-name').value,
@@ -4125,6 +4587,10 @@ const TRAINING_MODULES = [
       instructions: val('ms-instructions'),
       start_date: val('ms-start') || null,
       end_date: val('ms-end') || null,
+      support_level: val('ms-support') || 'administer',
+      time_critical: document.getElementById('ms-time-critical').checked,
+      prn_max_doses: freq === 'prn' && val('ms-prn-max') ? parseInt(val('ms-prn-max'), 10) : null,
+      prn_min_gap_hours: freq === 'prn' && val('ms-prn-gap') ? parseFloat(val('ms-prn-gap')) : null,
       status: 'active'
     };
     const editId = val('ms-edit-id');
@@ -4146,7 +4612,7 @@ const TRAINING_MODULES = [
 
   async function discontinueMedication(id) {
     if (!confirm('Discontinue this medication? It will no longer show as due for staff to sign, but its history is kept.')) return;
-    const { error } = await db.from('resident_medications').update({ status: 'discontinued' }).eq('id', id);
+    const { error } = await db.from('resident_medications').update({ status: 'discontinued', end_date: localISODate(new Date()), updated_at: new Date().toISOString() }).eq('id', id);
     if (error) { showToast('Could not discontinue: ' + error.message, true); return; }
     showToast('Medication discontinued');
     if (_medListContext.targetElId) loadResidentMedications(_medListContext.residentId, _medListContext.residentName, _medListContext.targetElId);
@@ -6708,8 +7174,11 @@ const TRAINING_MODULES = [
           </div>
         </div>
         ${clockSection}
+        ${s.status !== 'cancelled' && s.client_name ? `<div id="rota-meds-${s.id}"></div>` : ''}
       </div>
     `; }).join('');
+    _myRotaShifts = data;
+    loadRotaMedications(data, dateStr, isToday);
   }
 
   function getLocationSafely() {
