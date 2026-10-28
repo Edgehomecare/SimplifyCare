@@ -1521,7 +1521,7 @@
 </div>
 
 <!-- MAR SIGN-OFF MODAL (staff: sign during a visit) -->
-<div class="modal-overlay" id="mar-sign-modal">
+<div class="modal-overlay" id="mar-sign-modal" style="z-index:1100;">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
       <h2 id="mar-sign-title">Sign for Medication</h2>
@@ -2539,9 +2539,9 @@
     </div>
     <input type="hidden" id="n-edit-id" />
     <div class="form-grid">
-      <div class="form-group"><label>Date *</label><input type="date" id="n-date" /></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="n-date" onchange="loadNoteMedPanel()" /></div>
       <div class="form-group"><label>Time</label><input type="time" id="n-time" /></div>
-      <div class="form-group"><label>Resident *</label><input id="n-resident" list="n-resident-list" placeholder="Resident name" /><datalist id="n-resident-list"></datalist></div>
+      <div class="form-group"><label>Resident *</label><input id="n-resident" list="n-resident-list" placeholder="Resident name" onchange="loadNoteMedPanel()" /><datalist id="n-resident-list"></datalist></div>
       <div class="form-group full"><label>Category (tick all that apply)</label>
         <div id="n-category-group" style="display:flex;flex-wrap:wrap;gap:8px;">
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="General" class="n-category-cb"> General</label>
@@ -2557,6 +2557,7 @@
           <label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" value="Safeguarding concern" class="n-category-cb"> Safeguarding concern</label>
         </div>
       </div>
+      <div class="form-group full" id="n-med-panel" style="display:none;"></div>
       <div class="form-group full">
         <label>Note *</label>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
@@ -4231,13 +4232,20 @@ const TRAINING_MODULES = [
     const m = _rotaMeds.find(x => x.id === medId);
     const shift = _myRotaShifts.find(x => x.id === shiftId);
     if (!m || !shift) return;
+    const date = localISODate(myRotaCurrentDate);
+    openMarSignCore(m, time, shift, date, _rotaMarEntries.filter(e => e.medication_id === m.id),
+      () => loadRotaMedications(_myRotaShifts, date, date === localISODate(new Date())));
+  }
+
+  // Shared by My Rota and the daily note form. prnGiven = today's entries for this medication.
+  function openMarSignCore(m, time, shift, date, prnGiven, onDone) {
     if (!currentStaffId) { showToast('Your login is not linked to a staff record, so you cannot sign. Please contact the office.', true); return; }
-    _marSignCtx = { med: m, time: time || null, shift, date: localISODate(myRotaCurrentDate) };
+    _marSignCtx = { med: m, time: time || null, shift: shift || null, date, onDone };
     const isPrn = !time;
     document.getElementById('mar-sign-title').textContent = isPrn ? 'Record PRN dose' : 'Sign for medication';
     document.getElementById('mar-sign-sub').innerHTML = `
       <div style="font-size:15px;font-weight:700;color:var(--navy);">${emEsc(m.medication_name)}${m.dose ? ' ' + emEsc(m.dose) : ''}</div>
-      <div style="color:var(--muted);">${emEsc(shift.client_name)} · ${isPrn ? 'As needed' : 'Due ' + time} · ${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.route ? ' · ' + emEsc(m.route) : ''}</div>
+      <div style="color:var(--muted);">${emEsc(m.resident_name)} · ${isPrn ? 'As needed' : 'Due ' + time} · ${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.route ? ' · ' + emEsc(m.route) : ''}</div>
       ${m.instructions ? `<div style="margin-top:6px;">${emEsc(m.instructions)}</div>` : ''}
       ${isPrn && m.prn_reason ? `<div style="margin-top:6px;"><strong>Give when:</strong> ${emEsc(m.prn_reason)}</div>` : ''}
       <div style="margin-top:8px;font-size:12px;color:var(--muted);">Check the 6 rights before you sign: right person, medication, dose, route, time and record.</div>`;
@@ -4252,7 +4260,7 @@ const TRAINING_MODULES = [
     const warnEl = document.getElementById('mar-sign-warning');
     const warnings = [];
     if (isPrn) {
-      const given = _rotaMarEntries.filter(e => e.medication_id === m.id);
+      const given = prnGiven || [];
       if (m.prn_max_doses && given.length >= m.prn_max_doses) warnings.push(`${given.length} dose${given.length === 1 ? ' has' : 's have'} already been recorded today. The maximum is ${m.prn_max_doses} in 24 hours.`);
       if (m.prn_min_gap_hours && given.length) {
         const hrs = (Date.now() - new Date(given[given.length - 1].administered_at).getTime()) / 3600000;
@@ -4306,7 +4314,7 @@ const TRAINING_MODULES = [
       administered_at: new Date().toISOString(),
       staff_id: currentStaffId,
       staff_name: currentStaffFullName || (currentUser && currentUser.email),
-      shift_id: shift.id,
+      shift_id: shift ? shift.id : null,
       notes: notes || null,
     };
     const { error } = await db.from('mar_entries').insert([payload]);
@@ -4318,8 +4326,95 @@ const TRAINING_MODULES = [
     }
     closeModal('mar-sign-modal');
     showToast(emarCodeInfo(code).ok ? 'Signed' : 'Recorded — please phone the office');
+    const onDone = _marSignCtx.onDone;
     _marSignCtx = null;
-    loadRotaMedications(_myRotaShifts, date, date === localISODate(new Date()));
+    if (onDone) onDone();
+  }
+
+  // ── Daily note form: medication due for the chosen resident ──
+  let _noteMeds = [];
+  let _noteMarEntries = [];
+  let _noteShift = null;
+  let _noteMedLoadSeq = 0;
+
+  async function loadNoteMedPanel() {
+    const panel = document.getElementById('n-med-panel');
+    if (!panel) return;
+    const resident = val('n-resident');
+    const dateStr = val('n-date') || localISODate(new Date());
+    const seq = ++_noteMedLoadSeq;
+    if (!resident) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+    const queries = [
+      db.from('resident_medications').select('*').eq('resident_name', resident).order('medication_name'),
+      db.from('mar_entries').select('*').eq('resident_name', resident).eq('scheduled_date', dateStr).order('administered_at'),
+    ];
+    if (currentStaffId) queries.push(db.from('rota_shifts').select('*').eq('staff_id', currentStaffId).eq('client_name', resident).eq('shift_date', dateStr).neq('status', 'cancelled').order('start_time'));
+    const [medsRes, entriesRes, shiftRes] = await Promise.all(queries);
+    if (seq !== _noteMedLoadSeq) return; // a newer resident/date was picked while loading
+    _noteMeds = (medsRes.data || []).filter(m => emarActiveOn(m, dateStr));
+    _noteMarEntries = entriesRes.data || [];
+    // Pick the visit closest to now, if this carer has one with this resident today
+    const shifts = (shiftRes && shiftRes.data) || [];
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    _noteShift = shifts.sort((a, b) => Math.abs(emarToMin(a.start_time) - nowMin) - Math.abs(emarToMin(b.start_time) - nowMin))[0] || null;
+    if (!_noteMeds.length) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+    panel.style.display = '';
+    panel.innerHTML = renderNoteMedPanel(dateStr);
+  }
+
+  function renderNoteMedPanel(dateStr) {
+    const isToday = dateStr === localISODate(new Date());
+    const visitTimes = _noteShift ? new Set(_noteMeds.flatMap(m => emarTimesForShift(m, _noteShift).map(t => m.id + '|' + t))) : null;
+    const rows = [];
+    _noteMeds.filter(m => m.frequency_type !== 'prn').forEach(m => (m.times || []).forEach(t => {
+      rows.push({ m, t, entry: _noteMarEntries.find(e => e.medication_id === m.id && e.scheduled_time === t), thisVisit: visitTimes ? visitTimes.has(m.id + '|' + t) : false });
+    }));
+    rows.sort((a, b) => emarToMin(a.t) - emarToMin(b.t));
+    const prnMeds = _noteMeds.filter(m => m.frequency_type === 'prn');
+
+    const medLine = m => `<strong>${emEsc(m.medication_name)}</strong>${m.dose ? ' ' + emEsc(m.dose) : ''}${m.route ? ` <span style="color:var(--muted);">(${emEsc(m.route)})</span>` : ''}${m.time_critical ? ' <span class="badge badge-red">⏱ Time-critical</span>' : ''}
+      <div style="font-size:11px;color:var(--muted);">${EMAR_SUPPORT[m.support_level] || 'Administer'}${m.instructions ? ' · ' + emEsc(m.instructions) : ''}</div>`;
+
+    const rowHtml = rows.map(({ m, t, entry, thisVisit }) => {
+      let right;
+      if (entry) {
+        const c = emarCodeInfo(entry.mar_code);
+        right = `<span style="background:${c.bg};color:${c.fg};border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;white-space:nowrap;">${c.letter} ${emEsc(entry.mar_code)}</span><div style="font-size:11px;color:var(--muted);margin-top:2px;">${emarHHMM(entry.administered_at)} · ${emEsc(entry.staff_name || '')}</div>`;
+      } else if (isToday) {
+        const late = emarIsOverdue(m, dateStr, t);
+        right = `<button type="button" class="btn btn-primary" style="padding:6px 12px;font-size:13px;" onclick="openNoteMarSign('${m.id}','${t}')">Sign</button>${late ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">Late</div>' : ''}`;
+      } else {
+        right = `<span style="font-size:12px;color:var(--red);font-weight:600;">Not signed</span>`;
+      }
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border);${thisVisit ? 'background:#f0fdfa;border-radius:6px;' : ''}">
+        <div style="font-size:13px;"><span style="font-weight:700;color:var(--navy);margin-right:6px;">${t}</span>${thisVisit ? '<span class="badge badge-green" style="margin-right:4px;">This visit</span>' : ''}${medLine(m)}</div>
+        <div style="text-align:right;">${right}</div></div>`;
+    }).join('');
+
+    const prnHtml = prnMeds.map(m => {
+      const given = _noteMarEntries.filter(e => e.medication_id === m.id);
+      const last = given[given.length - 1];
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border);">
+        <div style="font-size:13px;"><span style="font-weight:700;color:var(--navy);margin-right:6px;">PRN</span>${medLine(m)}
+          <div style="font-size:11px;color:var(--muted);">${m.prn_reason ? 'When: ' + emEsc(m.prn_reason) + ' · ' : ''}${given.length ? `${given.length} recorded today, last at ${emarHHMM(last.administered_at)}` : 'None recorded today'}</div></div>
+        <div>${isToday ? `<button type="button" class="btn btn-cancel" style="padding:6px 12px;font-size:13px;white-space:nowrap;" onclick="openNoteMarSign('${m.id}','')">Record dose</button>` : ''}</div></div>`;
+    }).join('');
+
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+      <div style="font-weight:700;font-size:14px;color:var(--navy);">💊 Medication due ${isToday ? 'today' : 'on this day'}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Sign each dose you deal with. This is the MAR record — ticking "Medication" below doesn't sign anything.</div>
+      ${rowHtml}${prnHtml}</div>`;
+  }
+
+  function openNoteMarSign(medId, time) {
+    const m = _noteMeds.find(x => x.id === medId);
+    if (!m) return;
+    const dateStr = val('n-date') || localISODate(new Date());
+    openMarSignCore(m, time, _noteShift, dateStr, _noteMarEntries.filter(e => e.medication_id === m.id), () => {
+      const cb = document.querySelector('.n-category-cb[value="Medication"]');
+      if (cb) cb.checked = true;
+      loadNoteMedPanel();
+    });
   }
 
   // ── Admin: monthly MAR chart on the resident profile ──
@@ -5809,6 +5904,7 @@ const TRAINING_MODULES = [
     document.querySelectorAll('.n-category-cb').forEach(cb => { cb.checked = false; });
     document.getElementById('n-share-family').checked = true;
     setTodayDate();
+    loadNoteMedPanel();
     openModal('note-modal');
   }
 
@@ -6154,6 +6250,7 @@ const TRAINING_MODULES = [
     document.getElementById('n-share-family').checked = n.share_with_family !== false;
     document.getElementById('n-note').value = n.note || '';
     document.getElementById('n-staff').value = n.staff_name || '';
+    loadNoteMedPanel();
     openModal('note-modal');
   }
 
