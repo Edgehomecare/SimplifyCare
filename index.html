@@ -399,6 +399,9 @@
         <div class="nav-item admin-only" onclick="showPage('residents')">
           <span class="icon">👥</span> Residents
         </div>
+        <div class="nav-item admin-only" onclick="showPage('calls')">
+          <span class="icon">📡</span> Call Monitoring
+        </div>
         <div class="nav-item admin-only" onclick="showPage('emar')">
           <span class="icon">💊</span> eMAR
         </div>
@@ -668,6 +671,47 @@
               <tbody id="incidents-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- LIVE CALL MONITORING (admin) -->
+      <div class="page" id="page-calls">
+        <div class="page-header">
+          <h1>📡 Call Monitoring</h1>
+          <p>Live view of today's visits: who's on a visit, who hasn't started, and whether carers clocked in at the client's address.</p>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="cmChangeDay(-1)">← Previous day</button>
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="cmGoToday()">Today</button>
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="cmChangeDay(1)">Next day →</button>
+            <input type="date" id="cm-date" onchange="cmSetDate(this.value)" style="max-width:180px;" />
+            <button class="btn btn-cancel" style="padding:8px 16px;" onclick="loadCallMonitoring()">↻ Refresh</button>
+            <div style="margin-left:auto;text-align:right;">
+              <div id="cm-date-label" style="font-weight:700;color:var(--navy);"></div>
+              <div id="cm-updated" style="font-size:11px;color:var(--muted);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card teal"><div class="label">Visits</div><div class="value" id="cm-stat-total">—</div><div class="sub">on the rota</div></div>
+          <div class="stat-card blue"><div class="label">On a visit</div><div class="value" id="cm-stat-onvisit">—</div><div class="sub">clocked in now</div></div>
+          <div class="stat-card red"><div class="label">Late or missed</div><div class="value" id="cm-stat-late">—</div><div class="sub">no clock-in 15+ min after start</div></div>
+          <div class="stat-card green"><div class="label">Completed</div><div class="value" id="cm-stat-done">—</div><div class="sub">clocked in and out</div></div>
+          <div class="stat-card amber"><div class="label">Location flags</div><div class="value" id="cm-stat-loc">—</div><div class="sub">clocked more than 250 m away</div></div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Needs action now</div>
+          <div id="cm-urgent"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">All visits</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Planned</th><th>Client</th><th>Carer</th><th>Status</th><th>Actual</th><th>Clock-in location</th><th>Clock-out location</th></tr></thead>
+            <tbody id="cm-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+          </table></div>
+          <p id="cm-noloc" style="font-size:12px;color:var(--muted);margin:12px 0 0;"></p>
+          <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">Locations are checked against the centre of the client's postcode, so rural postcodes can show a few hundred metres even when the carer was at the right house. Use a flag as a prompt to ask, not as proof.</p>
         </div>
       </div>
 
@@ -3059,6 +3103,7 @@ const TRAINING_MODULES = [
     if (name === 'emergency-contacts') loadEmergencyContacts();
     if (name === 'mileage') initMileage();
     if (name === 'emar') initEmar();
+    if (name === 'calls') initCallMonitoring();
   }
 
   function switchTab(el, panelId) {
@@ -4239,7 +4284,7 @@ const TRAINING_MODULES = [
 
   // Shared by My Rota and the daily note form. prnGiven = today's entries for this medication.
   function openMarSignCore(m, time, shift, date, prnGiven, onDone) {
-    if (!currentStaffId) { showToast('Your login is not linked to a staff record, so you cannot sign. Please contact the office.', true); return; }
+    if (!currentStaffId && currentRole !== 'admin') { showToast('Your login is not linked to a staff record, so you cannot sign. Please contact the office.', true); return; }
     _marSignCtx = { med: m, time: time || null, shift: shift || null, date, onDone };
     const isPrn = !time;
     document.getElementById('mar-sign-title').textContent = isPrn ? 'Record PRN dose' : 'Sign for medication';
@@ -4329,6 +4374,197 @@ const TRAINING_MODULES = [
     const onDone = _marSignCtx.onDone;
     _marSignCtx = null;
     if (onDone) onDone();
+  }
+
+  // ══════════════════════════════════════════════
+  // ── LIVE CALL MONITORING (admin) ──
+  // ══════════════════════════════════════════════
+  const CM_LATE_MINS = 15;          // not clocked in this long after the planned start = late
+  const CM_LOCATION_RADIUS_M = 250; // postcode centres are approximate, so allow some distance
+  const CM_LEAVE_TYPES = ['Day Off', 'Annual Leave', 'Sick Leave'];
+  let cmDate = new Date();
+  let cmTimer = null;
+  let cmResidentsByName = {};
+  let cmStaffPhones = {};
+
+  function cmNameKeys(name) {
+    const lower = String(name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    const stripped = lower.replace(/\([^)]*\)/g, ' ').replace(/\b(mr|mrs|miss|ms|dr)\.?\s+/g, '').replace(/[^a-z&' -]/g, '').replace(/\s+/g, ' ').trim();
+    return [lower, stripped];
+  }
+  function cmFindResident(name) {
+    for (const k of cmNameKeys(name)) if (cmResidentsByName[k]) return cmResidentsByName[k];
+    return null;
+  }
+  function cmExtractPostcode(text) {
+    const m = String(text || '').toUpperCase().match(/\b([A-Z]{1,2}[0-9][A-Z0-9]?)\s*([0-9][A-Z]{2})\b/);
+    return m ? m[1] + ' ' + m[2] : null;
+  }
+  function cmDistanceM(lat1, lng1, lat2, lng2) {
+    const R = 6371000, rad = x => x * Math.PI / 180;
+    const dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+  }
+  function cmFmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + ' km' : m + ' m'; }
+  function cmFmtTime(t) { return t ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''; }
+
+  // Looks up the map location of any client whose postcode is new or has changed.
+  // Only the postcode is sent (to postcodes.io, the free UK postcode service).
+  async function cmGeocodeResidents(residents) {
+    const todo = residents.map(r => ({ r, pc: cmExtractPostcode(r.room) || cmExtractPostcode(r.address) }))
+      .filter(x => x.pc && x.pc !== x.r.geocoded_postcode);
+    if (!todo.length) return;
+    try {
+      const res = await fetch('https://api.postcodes.io/postcodes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postcodes: [...new Set(todo.map(x => x.pc))].slice(0, 100) })
+      });
+      const json = await res.json();
+      const found = {};
+      (json.result || []).forEach(r => { if (r.result) found[r.query] = r.result; });
+      await Promise.all(todo.map(({ r, pc }) => {
+        const hit = found[pc];
+        r.home_lat = hit ? hit.latitude : null;
+        r.home_lng = hit ? hit.longitude : null;
+        r.geocoded_postcode = pc;
+        return db.from('residents').update({ home_lat: r.home_lat, home_lng: r.home_lng, geocoded_postcode: pc }).eq('id', r.id);
+      }));
+    } catch (e) { console.warn('Postcode lookup failed', e); }
+  }
+
+  function initCallMonitoring() {
+    cmDate = new Date();
+    loadCallMonitoring();
+    if (cmTimer) clearInterval(cmTimer);
+    cmTimer = setInterval(() => {
+      const page = document.getElementById('page-calls');
+      if (!page || !page.classList.contains('active')) { clearInterval(cmTimer); cmTimer = null; return; }
+      if (localISODate(cmDate) === localISODate(new Date())) loadCallMonitoring(true);
+    }, 60000);
+  }
+  function cmChangeDay(d) { cmDate.setDate(cmDate.getDate() + d); loadCallMonitoring(); }
+  function cmGoToday() { cmDate = new Date(); loadCallMonitoring(); }
+  function cmSetDate(v) { if (v) { cmDate = new Date(v + 'T12:00:00'); loadCallMonitoring(); } }
+
+  async function loadCallMonitoring(silent) {
+    const dateStr = localISODate(cmDate);
+    const isToday = dateStr === localISODate(new Date());
+    document.getElementById('cm-date').value = dateStr;
+    document.getElementById('cm-date-label').textContent = (isToday ? 'Today — ' : '') + new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    if (!silent) document.getElementById('cm-table').innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>';
+
+    const [shiftRes, resRes, staffRes] = await Promise.all([
+      db.from('rota_shifts').select('*').eq('shift_date', dateStr).order('start_time'),
+      db.from('residents').select('id, first_name, last_name, room, address, phone, home_lat, home_lng, geocoded_postcode, status'),
+      db.from('staff').select('id, full_name, phone'),
+    ]);
+    if (shiftRes.error || resRes.error) {
+      document.getElementById('cm-table').innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px;">Could not load visits: ${emEsc((shiftRes.error || resRes.error).message)}</td></tr>`;
+      return;
+    }
+    const residents = resRes.data || [];
+    await cmGeocodeResidents(residents);
+    cmResidentsByName = {};
+    residents.forEach(r => cmNameKeys(`${r.first_name || ''} ${r.last_name || ''}`).forEach(k => { if (k && !cmResidentsByName[k]) cmResidentsByName[k] = r; }));
+    cmStaffPhones = {};
+    (staffRes.data || []).forEach(s => { cmStaffPhones[s.id] = s.phone; cmStaffPhones[(s.full_name || '').toLowerCase().trim()] = s.phone; });
+
+    const now = new Date();
+    const visits = (shiftRes.data || []).filter(s => s.status !== 'cancelled' && !CM_LEAVE_TYPES.includes(s.visit_type))
+      .map(s => cmAssessVisit(s, dateStr, now));
+
+    const count = k => visits.filter(v => v.state === k).length;
+    document.getElementById('cm-stat-total').textContent = visits.length;
+    document.getElementById('cm-stat-onvisit').textContent = count('onvisit') + count('overrun');
+    document.getElementById('cm-stat-late').textContent = count('late') + count('missed');
+    document.getElementById('cm-stat-done').textContent = count('done');
+    document.getElementById('cm-stat-loc').textContent = visits.filter(v => v.locFlag).length;
+
+    // Needs action now
+    const urgent = visits.filter(v => ['late', 'missed', 'overrun'].includes(v.state));
+    document.getElementById('cm-urgent').innerHTML = urgent.length ? urgent.map(v => {
+      const staffPhone = cmStaffPhones[v.s.staff_id] || cmStaffPhones[(v.s.staff_name || '').toLowerCase().trim()];
+      const clientPhone = v.resident && v.resident.phone;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid ${v.state === 'missed' ? '#fecaca' : '#fde68a'};background:${v.state === 'missed' ? '#fef2f2' : '#fffbeb'};border-radius:10px;margin-bottom:8px;">
+        <div style="font-size:13px;"><strong>${emEsc(v.s.client_name || 'No client')}</strong> · ${emEsc(v.s.staff_name || 'No carer')} · planned ${v.planned}
+          <div style="margin-top:2px;">${v.badge}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${staffPhone ? `<a class="btn btn-cancel" style="padding:5px 10px;font-size:12px;text-decoration:none;" href="tel:${emEsc(staffPhone)}">📞 Carer</a>` : ''}
+          ${clientPhone ? `<a class="btn btn-cancel" style="padding:5px 10px;font-size:12px;text-decoration:none;" href="tel:${emEsc(clientPhone)}">📞 Client</a>` : ''}
+        </div></div>`;
+    }).join('') : `<p style="color:var(--green);font-size:13px;margin:0;">✓ ${isToday ? 'Nothing needs chasing right now.' : 'No late, missed or overrunning visits on this day.'}</p>`;
+
+    // All visits
+    document.getElementById('cm-table').innerHTML = visits.length ? visits.map(v => `<tr>
+      <td style="white-space:nowrap;font-weight:600;">${v.planned}</td>
+      <td>${emEsc(v.s.client_name || '—')}</td>
+      <td>${emEsc(v.s.staff_name || '—')}</td>
+      <td>${v.badge}</td>
+      <td style="white-space:nowrap;font-size:12px;">${v.actual}</td>
+      <td style="font-size:12px;">${v.locIn}</td>
+      <td style="font-size:12px;">${v.locOut}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No visits on the rota for this day.</td></tr>';
+
+    document.getElementById('cm-updated').textContent = `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${isToday ? ' · refreshes every minute' : ''}`;
+    const noLoc = residents.filter(r => r.status === 'active' && (r.home_lat == null)).map(r => `${r.first_name || ''} ${r.last_name || ''}`.trim());
+    document.getElementById('cm-noloc').innerHTML = noLoc.length
+      ? `Location checks can't run for: ${noLoc.map(emEsc).join(', ')}. Add a full postcode to their Room / Address field.` : '';
+  }
+
+  function cmAssessVisit(s, dateStr, now) {
+    const start = s.start_time ? new Date(`${dateStr}T${s.start_time.slice(0, 5)}:00`) : null;
+    let end = s.end_time ? new Date(`${dateStr}T${s.end_time.slice(0, 5)}:00`) : (start ? new Date(start.getTime() + 30 * 60000) : null);
+    if (start && end && end <= start) end = new Date(end.getTime() + 86400000); // overnight
+    const planned = start ? `${s.start_time.slice(0, 5)}${s.end_time ? '–' + s.end_time.slice(0, 5) : ''}` : 'No time set';
+    const mins = (a, b) => Math.round((a - b) / 60000);
+    const badge = (cls, text) => `<span class="badge ${cls}">${text}</span>`;
+    let state, b, actual = '—';
+
+    if (s.clock_in_time) {
+      const inT = new Date(s.clock_in_time);
+      const lateBy = start ? mins(inT, start) : 0;
+      const lateTxt = lateBy >= CM_LATE_MINS ? ` · ${lateBy} min late` : '';
+      if (s.clock_out_time) {
+        const dur = mins(new Date(s.clock_out_time), inT);
+        const plannedDur = start && end ? mins(end, start) : null;
+        state = 'done';
+        b = badge(lateTxt ? 'badge-amber' : 'badge-green', '✓ Completed' + lateTxt);
+        actual = `${cmFmtTime(s.clock_in_time)}–${cmFmtTime(s.clock_out_time)} (${dur} min${plannedDur ? ' of ' + plannedDur : ''})`;
+      } else if (end && now > new Date(end.getTime() + CM_LATE_MINS * 60000)) {
+        state = 'overrun';
+        b = badge('badge-amber', `Not clocked out · due out ${cmFmtTime(end)}`);
+        actual = `In ${cmFmtTime(s.clock_in_time)}`;
+      } else {
+        state = 'onvisit';
+        b = badge('badge-blue', '🟢 On visit' + lateTxt);
+        actual = `In ${cmFmtTime(s.clock_in_time)}`;
+      }
+    } else if (!start || now < start) {
+      state = 'upcoming'; b = '<span style="font-size:12px;color:var(--muted);">Upcoming</span>';
+    } else if (now < new Date(start.getTime() + CM_LATE_MINS * 60000)) {
+      state = 'due'; b = '<span style="font-size:12px;color:var(--muted);">Due now</span>';
+    } else if (end && now < end) {
+      state = 'late'; b = badge('badge-amber', `⚠ Not started · ${mins(now, start)} min late`);
+    } else {
+      state = 'missed'; b = badge('badge-red', '✕ No clock-in — possible missed visit');
+    }
+
+    const resident = cmFindResident(s.client_name);
+    const locCheck = (lat, lng, when) => {
+      if (!when) return '—';
+      if (lat == null) return '<span style="color:var(--muted);">No location captured</span>';
+      if (!resident) return '<span style="color:var(--muted);">Client not matched</span>';
+      if (resident.home_lat == null) return '<span style="color:var(--muted);">Client postcode unknown</span>';
+      const d = cmDistanceM(lat, lng, resident.home_lat, resident.home_lng);
+      return d <= CM_LOCATION_RADIUS_M
+        ? `<span style="color:var(--green);font-weight:600;">✓ At address</span> <span style="color:var(--muted);">(${cmFmtDist(d)})</span>`
+        : `<span style="color:var(--red);font-weight:600;">⚠ ${cmFmtDist(d)} away</span>`;
+    };
+    const locIn = locCheck(s.clock_in_lat, s.clock_in_lng, s.clock_in_time);
+    const locOut = locCheck(s.clock_out_lat, s.clock_out_lng, s.clock_out_time);
+    const locFlag = locIn.includes('away') || locOut.includes('away');
+    return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident };
   }
 
   // ── Daily note form: medication due for the chosen resident ──
@@ -4517,6 +4753,14 @@ const TRAINING_MODULES = [
 
   // ── Admin: eMAR overview page ──
   let emarDate = new Date();
+  let _emarMeds = [];
+  let _emarEntries = [];
+  function openEmarSign(medId, time) {
+    const m = _emarMeds.find(x => x.id === medId);
+    if (!m) return;
+    const dateStr = localISODate(emarDate);
+    openMarSignCore(m, time, null, dateStr, _emarEntries.filter(e => e.medication_id === m.id && e.scheduled_date === dateStr), () => loadEmar());
+  }
   function initEmar() { emarDate = new Date(); loadEmar(); }
   function emarChangeDay(delta) { emarDate.setDate(emarDate.getDate() + delta); loadEmar(); }
   function emarGoToday() { emarDate = new Date(); loadEmar(); }
@@ -4541,6 +4785,8 @@ const TRAINING_MODULES = [
     }
     const meds = medsRes.data || [];
     const entries = entriesRes.data || [];
+    _emarMeds = meds;
+    _emarEntries = entries;
 
     // Today's round
     const round = [];
@@ -4562,10 +4808,10 @@ const TRAINING_MODULES = [
         const c = emarCodeInfo(entry.mar_code);
         status = `<span style="background:${c.bg};color:${c.fg};border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;">${c.letter} ${emEsc(entry.mar_code)}</span>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${emarHHMM(entry.administered_at)} · ${emEsc(entry.staff_name || '')}${entry.notes ? ' · ' + emEsc(entry.notes) : ''}</div>`;
-      } else if (emarIsOverdue(m, dateStr, t)) {
-        status = '<span class="badge badge-red">Not signed</span>';
       } else {
-        status = '<span style="font-size:12px;color:var(--muted);">Due</span>';
+        const overdue = emarIsOverdue(m, dateStr, t);
+        status = `${overdue ? '<span class="badge badge-red">Not signed</span>' : '<span style="font-size:12px;color:var(--muted);">Due</span>'}
+          ${dateStr <= todayStr ? `<button class="btn btn-primary" style="padding:4px 10px;font-size:12px;margin-left:8px;" onclick="openEmarSign('${m.id}','${t}')">Sign</button>` : ''}`;
       }
       return `<tr>
         <td style="font-weight:700;">${t}${m.time_critical ? ' ⏱' : ''}</td>
