@@ -2940,6 +2940,14 @@ const TRAINING_MODULES = [
   // Detects when someone arrives via the emailed "set your password" link,
   // and shows the new-password screen instead of the normal login form.
   db.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT' && currentUser) {
+      currentUser = null;
+      document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('auth-error').textContent = 'You were signed out. Please sign in again.';
+      return;
+    }
     if (event === 'PASSWORD_RECOVERY') {
       passwordRecoveryInProgress = true;
       document.querySelector('#auth-screen .auth-card').style.display = 'none';
@@ -2949,7 +2957,10 @@ const TRAINING_MODULES = [
   });
 
   async function handleLogout() {
-    await db.auth.signOut();
+    // 'local' only signs out this browser. The default ('global') also kills the
+    // login on every other phone/tab, which left those screens open but silently
+    // logged out, so saves failed with a row-level security error.
+    await db.auth.signOut({ scope: 'local' });
     currentUser = null;
     document.getElementById('login-email').value = '';
     document.getElementById('login-password').value = '';
@@ -4279,6 +4290,7 @@ const TRAINING_MODULES = [
       showToast(isPrn ? 'Please record why the PRN dose was needed.' : 'Please add a note explaining what happened.', true);
       return;
     }
+    if (!(await ensureSignedIn())) return;
     if (_marSignCtx.hasWarnings && !confirm('This dose is outside the PRN limits. Only continue if the office or a health professional has told you to give it. Continue?')) return;
     const btn = document.getElementById('mar-sign-confirm-btn');
     btn.disabled = true;
@@ -6075,9 +6087,19 @@ const TRAINING_MODULES = [
     return s;
   }
 
+  // Confirms the login is still live before saving, so nothing is lost to an
+  // expired session. Leaves the form open so the person can copy their text.
+  async function ensureSignedIn() {
+    const { data } = await db.auth.getSession();
+    if (data && data.session) return true;
+    showToast('Your login has expired. Copy your text, then refresh the page and sign in again.', true);
+    return false;
+  }
+
   async function saveNote() {
     const saveBtn = document.getElementById('save-note-btn');
     if (saveBtn.disabled) return; // guard against double-clicks/double-taps sending it twice
+    if (!(await ensureSignedIn())) return;
     const checkedCategories = Array.from(document.querySelectorAll('.n-category-cb:checked')).map(cb => cb.value);
     // For care staff, always use the verified name from their account rather than
     // whatever's in the field - protects against the field ever being blank, stale,
