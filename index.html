@@ -699,6 +699,7 @@
           <div class="stat-card red"><div class="label">Late or missed</div><div class="value" id="cm-stat-late">—</div><div class="sub">no clock-in 15+ min after start</div></div>
           <div class="stat-card green"><div class="label">Completed</div><div class="value" id="cm-stat-done">—</div><div class="sub">clocked in and out</div></div>
           <div class="stat-card amber"><div class="label">Location flags</div><div class="value" id="cm-stat-loc">—</div><div class="sub">clocked more than 250 m away</div></div>
+          <div class="stat-card amber"><div class="label">Short visits</div><div class="value" id="cm-stat-short">—</div><div class="sub">under 75% of planned time</div></div>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <div class="card-title">Needs action now</div>
@@ -707,8 +708,8 @@
         <div class="card">
           <div class="card-title">All visits</div>
           <div class="table-wrap"><table>
-            <thead><tr><th>Planned</th><th>Client</th><th>Carer</th><th>Status</th><th>Actual</th><th>Clock-in location</th><th>Clock-out location</th></tr></thead>
-            <tbody id="cm-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+            <thead><tr><th>Planned</th><th>Client</th><th>Carer</th><th>Status</th><th>Actual</th><th>Clock-in location</th><th>Clock-out location</th><th></th></tr></thead>
+            <tbody id="cm-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
           </table></div>
           <p id="cm-noloc" style="font-size:12px;color:var(--muted);margin:12px 0 0;"></p>
           <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">Locations are checked against the centre of the client's postcode, so rural postcodes can show a few hundred metres even when the carer was at the right house. Use a flag as a prompt to ask, not as proof.</p>
@@ -1560,6 +1561,41 @@
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('med-schedule-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveMedicationSchedule()">Save medication</button>
+    </div>
+  </div>
+</div>
+
+<!-- VISIT TIME CORRECTION MODAL (office) -->
+<div class="modal-overlay" id="cm-fix-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h2>Correct visit times</h2>
+      <button class="modal-close" onclick="closeModal('cm-fix-modal')">✕</button>
+    </div>
+    <div style="padding:0 20px 16px;">
+      <div id="cm-fix-sub" style="font-size:13px;margin-bottom:12px;"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Clock-in time</label><input type="time" id="cm-fix-in" /></div>
+        <div class="form-group"><label>Clock-out time</label><input type="time" id="cm-fix-out" /></div>
+        <div class="form-group full"><label>Reason *</label>
+          <select id="cm-fix-reason">
+            <option value="">Choose a reason...</option>
+            <option>Carer forgot to clock in</option>
+            <option>Carer forgot to clock out</option>
+            <option>No phone signal or battery</option>
+            <option>Clocked in or out at the wrong time</option>
+            <option>App or phone problem</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>How were the times confirmed? *</label><textarea id="cm-fix-detail" placeholder="e.g. Carer phoned the office at 10:15 to say she left at 10:05; confirmed with client's daughter."></textarea></div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:4px 0 0;">The original times, the new times, your reason and your name are kept permanently. A cleared box removes that time.</p>
+      <div id="cm-fix-history" style="margin-top:12px;"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('cm-fix-modal')">Cancel</button>
+      <button class="btn btn-save" id="cm-fix-save" onclick="saveVisitCorrection()">Save correction</button>
     </div>
   </div>
 </div>
@@ -4380,7 +4416,9 @@ const TRAINING_MODULES = [
   // ── LIVE CALL MONITORING (admin) ──
   // ══════════════════════════════════════════════
   const CM_LATE_MINS = 15;          // not clocked in this long after the planned start = late
-  const CM_LOCATION_RADIUS_M = 250; // postcode centres are approximate, so allow some distance
+  const CM_LOCATION_RADIUS_M = 250;
+  const CM_SHORT_RATIO = 0.75;      // visits under 75% of planned length are flagged as short
+  let cmVisits = []; // postcode centres are approximate, so allow some distance
   const CM_LEAVE_TYPES = ['Day Off', 'Annual Leave', 'Sick Leave'];
   let cmDate = new Date();
   let cmTimer = null;
@@ -4452,7 +4490,7 @@ const TRAINING_MODULES = [
     const isToday = dateStr === localISODate(new Date());
     document.getElementById('cm-date').value = dateStr;
     document.getElementById('cm-date-label').textContent = (isToday ? 'Today — ' : '') + new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (!silent) document.getElementById('cm-table').innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>';
+    if (!silent) document.getElementById('cm-table').innerHTML = '<tr><td colspan="8" class="loading">Loading...</td></tr>';
 
     const [shiftRes, resRes, staffRes] = await Promise.all([
       db.from('rota_shifts').select('*').eq('shift_date', dateStr).order('start_time'),
@@ -4460,7 +4498,7 @@ const TRAINING_MODULES = [
       db.from('staff').select('id, full_name, phone'),
     ]);
     if (shiftRes.error || resRes.error) {
-      document.getElementById('cm-table').innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px;">Could not load visits: ${emEsc((shiftRes.error || resRes.error).message)}</td></tr>`;
+      document.getElementById('cm-table').innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:16px;">Could not load visits: ${emEsc((shiftRes.error || resRes.error).message)}</td></tr>`;
       return;
     }
     const residents = resRes.data || [];
@@ -4480,18 +4518,22 @@ const TRAINING_MODULES = [
     document.getElementById('cm-stat-late').textContent = count('late') + count('missed');
     document.getElementById('cm-stat-done').textContent = count('done');
     document.getElementById('cm-stat-loc').textContent = visits.filter(v => v.locFlag).length;
+    document.getElementById('cm-stat-short').textContent = visits.filter(v => v.short).length;
+    cmVisits = visits;
 
     // Needs action now
-    const urgent = visits.filter(v => ['late', 'missed', 'overrun'].includes(v.state));
+    const urgent = visits.filter(v => ['late', 'missed', 'overrun'].includes(v.state) || v.short);
     document.getElementById('cm-urgent').innerHTML = urgent.length ? urgent.map(v => {
       const staffPhone = cmStaffPhones[v.s.staff_id] || cmStaffPhones[(v.s.staff_name || '').toLowerCase().trim()];
       const clientPhone = v.resident && v.resident.phone;
+      const fixBtn = ['missed', 'overrun'].includes(v.state) ? `<button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="openVisitCorrection('${v.s.id}')">✎ Correct times</button>` : '';
       return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid ${v.state === 'missed' ? '#fecaca' : '#fde68a'};background:${v.state === 'missed' ? '#fef2f2' : '#fffbeb'};border-radius:10px;margin-bottom:8px;">
         <div style="font-size:13px;"><strong>${emEsc(v.s.client_name || 'No client')}</strong> · ${emEsc(v.s.staff_name || 'No carer')} · planned ${v.planned}
           <div style="margin-top:2px;">${v.badge}</div></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           ${staffPhone ? `<a class="btn btn-cancel" style="padding:5px 10px;font-size:12px;text-decoration:none;" href="tel:${emEsc(staffPhone)}">📞 Carer</a>` : ''}
           ${clientPhone ? `<a class="btn btn-cancel" style="padding:5px 10px;font-size:12px;text-decoration:none;" href="tel:${emEsc(clientPhone)}">📞 Client</a>` : ''}
+          ${fixBtn}
         </div></div>`;
     }).join('') : `<p style="color:var(--green);font-size:13px;margin:0;">✓ ${isToday ? 'Nothing needs chasing right now.' : 'No late, missed or overrunning visits on this day.'}</p>`;
 
@@ -4504,12 +4546,68 @@ const TRAINING_MODULES = [
       <td style="white-space:nowrap;font-size:12px;">${v.actual}</td>
       <td style="font-size:12px;">${v.locIn}</td>
       <td style="font-size:12px;">${v.locOut}</td>
-    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No visits on the rota for this day.</td></tr>';
+      <td><button class="btn btn-cancel" style="padding:4px 8px;font-size:12px;white-space:nowrap;" onclick="openVisitCorrection('${v.s.id}')" title="Correct clock-in / clock-out times">✎ Times</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">No visits on the rota for this day.</td></tr>';
 
     document.getElementById('cm-updated').textContent = `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${isToday ? ' · refreshes every minute' : ''}`;
     const noLoc = residents.filter(r => r.status === 'active' && (r.home_lat == null)).map(r => `${r.first_name || ''} ${r.last_name || ''}`.trim());
     document.getElementById('cm-noloc').innerHTML = noLoc.length
       ? `Location checks can't run for: ${noLoc.map(emEsc).join(', ')}. Add a full postcode to their Room / Address field.` : '';
+  }
+
+  let cmFixShift = null;
+  function cmTimeOf(ts) { return ts ? new Date(ts).toTimeString().slice(0, 5) : ''; }
+
+  async function openVisitCorrection(shiftId) {
+    const v = cmVisits.find(x => x.s.id === shiftId);
+    if (!v) return;
+    cmFixShift = v.s;
+    document.getElementById('cm-fix-sub').innerHTML = `<strong>${emEsc(v.s.client_name || '—')}</strong> · ${emEsc(v.s.staff_name || '—')}<br><span style="color:var(--muted);">${formatDate(v.s.shift_date + 'T00:00:00')} · planned ${v.planned}</span>`;
+    document.getElementById('cm-fix-in').value = cmTimeOf(v.s.clock_in_time);
+    document.getElementById('cm-fix-out').value = cmTimeOf(v.s.clock_out_time);
+    document.getElementById('cm-fix-reason').value = '';
+    document.getElementById('cm-fix-detail').value = '';
+    const hist = document.getElementById('cm-fix-history');
+    hist.innerHTML = '';
+    openModal('cm-fix-modal');
+    const { data } = await db.from('visit_time_corrections').select('*').eq('shift_id', shiftId).order('corrected_at', { ascending: false });
+    if (data && data.length) {
+      hist.innerHTML = `<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Change history</div>` + data.map(c => `
+        <div style="font-size:12px;padding:6px 0;border-top:1px solid var(--border);">
+          <strong>${c.field === 'clock_in_time' ? 'Clock-in' : 'Clock-out'}</strong>: ${c.old_value ? cmFmtTime(c.old_value) : 'none'} → ${c.new_value ? cmFmtTime(c.new_value) : 'none'}
+          <div style="color:var(--muted);">${emEsc(c.reason)} — ${emEsc(c.corrected_by_name || 'office')}, ${new Date(c.corrected_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+        </div>`).join('');
+    }
+  }
+
+  async function saveVisitCorrection() {
+    const s = cmFixShift;
+    if (!s) return;
+    const reason = val('cm-fix-reason');
+    const detail = val('cm-fix-detail').trim();
+    if (!reason) { showToast('Please choose a reason.', true); return; }
+    if (!detail) { showToast('Please say how the times were confirmed.', true); return; }
+    const inStr = val('cm-fix-in'), outStr = val('cm-fix-out');
+    if (outStr && !inStr) { showToast('Add a clock-in time as well as a clock-out time.', true); return; }
+    const inTs = inStr ? new Date(`${s.shift_date}T${inStr}:00`) : null;
+    let outTs = outStr ? new Date(`${s.shift_date}T${outStr}:00`) : null;
+    if (inTs && outTs && outTs <= inTs) outTs = new Date(outTs.getTime() + 86400000); // finished after midnight
+    if (outTs && outTs > new Date()) { showToast("Clock-out can't be in the future.", true); return; }
+    // Only send times that actually changed (to the minute)
+    const update = {};
+    if ((inStr || '') !== cmTimeOf(s.clock_in_time)) update.clock_in_time = inTs ? inTs.toISOString() : null;
+    if ((outStr || '') !== cmTimeOf(s.clock_out_time)) update.clock_out_time = outTs ? outTs.toISOString() : null;
+    if (!Object.keys(update).length) { showToast('No times have changed.', true); return; }
+    if (!(await ensureSignedIn())) return;
+    update.correction_reason = `${reason}: ${detail}`;
+    const btn = document.getElementById('cm-fix-save');
+    btn.disabled = true;
+    const { error } = await db.from('rota_shifts').update(update).eq('id', s.id);
+    btn.disabled = false;
+    if (error) { showToast('Could not save: ' + error.message, true); return; }
+    closeModal('cm-fix-modal');
+    showToast('Visit times corrected');
+    loadCallMonitoring();
   }
 
   function cmAssessVisit(s, dateStr, now) {
@@ -4519,7 +4617,7 @@ const TRAINING_MODULES = [
     const planned = start ? `${s.start_time.slice(0, 5)}${s.end_time ? '–' + s.end_time.slice(0, 5) : ''}` : 'No time set';
     const mins = (a, b) => Math.round((a - b) / 60000);
     const badge = (cls, text) => `<span class="badge ${cls}">${text}</span>`;
-    let state, b, actual = '—';
+    let state, b, actual = '—', short = false;
 
     if (s.clock_in_time) {
       const inT = new Date(s.clock_in_time);
@@ -4529,7 +4627,10 @@ const TRAINING_MODULES = [
         const dur = mins(new Date(s.clock_out_time), inT);
         const plannedDur = start && end ? mins(end, start) : null;
         state = 'done';
-        b = badge(lateTxt ? 'badge-amber' : 'badge-green', '✓ Completed' + lateTxt);
+        short = !!(plannedDur && plannedDur >= 10 && dur < plannedDur * CM_SHORT_RATIO);
+        b = short
+          ? badge('badge-amber', `⚠ Short visit · ${dur} of ${plannedDur} min`) + (lateTxt ? ' ' + badge('badge-amber', lateTxt.replace(' · ', '')) : '')
+          : badge(lateTxt ? 'badge-amber' : 'badge-green', '✓ Completed' + lateTxt);
         actual = `${cmFmtTime(s.clock_in_time)}–${cmFmtTime(s.clock_out_time)} (${dur} min${plannedDur ? ' of ' + plannedDur : ''})`;
       } else if (end && now > new Date(end.getTime() + CM_LATE_MINS * 60000)) {
         state = 'overrun';
@@ -4564,7 +4665,8 @@ const TRAINING_MODULES = [
     const locIn = locCheck(s.clock_in_lat, s.clock_in_lng, s.clock_in_time);
     const locOut = locCheck(s.clock_out_lat, s.clock_out_lng, s.clock_out_time);
     const locFlag = locIn.includes('away') || locOut.includes('away');
-    return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident };
+    if (s.times_corrected) actual += ' <span class="badge badge-blue" title="Times changed by the office — see Correct times for the history">✎ Corrected</span>';
+    return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident, short };
   }
 
   // ── Daily note form: medication due for the chosen resident ──
