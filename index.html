@@ -4004,42 +4004,108 @@ const TRAINING_MODULES = [
     loadFamilyAccessLog(r.id);
   }
 
-  // ── Daily notes sharing (requires a verified LPA) ──
+  // ── Daily notes sharing: verified LPA, or the client's own consent ──
+  function familyShareReady(r) {
+    if ((r.notes_share_basis || 'lpa') === 'consent')
+      return !!(r.notes_consent_date && r.notes_consent_capacity_confirmed && r.notes_consent_recorded_by);
+    return !!r.lpa_verified_date;
+  }
+
   function renderFamilyNotesSection(r) {
-    const v = x => escapeHtml(x || '');
-    const verified = !!r.lpa_verified_date;
+    const v = x => emEsc(x || '');
+    const basis = r.notes_share_basis || 'lpa';
+    const ready = familyShareReady(r);
     const on = !!r.family_portal_notes_enabled;
+    const basisLabel = basis === 'consent' ? "client's consent" : 'verified LPA';
     const statusLine = on
-      ? `<span class="badge badge-green">Daily notes shared</span> <span style="font-size:12px;">since ${formatDate((r.family_portal_notes_enabled_at || '').slice(0,10))} (only notes written from then on, last 14 days)</span>`
+      ? `<span class="badge badge-green">Daily notes shared</span> <span style="font-size:12px;">on the basis of the ${basisLabel}, since ${formatDate((r.family_portal_notes_enabled_at || '').slice(0,10))} (only notes written from then on, last 14 days)</span>`
       : `<span class="badge badge-amber">Daily notes not shared</span>`;
     return `
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);color:var(--navy);">
-        <div style="font-weight:700;margin-bottom:6px;">Daily notes for an attorney</div>
+        <div style="font-weight:700;margin-bottom:6px;">Sharing daily notes with family</div>
         <div style="margin-bottom:10px;">${statusLine}</div>
-        <p style="margin:0 0 10px;font-size:12px;color:var(--muted);">Record the LPA before sharing. Check it on the OPG register or see the original or a certified copy, and save a copy in this client's Documents.</p>
-        <div class="form-grid" style="margin-bottom:8px;">
-          <div class="form-group"><label>LPA type</label>
-            <select id="lpa-type">
-              <option value="">— Select —</option>
-              <option ${r.lpa_type==='Health and Welfare'?'selected':''}>Health and Welfare</option>
-              <option ${r.lpa_type==='Property and Financial Affairs'?'selected':''}>Property and Financial Affairs</option>
-              <option ${r.lpa_type==='Both'?'selected':''}>Both</option>
-            </select></div>
-          <div class="form-group"><label>Attorney name</label><input id="lpa-holder" value="${v(r.lpa_holder_name)}" /></div>
-          <div class="form-group"><label>OPG reference</label><input id="lpa-opg" value="${v(r.lpa_opg_reference)}" /></div>
-          <div class="form-group"><label>Date verified</label><input type="date" id="lpa-vdate" value="${v(r.lpa_verified_date)}" /></div>
-          <div class="form-group"><label>Verified by</label><input id="lpa-vby" value="${v(r.lpa_verified_by)}" /></div>
-          <div class="form-group full"><label>Restrictions or instructions in the LPA</label><textarea id="lpa-restrictions" style="min-height:50px;">${v(r.lpa_restrictions)}</textarea></div>
+        ${ready
+          ? `<div style="font-size:12px;color:var(--green);margin-bottom:8px;">✓ ${basis === 'consent' ? 'Consent' : 'LPA'} details saved${on ? '' : ' — you can now press Share daily notes.'}</div>`
+          : `<div style="font-size:12px;color:#92400e;margin-bottom:8px;">Step 1: choose the basis, fill in the details and save. Step 2: press Share daily notes.</div>`}
+        <div class="form-group" style="max-width:420px;margin-bottom:10px;"><label>Basis for sharing</label>
+          <select id="fp-basis" onchange="toggleFamilyBasis()">
+            <option value="lpa" ${basis === 'lpa' ? 'selected' : ''}>Verified Lasting Power of Attorney (Health and Welfare)</option>
+            <option value="consent" ${basis === 'consent' ? 'selected' : ''}>Shared with the client's consent</option>
+          </select>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+
+        <div id="fp-basis-lpa" style="${basis === 'lpa' ? '' : 'display:none;'}">
+          <p style="margin:0 0 10px;font-size:12px;color:var(--muted);">Check the LPA on the OPG register (or with an access code from the attorney), or see the original or a certified copy, and save a copy in this client's Documents.</p>
+          <div class="form-grid" style="margin-bottom:8px;">
+            <div class="form-group"><label>LPA type</label>
+              <select id="lpa-type">
+                <option value="">— Select —</option>
+                <option ${r.lpa_type==='Health and Welfare'?'selected':''}>Health and Welfare</option>
+                <option ${r.lpa_type==='Property and Financial Affairs'?'selected':''}>Property and Financial Affairs</option>
+                <option ${r.lpa_type==='Both'?'selected':''}>Both</option>
+              </select></div>
+            <div class="form-group"><label>Attorney name</label><input id="lpa-holder" value="${v(r.lpa_holder_name)}" /></div>
+            <div class="form-group"><label>OPG reference</label><input id="lpa-opg" value="${v(r.lpa_opg_reference)}" /></div>
+            <div class="form-group"><label>Date verified</label><input type="date" id="lpa-vdate" value="${v(r.lpa_verified_date)}" /></div>
+            <div class="form-group"><label>Verified by</label><input id="lpa-vby" value="${v(r.lpa_verified_by)}" /></div>
+            <div class="form-group full"><label>Restrictions or instructions in the LPA</label><textarea id="lpa-restrictions" style="min-height:50px;">${v(r.lpa_restrictions)}</textarea></div>
+          </div>
           <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="saveLpaDetails('${r.id}')">Save LPA details</button>
+        </div>
+
+        <div id="fp-basis-consent" style="${basis === 'consent' ? '' : 'display:none;'}">
+          <p style="margin:0 0 10px;font-size:12px;color:var(--muted);">Use this when the client can decide for themselves and has agreed that a named person may read their daily notes. Record it in their consent form too. They can change their mind at any time — if they do, press Stop sharing.</p>
+          <div class="form-grid" style="margin-bottom:8px;">
+            <div class="form-group"><label>Who may see the notes *</label><input id="cs-person" placeholder="Name and relationship, e.g. Jane Wood (daughter)" value="${v(r.notes_consent_person)}" /></div>
+            <div class="form-group"><label>Date consent given *</label><input type="date" id="cs-date" value="${v(r.notes_consent_date)}" /></div>
+            <div class="form-group"><label>How consent was given *</label>
+              <select id="cs-method">
+                <option value="">— Select —</option>
+                <option ${r.notes_consent_method==='Written — signed consent form'?'selected':''}>Written — signed consent form</option>
+                <option ${r.notes_consent_method==='Verbal — recorded by staff'?'selected':''}>Verbal — recorded by staff</option>
+              </select></div>
+            <div class="form-group"><label>Recorded by *</label><input id="cs-by" value="${v(r.notes_consent_recorded_by)}" /></div>
+            <div class="form-group full"><label style="display:flex;align-items:flex-start;gap:8px;font-weight:500;cursor:pointer;"><input type="checkbox" id="cs-capacity" style="width:auto;margin-top:3px;" ${r.notes_consent_capacity_confirmed ? 'checked' : ''} /> The client understood what sharing their notes means, who will see them, and that they can stop it at any time. There is no reason to doubt their capacity to make this decision.</label></div>
+          </div>
+          <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="saveConsentDetails('${r.id}')">Save consent details</button>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
           ${on
             ? `<button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;color:var(--red);" onclick="setFamilyNotesSharing('${r.id}', false)">Stop sharing daily notes</button>`
-            : `<button class="btn btn-save" style="padding:5px 10px;font-size:12px;" ${verified?'':'disabled title="Save a verified date first"'} onclick="setFamilyNotesSharing('${r.id}', true)">Share daily notes</button>`}
+            : `<button class="btn btn-save" style="padding:5px 10px;font-size:12px;${ready ? '' : 'opacity:0.6;'}" onclick="${ready ? `setFamilyNotesSharing('${r.id}', true)` : `showToast('Fill in the details above and press Save first.', true)`}">Share daily notes</button>`}
         </div>
         <div style="margin-top:12px;font-weight:600;font-size:12px;">Recent portal views</div>
         <div id="fp-access-log" style="font-size:12px;color:var(--muted);">Loading...</div>
       </div>`;
+  }
+
+  function toggleFamilyBasis() {
+    const b = document.getElementById('fp-basis').value;
+    document.getElementById('fp-basis-lpa').style.display = b === 'lpa' ? '' : 'none';
+    document.getElementById('fp-basis-consent').style.display = b === 'consent' ? '' : 'none';
+  }
+
+  async function saveConsentDetails(residentId) {
+    const payload = {
+      notes_share_basis: 'consent',
+      notes_consent_person: document.getElementById('cs-person').value.trim() || null,
+      notes_consent_date: document.getElementById('cs-date').value || null,
+      notes_consent_method: document.getElementById('cs-method').value || null,
+      notes_consent_recorded_by: document.getElementById('cs-by').value.trim() || null,
+      notes_consent_capacity_confirmed: document.getElementById('cs-capacity').checked
+    };
+    const missing = [];
+    if (!payload.notes_consent_person) missing.push('who may see the notes');
+    if (!payload.notes_consent_date) missing.push('date consent given');
+    if (!payload.notes_consent_method) missing.push('how consent was given');
+    if (!payload.notes_consent_recorded_by) missing.push('recorded by');
+    if (missing.length) { showToast('Please fill in: ' + missing.join(', ') + '.', true); return; }
+    if (!payload.notes_consent_capacity_confirmed) { showToast('Please confirm the client understood and agreed (the tick box).', true); return; }
+    const { data, error } = await db.from('residents').update(payload).eq('id', residentId).select().single();
+    if (error) { showToast('Consent details not saved: ' + error.message, true); return; }
+    showToast('Consent details saved');
+    renderFamilyPortalCard(data);
   }
 
   async function saveLpaDetails(residentId) {
@@ -4049,9 +4115,15 @@ const TRAINING_MODULES = [
       lpa_opg_reference: document.getElementById('lpa-opg').value.trim() || null,
       lpa_verified_date: document.getElementById('lpa-vdate').value || null,
       lpa_verified_by: document.getElementById('lpa-vby').value.trim() || null,
-      lpa_restrictions: document.getElementById('lpa-restrictions').value.trim() || null
+      lpa_restrictions: document.getElementById('lpa-restrictions').value.trim() || null,
+      notes_share_basis: 'lpa'
     };
-    if (payload.lpa_verified_date && !payload.lpa_verified_by) { showToast('Please add who verified the LPA.', true); return; }
+    const missing = [];
+    if (!payload.lpa_type) missing.push('LPA type');
+    if (!payload.lpa_holder_name) missing.push('attorney name');
+    if (!payload.lpa_verified_date) missing.push('date verified');
+    if (!payload.lpa_verified_by) missing.push('who verified it');
+    if (missing.length) { showToast('Please fill in: ' + missing.join(', ') + '.', true); return; }
     if (!payload.lpa_verified_date) payload.family_portal_notes_enabled = false; // no verification, no sharing
     const { data, error } = await db.from('residents').update(payload).eq('id', residentId).select().single();
     if (error) { showToast('LPA details not saved: ' + error.message, true); return; }
@@ -4061,11 +4133,12 @@ const TRAINING_MODULES = [
 
   async function setFamilyNotesSharing(residentId, turnOn) {
     if (turnOn) {
+      const basisEl = document.getElementById('fp-basis');
       const type = document.getElementById('lpa-type').value;
-      if (type !== 'Health and Welfare' && type !== 'Both') {
+      if ((!basisEl || basisEl.value === 'lpa') && type !== 'Health and Welfare' && type !== 'Both') {
         if (!confirm('This LPA is not recorded as Health and Welfare. A Property and Financial Affairs LPA alone does not give a right to care records. Only continue if the client has consented or a best-interests decision is recorded. Continue?')) return;
       }
-      if (!confirm('Share daily notes with the family portal? Only notes written from now on will be shown. Remind carers that the attorney may read them.')) return;
+      if (!confirm('Share daily notes with the family portal? Only notes written from now on will be shown. Remind carers that family may read them.')) return;
     } else if (!confirm('Stop sharing daily notes? The family will still see visit times.')) return;
     const payload = turnOn
       ? { family_portal_notes_enabled: true, family_portal_notes_enabled_at: new Date().toISOString() }
