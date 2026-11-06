@@ -658,6 +658,11 @@
           <div style="font-size:20px;line-height:1;">⚠️</div>
           <div style="font-size:13px;color:var(--navy);"><strong>Make the person safe first.</strong> If anyone is in immediate danger call <strong>999</strong>. Then phone the office, and report here before the end of your shift — including near misses and anything that "nearly" went wrong. If you think someone is being abused or neglected, tell the office the same day. Reporting is never about blame.</div>
         </div>
+        <div class="card admin-only" style="margin-bottom:20px;">
+          <div class="card-title">🩹 Body map marks to review</div>
+          <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px;">Unexplained marks, anything recorded in the last 7 days, and pressure areas or burns that haven't healed. Decide whether each needs an incident report, a safeguarding referral, or a district nurse.</p>
+          <div id="bm-review-list"><div class="loading">Loading...</div></div>
+        </div>
         <div class="stats-grid admin-only" id="inc-summary">
           <div class="stat-card red"><div class="label">Open incidents</div><div class="value" id="inc-open">—</div><div class="sub">not yet closed</div></div>
           <div class="stat-card amber"><div class="label">CQC notifications</div><div class="value" id="inc-cqc">—</div><div class="sub">flagged, not yet sent</div></div>
@@ -1572,6 +1577,50 @@
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('med-schedule-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveMedicationSchedule()">Save medication</button>
+    </div>
+  </div>
+</div>
+
+<!-- BODY MAP MODAL -->
+<div class="modal-overlay" id="bm-modal" style="z-index:1100;">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h2 id="bm-title">Body map</h2>
+      <button class="modal-close" onclick="closeModal('bm-modal')">✕</button>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Tap the body exactly where the mark is to add it. Coloured dots are marks already recorded: <span style="color:#dc2626;font-weight:700;">●</span> still present, <span style="color:#d97706;font-weight:700;">●</span> healing, <span style="color:#16a34a;font-weight:700;">●</span> healed. Tap a dot to see it.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Front</div><div id="bm-front"></div></div>
+        <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Back</div><div id="bm-back"></div></div>
+      </div>
+      <div id="bm-form" style="display:none;margin-top:14px;border:2px solid #93c5fd;border-radius:12px;padding:12px 14px;background:#eff6ff;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:8px;">New mark</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Where on the body *</label><input id="bm-part" /></div>
+          <div class="form-group"><label>Type of mark *</label><select id="bm-type"><option value="">Choose...</option><option>Bruise</option><option>Skin tear</option><option>Red area / pressure area</option><option>Pressure ulcer</option><option>Wound / cut</option><option>Rash</option><option>Swelling</option><option>Burn / scald</option><option>Blister</option><option>Other</option></select></div>
+          <div class="form-group"><label>Size</label><input id="bm-size" placeholder="e.g. 3cm x 2cm, size of a 10p coin" /></div>
+          <div class="form-group"><label>Colour</label><input id="bm-colour" placeholder="e.g. purple, yellow-green, red" /></div>
+          <div class="form-group full"><label>Describe it *</label><textarea id="bm-desc" placeholder="What you can see, whether it's painful, broken skin, swelling, warmth..."></textarea></div>
+          <div class="form-group full"><label>Do you know how it happened? *</label>
+            <div style="display:flex;gap:16px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;"><input type="radio" name="bm-known" value="yes" style="width:auto;" onchange="bmCauseChanged()" /> Yes</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;"><input type="radio" name="bm-known" value="no" style="width:auto;" onchange="bmCauseChanged()" /> No / not sure</label>
+            </div>
+          </div>
+          <div class="form-group full" id="bm-cause-row" style="display:none;"><label>How did it happen? *</label><input id="bm-cause" placeholder="e.g. Knocked arm on the bed frame yesterday (client told me)" /></div>
+        </div>
+        <div id="bm-unexplained-warn" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:4px;">⚠️ <strong>Phone the office before you leave the visit.</strong> Unexplained marks must be reported the same day. The office will decide whether a safeguarding referral is needed. Don't ask the client leading questions — just write down anything they tell you, in their words.</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+          <button class="btn btn-cancel" onclick="bmCancelNew()">Cancel</button>
+          <button class="btn btn-save" id="bm-save-btn" onclick="bmSaveNew()">Save mark</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;">
+        <div class="card-title" style="margin:0;">Marks</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer;"><input type="checkbox" id="bm-show-healed" style="width:auto;" onchange="bmToggleHealed()" /> Show healed</label>
+      </div>
+      <div id="bm-list"></div>
     </div>
   </div>
 </div>
@@ -2663,6 +2712,9 @@
         </div>
       </div>
       <div class="form-group full" id="n-med-panel" style="display:none;"></div>
+      <div class="form-group full" id="n-bodymap-row" style="display:none;">
+        <button type="button" class="btn btn-cancel" style="padding:8px 14px;" onclick="openNoteBodyMap()">🩹 Body map — record or check a mark</button>
+      </div>
       <div class="form-group full">
         <label>Note *</label>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
@@ -3150,7 +3202,7 @@ const TRAINING_MODULES = [
     if (name === 'dashboard') loadDashboard();
     if (name === 'residents') loadResidents();
     if (name === 'staff') loadStaff();
-    if (name === 'incidents') loadIncidents();
+    if (name === 'incidents') { loadIncidents(); loadBodyMapReview(); }
     if (name === 'daily-notes') { setTodayDate(); loadNotes(); refreshUnlinkedCount(); }
     if (name === 'documents') loadDocuments();
     if (name === 'cqc') loadCQC();
@@ -3864,6 +3916,7 @@ const TRAINING_MODULES = [
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-careplan')">📋 Care Plan</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-care')">🏥 Care Needs</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medications')">📅 MAR Chart</div>
+        <div class="profile-tab" onclick="switchProfileTab(this,'vr-bodymap')">🩹 Body Map</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-medical')">💊 Medical</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-contacts')">📞 Contacts</div>
         <div class="profile-tab" onclick="switchProfileTab(this,'vr-consent')">🖊️ Consent</div>
@@ -3975,12 +4028,21 @@ const TRAINING_MODULES = [
       <div id="vr-consent" class="tab-panel">
         ${renderConsentView(r.consent_form)}
       </div>
+
+      <div id="vr-bodymap" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+          <p style="color:var(--muted);font-size:13px;margin:0;">Bruises, skin tears, pressure areas and other marks, tracked until they heal.</p>
+          <button class="btn-add" style="white-space:nowrap;" onclick="openBodyMap(currentViewResidentId, currentViewResidentName, () => loadResidentBodyMapSummary(currentViewResidentId))">🩹 Open body map</button>
+        </div>
+        <div id="vr-bodymap-summary"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+      </div>
     `;
 
     openModal('view-resident-modal');
     currentViewResidentName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
     loadResidentMedications(id, currentViewResidentName, 'vr-med-list');
     loadResidentMarHistory(currentViewResidentName);
+    loadResidentBodyMapSummary(id);
     renderFamilyPortalCard(r);
   }
 
@@ -4774,6 +4836,268 @@ const TRAINING_MODULES = [
     const locFlag = locIn.includes('away') || locOut.includes('away');
     if (s.times_corrected) actual += ' <span class="badge badge-blue" title="Times changed by the office — see Correct times for the history">✎ Corrected</span>';
     return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident, short };
+  }
+
+  // ══════════════════════════════════════════════
+  // ── BODY MAPS ──
+  // ══════════════════════════════════════════════
+  const BM_TYPES = ['Bruise', 'Skin tear', 'Red area / pressure area', 'Pressure ulcer', 'Wound / cut', 'Rash', 'Swelling', 'Burn / scald', 'Blister', 'Other'];
+  const BM_STATUS = { open: { label: 'Still present', badge: 'badge-red', fill: '#dc2626' }, healing: { label: 'Healing', badge: 'badge-amber', fill: '#d97706' }, healed: { label: 'Healed', badge: 'badge-green', fill: '#16a34a' } };
+  const BM_W = 200, BM_H = 440;
+  let bmCtx = null;
+
+  function bmFigureSvg(view) {
+    const shapes = `
+      <ellipse cx="100" cy="36" rx="25" ry="29"/>
+      <rect x="89" y="60" width="22" height="22" rx="6"/>
+      <rect x="58" y="78" width="84" height="152" rx="20"/>
+      <rect x="35" y="84" width="24" height="108" rx="12"/>
+      <rect x="28" y="186" width="22" height="96" rx="11"/>
+      <ellipse cx="38" cy="296" rx="12" ry="15"/>
+      <rect x="141" y="84" width="24" height="108" rx="12"/>
+      <rect x="150" y="186" width="22" height="96" rx="11"/>
+      <ellipse cx="162" cy="296" rx="12" ry="15"/>
+      <rect x="62" y="222" width="35" height="128" rx="16"/>
+      <rect x="103" y="222" width="35" height="128" rx="16"/>
+      <rect x="66" y="344" width="28" height="70" rx="12"/>
+      <rect x="106" y="344" width="28" height="70" rx="12"/>
+      <ellipse cx="${view === 'front' ? 80 : 80}" cy="${view === 'front' ? 422 : 418}" rx="16" ry="${view === 'front' ? 10 : 9}"/>
+      <ellipse cx="120" cy="${view === 'front' ? 422 : 418}" rx="16" ry="${view === 'front' ? 10 : 9}"/>`;
+    const detail = view === 'front'
+      ? '<path d="M90 34 q3 3 0 6 M110 34 q-3 3 0 6 M93 50 q7 5 14 0" stroke="#94a3b8" stroke-width="1.5" fill="none"/><circle cx="100" cy="160" r="1.8" fill="#94a3b8"/>'
+      : '<line x1="100" y1="88" x2="100" y2="215" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 4"/>';
+    const sideL = view === 'front' ? 'R' : 'L', sideR = view === 'front' ? 'L' : 'R';
+    return `<svg viewBox="0 0 ${BM_W} ${BM_H}" style="width:100%;max-width:220px;display:block;margin:0 auto;touch-action:manipulation;" data-view="${view}">
+      <text x="8" y="16" font-size="13" font-weight="700" fill="#64748b">${sideL}</text>
+      <text x="${BM_W - 18}" y="16" font-size="13" font-weight="700" fill="#64748b">${sideR}</text>
+      <g class="bm-body" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" style="cursor:crosshair;" onclick="bmBodyClick(event,'${view}')">${shapes}</g>
+      ${detail}
+      <g id="bm-markers-${view}"></g>
+    </svg>`;
+  }
+
+  // Name the body part from where the person tapped. Front view is a mirror image.
+  function bmBodyPart(view, x, y) {
+    const personLeft = view === 'front' ? x > 100 : x < 100;
+    const side = personLeft ? 'Left' : 'Right';
+    if (y < 64) return view === 'front' ? 'Face / head' : 'Back of head';
+    if (y < 80 && x > 86 && x < 114) return view === 'front' ? 'Neck' : 'Back of neck';
+    if (x < 59 || x > 141) {
+      if (y < 190) return `${side} upper arm`;
+      if (y < 282) return `${side} forearm`;
+      return `${side} hand`;
+    }
+    if (y < 228) {
+      const off = Math.abs(x - 100) > 16 ? `${side} ` : '';
+      if (view === 'front') return y < 150 ? `${off}chest`.replace(/^./, c => c.toUpperCase()) : y < 200 ? `${off}abdomen`.replace(/^./, c => c.toUpperCase()) : `${off}hip / groin`.replace(/^./, c => c.toUpperCase());
+      return y < 150 ? `${off}upper back`.replace(/^./, c => c.toUpperCase()) : y < 196 ? `${off}lower back`.replace(/^./, c => c.toUpperCase()) : (Math.abs(x - 100) < 10 ? 'Sacrum / base of spine' : `${side} buttock`);
+    }
+    const legSide = (view === 'front' ? x > 100 : x < 100) ? 'Left' : 'Right';
+    if (y < 300) return `${legSide} thigh`;
+    if (y < 352) return `${legSide} knee`;
+    if (y < 410) return `${legSide} ${view === 'front' ? 'shin' : 'calf'}`;
+    return view === 'front' ? `${legSide} foot` : `${legSide} heel`;
+  }
+
+  async function openBodyMap(residentId, residentName, onMarkSaved) {
+    if (!residentId) { showToast('Choose the client first.', true); return; }
+    if (!currentStaffId && currentRole !== 'admin') { showToast('Your login is not linked to a staff record. Please contact the office.', true); return; }
+    bmCtx = { residentId, residentName, marks: [], updates: [], showHealed: false, pending: null, onMarkSaved };
+    document.getElementById('bm-title').textContent = 'Body map — ' + residentName;
+    document.getElementById('bm-front').innerHTML = bmFigureSvg('front');
+    document.getElementById('bm-back').innerHTML = bmFigureSvg('back');
+    document.getElementById('bm-form').style.display = 'none';
+    document.getElementById('bm-show-healed').checked = false;
+    document.getElementById('bm-list').innerHTML = '<div class="loading">Loading...</div>';
+    openModal('bm-modal');
+    await bmLoad();
+  }
+
+  async function bmLoad() {
+    const { data: marks, error } = await db.from('body_map_marks').select('*').eq('resident_id', bmCtx.residentId).order('observed_at', { ascending: false });
+    if (error) { document.getElementById('bm-list').innerHTML = `<p style="color:var(--red);font-size:13px;">Could not load the body map: ${emEsc(error.message)}</p>`; return; }
+    bmCtx.marks = marks || [];
+    const ids = bmCtx.marks.map(m => m.id);
+    bmCtx.updates = [];
+    if (ids.length) {
+      const { data: ups } = await db.from('body_map_updates').select('*').in('mark_id', ids).order('created_at');
+      bmCtx.updates = ups || [];
+    }
+    bmRender();
+  }
+
+  function bmVisibleMarks() { return bmCtx.marks.filter(m => bmCtx.showHealed || m.status !== 'healed'); }
+
+  function bmRender() {
+    const visible = bmVisibleMarks();
+    ['front', 'back'].forEach(view => {
+      const g = document.getElementById('bm-markers-' + view);
+      if (!g) return;
+      let html = visible.map((m) => {
+        if (m.body_view !== view) return '';
+        const n = bmCtx.marks.indexOf(m) + 1;
+        const cx = m.pos_x / 100 * BM_W, cy = m.pos_y / 100 * BM_H;
+        return `<g style="cursor:pointer;" onclick="bmFocus('${m.id}')"><circle cx="${cx}" cy="${cy}" r="8" fill="${BM_STATUS[m.status].fill}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy + 3.5}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${n}</text></g>`;
+      }).join('');
+      if (bmCtx.pending && bmCtx.pending.view === view) {
+        const cx = bmCtx.pending.x, cy = bmCtx.pending.y;
+        html += `<circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#2563eb" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="3" fill="#2563eb"/>`;
+      }
+      g.innerHTML = html;
+    });
+
+    const list = document.getElementById('bm-list');
+    if (!visible.length) {
+      list.innerHTML = `<p style="color:var(--muted);font-size:13px;margin:0;">${bmCtx.marks.length ? 'No current marks. Tick "Show healed" to see past ones.' : 'No marks recorded. Tap the body where you can see a mark to add one.'}</p>`;
+      return;
+    }
+    list.innerHTML = visible.map(m => {
+      const n = bmCtx.marks.indexOf(m) + 1;
+      const st = BM_STATUS[m.status];
+      const ups = bmCtx.updates.filter(u => u.mark_id === m.id);
+      return `<div id="bm-item-${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:${st.fill};color:#fff;text-align:center;font-size:11px;font-weight:700;margin-right:6px;">${n}</span>
+            <strong>${emEsc(m.mark_type)}</strong> — ${emEsc(m.body_part || '')} <span style="color:var(--muted);">(${m.body_view})</span>
+            ${!m.cause_known ? ' <span class="badge badge-red">Unexplained</span>' : ''}</div>
+          <span class="badge ${st.badge}">${st.label}</span>
+        </div>
+        <div style="color:var(--muted);font-size:12px;margin-top:4px;">First seen ${new Date(m.observed_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} by ${emEsc(m.staff_name || '—')}${m.size ? ' · Size: ' + emEsc(m.size) : ''}${m.colour ? ' · ' + emEsc(m.colour) : ''}</div>
+        ${m.description ? `<div style="margin-top:4px;">${emEsc(m.description)}</div>` : ''}
+        <div style="margin-top:4px;font-size:12px;"><strong>Cause:</strong> ${m.cause_known ? emEsc(m.cause || 'Known') : 'Not known'}</div>
+        ${ups.length ? `<div style="margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;font-size:12px;">${ups.map(u => `<div>• ${new Date(u.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — <strong>${BM_STATUS[u.status].label}</strong>${u.note ? ': ' + emEsc(u.note) : ''} <span style="color:var(--muted);">(${emEsc(u.staff_name || '')})</span></div>`).join('')}</div>` : ''}
+        ${m.status !== 'healed' || currentRole === 'admin' ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <select id="bm-up-status-${m.id}" style="max-width:150px;padding:5px;">
+            <option value="open">Still present</option><option value="healing" ${m.status === 'healing' ? 'selected' : ''}>Healing</option><option value="healed">Healed</option>
+          </select>
+          <input id="bm-up-note-${m.id}" placeholder="What does it look like today?" style="flex:1;min-width:160px;padding:5px;" />
+          <button class="btn btn-cancel" style="padding:5px 10px;font-size:12px;" onclick="bmSaveUpdate('${m.id}')">Add check</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function bmToggleHealed() { bmCtx.showHealed = document.getElementById('bm-show-healed').checked; bmRender(); }
+  function bmFocus(id) { const el = document.getElementById('bm-item-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 0 3px #93c5fd'; setTimeout(() => el.style.boxShadow = '', 1500); } }
+
+  function bmBodyClick(evt, view) {
+    const svg = evt.currentTarget.ownerSVGElement;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    bmCtx.pending = { view, x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 };
+    document.getElementById('bm-part').value = bmBodyPart(view, p.x, p.y);
+    document.getElementById('bm-type').value = '';
+    ['bm-size', 'bm-colour', 'bm-desc', 'bm-cause'].forEach(id => document.getElementById(id).value = '');
+    document.querySelectorAll('input[name="bm-known"]').forEach(r => r.checked = false);
+    bmCauseChanged();
+    document.getElementById('bm-form').style.display = '';
+    bmRender();
+    document.getElementById('bm-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function bmCauseChanged() {
+    const sel = document.querySelector('input[name="bm-known"]:checked');
+    const known = sel ? sel.value : '';
+    document.getElementById('bm-cause-row').style.display = known === 'yes' ? '' : 'none';
+    document.getElementById('bm-unexplained-warn').style.display = known === 'no' ? '' : 'none';
+  }
+
+  function bmCancelNew() { bmCtx.pending = null; document.getElementById('bm-form').style.display = 'none'; bmRender(); }
+
+  async function bmSaveNew() {
+    if (!bmCtx || !bmCtx.pending) return;
+    const type = val('bm-type');
+    const knownSel = document.querySelector('input[name="bm-known"]:checked');
+    if (!type) { showToast('Choose what kind of mark it is.', true); return; }
+    if (!knownSel) { showToast('Say whether you know how it happened.', true); return; }
+    const known = knownSel.value === 'yes';
+    if (known && !val('bm-cause').trim()) { showToast('Please say how it happened.', true); return; }
+    if (!val('bm-desc').trim()) { showToast('Please describe the mark.', true); return; }
+    if (!(await ensureSignedIn())) return;
+    const btn = document.getElementById('bm-save-btn');
+    btn.disabled = true;
+    const payload = {
+      resident_id: bmCtx.residentId,
+      resident_name: bmCtx.residentName,
+      body_view: bmCtx.pending.view,
+      pos_x: Math.max(0, Math.min(100, bmCtx.pending.x / BM_W * 100)),
+      pos_y: Math.max(0, Math.min(100, bmCtx.pending.y / BM_H * 100)),
+      body_part: val('bm-part').trim() || null,
+      mark_type: type,
+      size: val('bm-size').trim() || null,
+      colour: val('bm-colour').trim() || null,
+      description: val('bm-desc').trim(),
+      cause_known: known,
+      cause: known ? val('bm-cause').trim() : null,
+      staff_id: currentStaffId || null,
+      staff_name: currentStaffFullName || (currentUser && currentUser.email) || null,
+    };
+    const { error } = await db.from('body_map_marks').insert([payload]);
+    btn.disabled = false;
+    if (error) {
+      showToast(error.message.includes('row-level security') ? "You can only add body map marks for clients you're on the rota for. Please phone the office." : 'Could not save: ' + error.message, true);
+      return;
+    }
+    showToast(known ? 'Mark saved' : 'Mark saved — phone the office now to report it');
+    bmCtx.pending = null;
+    document.getElementById('bm-form').style.display = 'none';
+    if (bmCtx.onMarkSaved) bmCtx.onMarkSaved();
+    await bmLoad();
+  }
+
+  async function bmSaveUpdate(markId) {
+    const status = val('bm-up-status-' + markId);
+    const note = val('bm-up-note-' + markId).trim();
+    if (!note) { showToast('Add a short note about how it looks today.', true); return; }
+    if (!(await ensureSignedIn())) return;
+    const { error } = await db.from('body_map_updates').insert([{ mark_id: markId, status, note, staff_id: currentStaffId || null, staff_name: currentStaffFullName || (currentUser && currentUser.email) || null }]);
+    if (error) { showToast('Could not save: ' + error.message, true); return; }
+    showToast('Check saved');
+    if (bmCtx.onMarkSaved) bmCtx.onMarkSaved();
+    await bmLoad();
+  }
+
+  // Daily note form: body map button for the chosen client
+  function updateNoteBodyMapBtn() {
+    const row = document.getElementById('n-bodymap-row');
+    if (!row) return;
+    const match = typeof findNoteResident === 'function' ? findNoteResident(val('n-resident')) : null;
+    row.style.display = match ? '' : 'none';
+  }
+  function openNoteBodyMap() {
+    const match = findNoteResident(val('n-resident'));
+    if (!match) { showToast('Pick the client from the list first.', true); return; }
+    openBodyMap(match.id, match.name, () => {
+      const cb = document.querySelector('.n-category-cb[value="Skin integrity"]');
+      if (cb) cb.checked = true;
+    });
+  }
+
+  // Resident profile tab (office)
+  async function loadResidentBodyMapSummary(residentId) {
+    const el = document.getElementById('vr-bodymap-summary');
+    if (!el) return;
+    const { data, error } = await db.from('body_map_marks').select('*').eq('resident_id', residentId).neq('status', 'healed').order('observed_at', { ascending: false });
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    el.innerHTML = (data && data.length) ? `<div class="table-wrap"><table><thead><tr><th>First seen</th><th>Mark</th><th>Where</th><th>Cause</th><th>Status</th></tr></thead><tbody>
+      ${data.map(m => `<tr><td>${formatDate(m.observed_at)}</td><td>${emEsc(m.mark_type)}</td><td>${emEsc(m.body_part || '')}</td><td>${m.cause_known ? emEsc(m.cause || '') : '<span class="badge badge-red">Unexplained</span>'}</td><td><span class="badge ${BM_STATUS[m.status].badge}">${BM_STATUS[m.status].label}</span></td></tr>`).join('')}
+      </tbody></table></div>` : '<p style="color:var(--muted);font-size:13px;">No current marks.</p>';
+  }
+
+  // Incidents page: marks the office should review
+  async function loadBodyMapReview() {
+    const el = document.getElementById('bm-review-list');
+    if (!el || currentRole !== 'admin') return;
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data, error } = await db.from('body_map_marks').select('*').neq('status', 'healed').order('observed_at', { ascending: false });
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    const rows = (data || []).filter(m => !m.cause_known || m.created_at >= weekAgo || ['Pressure ulcer', 'Red area / pressure area', 'Burn / scald'].includes(m.mark_type));
+    el.innerHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Client</th><th>Mark</th><th>Where</th><th>First seen</th><th>Cause</th><th>Status</th><th></th></tr></thead><tbody>
+      ${rows.map(m => `<tr><td>${emEsc(m.resident_name || '')}</td><td>${emEsc(m.mark_type)}</td><td>${emEsc(m.body_part || '')}</td><td style="white-space:nowrap;">${formatDate(m.observed_at)} · ${emEsc(m.staff_name || '')}</td>
+        <td>${m.cause_known ? emEsc(m.cause || '') : '<span class="badge badge-red">Unexplained</span>'}</td><td><span class="badge ${BM_STATUS[m.status].badge}">${BM_STATUS[m.status].label}</span></td>
+        <td><button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="openBodyMap('${m.resident_id}', '${emEsc(m.resident_name || '').replace(/&#39;/g, '')}', loadBodyMapReview)">Open</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<p style="color:var(--green);font-size:13px;margin:0;">✓ No unexplained, new or pressure-related marks to review.</p>';
   }
 
   // ── Office: link daily notes saved under an unrecognised name ──
@@ -6401,6 +6725,7 @@ const TRAINING_MODULES = [
       hint.innerHTML = '<span style="color:var(--red);">Not on the client list — please pick the name from the list as it appears.</span>';
     } else { hint.innerHTML = ''; }
     loadNoteMedPanel();
+    updateNoteBodyMapBtn();
   }
 
   async function loadNotes() {
@@ -6465,6 +6790,7 @@ const TRAINING_MODULES = [
     document.getElementById('n-share-family').checked = true;
     setTodayDate();
     loadNoteMedPanel();
+    populateNoteResidentList().then(updateNoteBodyMapBtn);
     openModal('note-modal');
   }
 
@@ -6822,6 +7148,7 @@ const TRAINING_MODULES = [
     document.getElementById('n-note').value = n.note || '';
     document.getElementById('n-staff').value = n.staff_name || '';
     loadNoteMedPanel();
+    populateNoteResidentList().then(updateNoteBodyMapBtn);
     openModal('note-modal');
   }
 
