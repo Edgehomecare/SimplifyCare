@@ -140,6 +140,7 @@
     .badge-red { background: #fee2e2; color: #dc2626; }
     .badge-amber { background: #fef3c7; color: #d97706; }
     .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
     .badge-purple { background: #ede9fe; color: #7c3aed; }
     .badge-teal { background: var(--teal-light); color: var(--teal-dark); }
 
@@ -500,6 +501,15 @@
             <div class="card-title">Recent Daily Notes</div>
             <div id="dash-notes"><div class="loading">Loading...</div></div>
           </div>
+        </div>
+
+        <!-- CARE PLAN REVIEWS -->
+        <div class="card admin-only" style="margin-top:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;">📅 Care plan reviews</div>
+            <div id="dash-reviews-summary" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+          <div id="dash-reviews"><div class="loading">Loading...</div></div>
         </div>
 
         <!-- SMART SCHEDULER SUMMARY -->
@@ -1577,6 +1587,50 @@
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="closeModal('med-schedule-modal')">Cancel</button>
       <button class="btn btn-save" onclick="saveMedicationSchedule()">Save medication</button>
+    </div>
+  </div>
+</div>
+
+<!-- CARE PLAN REVIEW MODAL (office) -->
+<div class="modal-overlay" id="cpr-modal" style="z-index:1100;">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2>Record care plan review</h2>
+      <button class="modal-close" onclick="closeModal('cpr-modal')">✕</button>
+    </div>
+    <div style="padding:0 20px 16px;">
+      <div id="cpr-sub" style="font-weight:700;color:var(--navy);margin-bottom:12px;"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Date of review *</label><input type="date" id="cpr-date" onchange="cprIntervalChanged()" /></div>
+        <div class="form-group"><label>Reason for review *</label>
+          <select id="cpr-type">
+            <option>Scheduled review</option>
+            <option>First review after care started</option>
+            <option>Change in needs</option>
+            <option>After hospital stay</option>
+            <option>After a fall or incident</option>
+            <option>Requested by client or family</option>
+            <option>Requested by council / social worker</option>
+          </select></div>
+        <div class="form-group full"><label>Reviewed by *</label><input id="cpr-by" placeholder="Name and role" /></div>
+        <div class="form-group full"><label>Who was involved? *</label><div id="cpr-people" style="display:flex;flex-wrap:wrap;gap:6px;"></div></div>
+        <div class="form-group full"><label>Client's views</label><textarea id="cpr-views" placeholder="What the client said about their care — what's working, what they'd like changed. If they weren't involved, say why."></textarea></div>
+        <div class="form-group full"><label>Changes and actions</label><textarea id="cpr-changes" placeholder="e.g. Added evening call; referred to OT for a raised toilet seat; updated moving and handling plan."></textarea></div>
+        <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;"><input type="checkbox" id="cpr-updated" style="width:auto;" /> The care plan has been updated to reflect these changes</label></div>
+        <div class="form-group"><label>Next review in *</label>
+          <select id="cpr-interval" onchange="cprIntervalChanged()">
+            <option value="6w">6 weeks</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">12 months</option>
+            <option value="custom">Choose a date</option>
+          </select></div>
+        <div class="form-group"><label>Next review date *</label><input type="date" id="cpr-next" readonly /></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal('cpr-modal')">Cancel</button>
+      <button class="btn btn-save" id="cpr-save" onclick="saveCarePlanReview()">Save review</button>
     </div>
   </div>
 </div>
@@ -3659,6 +3713,7 @@ const TRAINING_MODULES = [
 
   // ── DASHBOARD ──
   async function loadDashboard() {
+    loadCarePlanReviewsCard();
     // Time-aware greeting
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -3943,6 +3998,13 @@ const TRAINING_MODULES = [
 
       <!-- CARE PLAN -->
       <div id="vr-careplan" class="tab-panel">
+        <div class="card" style="margin-bottom:16px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <div class="card-title" style="margin:0;">📅 Reviews</div>
+            <button class="btn-add" style="white-space:nowrap;" onclick="openCarePlanReview(currentViewResidentId, currentViewResidentName, () => loadResidentReviews(currentViewResidentId))">+ Record review</button>
+          </div>
+          <div id="vr-reviews"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+        </div>
         <div style="background:var(--teal-light);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;">🧑 About Me — the person behind the plan</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           ${vrFieldFullFormatted('Personal History & Background', r.life_history_notes)}
@@ -4049,6 +4111,7 @@ const TRAINING_MODULES = [
     loadResidentMedications(id, currentViewResidentName, 'vr-med-list');
     loadResidentMarHistory(currentViewResidentName);
     loadResidentBodyMapSummary(id);
+    loadResidentReviews(id);
     renderFamilyPortalCard(r);
   }
 
@@ -4842,6 +4905,118 @@ const TRAINING_MODULES = [
     const locFlag = locIn.includes('away') || locOut.includes('away');
     if (s.times_corrected) actual += ' <span class="badge badge-blue" title="Times changed by the office — see Correct times for the history">✎ Corrected</span>';
     return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident, short };
+  }
+
+  // ══════════════════════════════════════════════
+  // ── CARE PLAN REVIEWS ──
+  // ══════════════════════════════════════════════
+  const CPR_PEOPLE = ['Client', 'Family / representative', 'Attorney (LPA)', 'Social worker', 'District nurse', 'GP', 'Care staff', 'Advocate'];
+  let cprResident = null;
+
+  function cprStatus(reviewDate) {
+    if (!reviewDate) return { key: 'none', label: 'No review date', badge: 'badge-gray', order: 1 };
+    const today = localISODate(new Date());
+    const in30 = localISODate(new Date(Date.now() + 30 * 86400000));
+    if (reviewDate < today) {
+      const days = Math.round((new Date(today) - new Date(reviewDate)) / 86400000);
+      return { key: 'overdue', label: `Overdue by ${days} day${days === 1 ? '' : 's'}`, badge: 'badge-red', order: 0 };
+    }
+    if (reviewDate <= in30) return { key: 'due', label: `Due ${formatDate(reviewDate)}`, badge: 'badge-amber', order: 2 };
+    return { key: 'ok', label: `Next ${formatDate(reviewDate)}`, badge: 'badge-green', order: 3 };
+  }
+
+  // Dashboard card
+  async function loadCarePlanReviewsCard() {
+    const el = document.getElementById('dash-reviews');
+    if (!el || currentRole !== 'admin') return;
+    const { data, error } = await db.from('residents').select('id, first_name, last_name, review_date').eq('status', 'active').order('review_date', { ascending: true, nullsFirst: true });
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    const rows = (data || []).map(r => ({ r, st: cprStatus(r.review_date) })).filter(x => x.st.key !== 'ok')
+      .sort((a, b) => a.st.order - b.st.order || String(a.r.review_date || '').localeCompare(String(b.r.review_date || '')));
+    const counts = k => rows.filter(x => x.st.key === k).length;
+    document.getElementById('dash-reviews-summary').innerHTML = `
+      <span class="badge badge-red">${counts('overdue')} overdue</span>
+      <span class="badge badge-amber">${counts('due')} due in 30 days</span>
+      <span class="badge badge-gray">${counts('none')} no date set</span>`;
+    el.innerHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Client</th><th>Review</th><th></th></tr></thead><tbody>
+      ${rows.map(({ r, st }) => `<tr><td>${emEsc(`${r.first_name || ''} ${r.last_name || ''}`.trim())}</td><td><span class="badge ${st.badge}">${st.label}</span></td>
+        <td style="text-align:right;"><button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="openCarePlanReview('${r.id}', '${emEsc(`${r.first_name || ''} ${r.last_name || ''}`.trim()).replace(/&#39;/g, '')}', loadCarePlanReviewsCard)">Record review</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<p style="color:var(--green);font-size:13px;margin:0;">✓ Every client has a review booked more than 30 days away.</p>';
+  }
+
+  // Resident profile: review history on the Care Plan tab
+  async function loadResidentReviews(residentId) {
+    const el = document.getElementById('vr-reviews');
+    if (!el) return;
+    const [{ data: res }, { data, error }] = await Promise.all([
+      db.from('residents').select('review_date').eq('id', residentId).single(),
+      db.from('care_plan_reviews').select('*').eq('resident_id', residentId).order('review_date', { ascending: false }),
+    ]);
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    const st = cprStatus(res && res.review_date);
+    el.innerHTML = `<div style="margin-bottom:10px;"><span class="badge ${st.badge}">${st.label}</span></div>` + ((data && data.length) ? data.map(v => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>${formatDate(v.review_date)} · ${emEsc(v.review_type)}</strong><span style="color:var(--muted);">by ${emEsc(v.reviewed_by)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Involved: ${(v.people_involved || []).map(emEsc).join(', ') || '—'} · Care plan ${v.care_plan_updated ? 'updated' : 'unchanged'} · Next review ${formatDate(v.next_review_date)}</div>
+        ${v.client_views ? `<div style="margin-top:6px;"><strong>Client's views:</strong> ${emEsc(v.client_views)}</div>` : ''}
+        ${v.changes_made ? `<div style="margin-top:4px;"><strong>Changes / actions:</strong> ${emEsc(v.changes_made)}</div>` : ''}
+      </div>`).join('') : '<p style="color:var(--muted);font-size:13px;">No reviews recorded yet.</p>');
+  }
+
+  function openCarePlanReview(residentId, residentName, onSaved) {
+    cprResident = { id: residentId, name: residentName, onSaved };
+    document.getElementById('cpr-sub').textContent = residentName;
+    document.getElementById('cpr-date').value = localISODate(new Date());
+    document.getElementById('cpr-type').value = 'Scheduled review';
+    document.getElementById('cpr-by').value = currentStaffFullName || '';
+    document.getElementById('cpr-people').innerHTML = CPR_PEOPLE.map(p => `<label style="display:flex;align-items:center;gap:5px;font-weight:400;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;"><input type="checkbox" class="cpr-person" value="${p}" style="width:auto;" ${p === 'Client' ? 'checked' : ''}> ${p}</label>`).join('');
+    document.getElementById('cpr-views').value = '';
+    document.getElementById('cpr-changes').value = '';
+    document.getElementById('cpr-updated').checked = false;
+    document.getElementById('cpr-interval').value = '6';
+    cprIntervalChanged();
+    openModal('cpr-modal');
+  }
+
+  function cprIntervalChanged() {
+    const months = val('cpr-interval');
+    const nextEl = document.getElementById('cpr-next');
+    if (months === 'custom') { nextEl.readOnly = false; return; }
+    nextEl.readOnly = true;
+    const d = new Date((val('cpr-date') || localISODate(new Date())) + 'T12:00:00');
+    if (months === '6w') d.setDate(d.getDate() + 42); else d.setMonth(d.getMonth() + parseInt(months, 10));
+    nextEl.value = localISODate(d);
+  }
+
+  async function saveCarePlanReview() {
+    if (!cprResident) return;
+    const people = [...document.querySelectorAll('.cpr-person:checked')].map(c => c.value);
+    const payload = {
+      resident_id: cprResident.id,
+      review_date: val('cpr-date'),
+      review_type: val('cpr-type'),
+      reviewed_by: val('cpr-by').trim(),
+      people_involved: people,
+      client_views: val('cpr-views').trim() || null,
+      changes_made: val('cpr-changes').trim() || null,
+      care_plan_updated: document.getElementById('cpr-updated').checked,
+      next_review_date: val('cpr-next'),
+    };
+    if (!payload.review_date || !payload.reviewed_by || !payload.next_review_date) { showToast('Please fill in the review date, who reviewed it and the next review date.', true); return; }
+    if (payload.review_date > localISODate(new Date())) { showToast("The review date can't be in the future.", true); return; }
+    if (payload.next_review_date <= payload.review_date) { showToast('The next review must be after this one.', true); return; }
+    if (!people.length) { showToast('Tick who was involved in the review.', true); return; }
+    if (!people.includes('Client') && !payload.client_views) { showToast("The client wasn't ticked as involved — please explain why in \"Client's views\" (e.g. in hospital, lacks capacity and representative consulted).", true); return; }
+    if (payload.care_plan_updated === false && payload.changes_made && !confirm('You listed changes but didn\'t tick "Care plan updated". Save anyway?')) return;
+    if (!(await ensureSignedIn())) return;
+    const btn = document.getElementById('cpr-save');
+    btn.disabled = true;
+    const { error } = await db.from('care_plan_reviews').insert([payload]);
+    btn.disabled = false;
+    if (error) { showToast('Could not save: ' + error.message, true); return; }
+    closeModal('cpr-modal');
+    showToast(`Review saved — next review ${formatDate(payload.next_review_date)}`);
+    if (cprResident.onSaved) cprResident.onSaved();
   }
 
   // ══════════════════════════════════════════════
