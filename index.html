@@ -1590,6 +1590,12 @@
     </div>
     <div style="padding:0 20px 20px;">
       <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Tap the body exactly where the mark is to add it. Coloured dots are marks already recorded: <span style="color:#dc2626;font-weight:700;">●</span> still present, <span style="color:#d97706;font-weight:700;">●</span> healing, <span style="color:#16a34a;font-weight:700;">●</span> healed. Tap a dot to see it.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <button type="button" class="btn btn-primary" id="bm-mode-tap" style="padding:6px 12px;font-size:13px;" onclick="bmSetMode('tap')">📍 Tap a spot</button>
+        <button type="button" class="btn btn-cancel" id="bm-mode-draw" style="padding:6px 12px;font-size:13px;" onclick="bmSetMode('draw')">✏️ Draw with pen</button>
+        <button type="button" class="btn btn-cancel" id="bm-clear-draw" style="padding:6px 12px;font-size:13px;display:none;" onclick="bmClearDrawing()">↺ Clear drawing</button>
+        <span id="bm-mode-hint" style="font-size:12px;color:var(--muted);"></span>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Front</div><div id="bm-front"></div></div>
         <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Back</div><div id="bm-back"></div></div>
@@ -4867,7 +4873,8 @@ const TRAINING_MODULES = [
       ? '<path d="M90 34 q3 3 0 6 M110 34 q-3 3 0 6 M93 50 q7 5 14 0" stroke="#94a3b8" stroke-width="1.5" fill="none"/><circle cx="100" cy="160" r="1.8" fill="#94a3b8"/>'
       : '<line x1="100" y1="88" x2="100" y2="215" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 4"/>';
     const sideL = view === 'front' ? 'R' : 'L', sideR = view === 'front' ? 'L' : 'R';
-    return `<svg viewBox="0 0 ${BM_W} ${BM_H}" style="width:100%;max-width:220px;display:block;margin:0 auto;touch-action:manipulation;" data-view="${view}">
+    return `<svg viewBox="0 0 ${BM_W} ${BM_H}" class="bm-svg" style="width:100%;max-width:220px;display:block;margin:0 auto;touch-action:manipulation;" data-view="${view}"
+      onpointerdown="bmPenDown(event,'${view}')" onpointermove="bmPenMove(event)" onpointerup="bmPenUp(event)" onpointerleave="bmPenUp(event)">
       <text x="8" y="16" font-size="13" font-weight="700" fill="#64748b">${sideL}</text>
       <text x="${BM_W - 18}" y="16" font-size="13" font-weight="700" fill="#64748b">${sideR}</text>
       <g class="bm-body" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" style="cursor:crosshair;" onclick="bmBodyClick(event,'${view}')">${shapes}</g>
@@ -4902,13 +4909,14 @@ const TRAINING_MODULES = [
   async function openBodyMap(residentId, residentName, onMarkSaved) {
     if (!residentId) { showToast('Choose the client first.', true); return; }
     if (!currentStaffId && currentRole !== 'admin') { showToast('Your login is not linked to a staff record. Please contact the office.', true); return; }
-    bmCtx = { residentId, residentName, marks: [], updates: [], showHealed: false, pending: null, onMarkSaved };
+    bmCtx = { residentId, residentName, marks: [], updates: [], showHealed: false, pending: null, onMarkSaved, mode: 'tap', drawing: null };
     document.getElementById('bm-title').textContent = 'Body map — ' + residentName;
     document.getElementById('bm-front').innerHTML = bmFigureSvg('front');
     document.getElementById('bm-back').innerHTML = bmFigureSvg('back');
     document.getElementById('bm-form').style.display = 'none';
     document.getElementById('bm-show-healed').checked = false;
     document.getElementById('bm-list').innerHTML = '<div class="loading">Loading...</div>';
+    bmSetMode('tap');
     openModal('bm-modal');
     await bmLoad();
   }
@@ -4937,9 +4945,12 @@ const TRAINING_MODULES = [
         if (m.body_view !== view) return '';
         const n = bmCtx.marks.indexOf(m) + 1;
         const cx = m.pos_x / 100 * BM_W, cy = m.pos_y / 100 * BM_H;
-        return `<g style="cursor:pointer;" onclick="bmFocus('${m.id}')"><circle cx="${cx}" cy="${cy}" r="8" fill="${BM_STATUS[m.status].fill}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy + 3.5}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${n}</text></g>`;
+        const strokes = Array.isArray(m.drawing) ? m.drawing.map(st => `<polyline points="${st.map(pt => (pt[0] / 100 * BM_W).toFixed(1) + ',' + (pt[1] / 100 * BM_H).toFixed(1)).join(' ')}" fill="none" stroke="${BM_STATUS[m.status].fill}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>`).join('') : '';
+        return `${strokes}<g style="cursor:pointer;" onclick="bmFocus('${m.id}')"><circle cx="${cx}" cy="${cy}" r="8" fill="${BM_STATUS[m.status].fill}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy + 3.5}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${n}</text></g>`;
       }).join('');
-      if (bmCtx.pending && bmCtx.pending.view === view) {
+      if (bmCtx.drawing && bmCtx.drawing.view === view) {
+        html += bmCtx.drawing.strokes.map(st => `<polyline points="${st.map(pt => pt[0].toFixed(1) + ',' + pt[1].toFixed(1)).join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+      } else if (bmCtx.pending && bmCtx.pending.view === view) {
         const cx = bmCtx.pending.x, cy = bmCtx.pending.y;
         html += `<circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#2563eb" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="3" fill="#2563eb"/>`;
       }
@@ -4981,12 +4992,21 @@ const TRAINING_MODULES = [
   function bmFocus(id) { const el = document.getElementById('bm-item-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 0 3px #93c5fd'; setTimeout(() => el.style.boxShadow = '', 1500); } }
 
   function bmBodyClick(evt, view) {
+    if (bmCtx.mode === 'draw') return;
     const svg = evt.currentTarget.ownerSVGElement;
     const pt = svg.createSVGPoint();
     pt.x = evt.clientX; pt.y = evt.clientY;
     const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    bmCtx.drawing = null; // a tap replaces any drawing
+    document.getElementById('bm-clear-draw').style.display = 'none';
     bmCtx.pending = { view, x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 };
-    document.getElementById('bm-part').value = bmBodyPart(view, p.x, p.y);
+    bmOpenNewForm(view, p.x, p.y);
+  }
+
+  function bmOpenNewForm(view, x, y) {
+    const wasOpen = document.getElementById('bm-form').style.display !== 'none';
+    document.getElementById('bm-part').value = bmBodyPart(view, x, y);
+    if (wasOpen) { bmRender(); return; } // keep what they've typed while they carry on drawing
     document.getElementById('bm-type').value = '';
     ['bm-size', 'bm-colour', 'bm-desc', 'bm-cause'].forEach(id => document.getElementById(id).value = '');
     document.querySelectorAll('input[name="bm-known"]').forEach(r => r.checked = false);
@@ -5003,7 +5023,7 @@ const TRAINING_MODULES = [
     document.getElementById('bm-unexplained-warn').style.display = known === 'no' ? '' : 'none';
   }
 
-  function bmCancelNew() { bmCtx.pending = null; document.getElementById('bm-form').style.display = 'none'; bmRender(); }
+  function bmCancelNew() { bmCtx.pending = null; bmCtx.drawing = null; document.getElementById('bm-clear-draw').style.display = 'none'; document.getElementById('bm-form').style.display = 'none'; bmRender(); }
 
   async function bmSaveNew() {
     if (!bmCtx || !bmCtx.pending) return;
@@ -5030,6 +5050,9 @@ const TRAINING_MODULES = [
       description: val('bm-desc').trim(),
       cause_known: known,
       cause: known ? val('bm-cause').trim() : null,
+      drawing: bmCtx.drawing && bmCtx.drawing.strokes.length
+        ? bmCtx.drawing.strokes.map(st => st.map(pt => [Math.round(pt[0] / BM_W * 1000) / 10, Math.round(pt[1] / BM_H * 1000) / 10]))
+        : null,
       staff_id: currentStaffId || null,
       staff_name: currentStaffFullName || (currentUser && currentUser.email) || null,
     };
@@ -5041,9 +5064,74 @@ const TRAINING_MODULES = [
     }
     showToast(known ? 'Mark saved' : 'Mark saved — phone the office now to report it');
     bmCtx.pending = null;
+    bmCtx.drawing = null;
+    document.getElementById('bm-clear-draw').style.display = 'none';
     document.getElementById('bm-form').style.display = 'none';
     if (bmCtx.onMarkSaved) bmCtx.onMarkSaved();
     await bmLoad();
+  }
+
+  // ── Pen drawing ──
+  let _bmPen = null; // { svg, view, stroke }
+  function bmSetMode(mode) {
+    if (!bmCtx) return;
+    bmCtx.mode = mode;
+    document.getElementById('bm-mode-tap').className = 'btn ' + (mode === 'tap' ? 'btn-primary' : 'btn-cancel');
+    document.getElementById('bm-mode-draw').className = 'btn ' + (mode === 'draw' ? 'btn-primary' : 'btn-cancel');
+    document.getElementById('bm-mode-hint').textContent = mode === 'draw'
+      ? 'Draw round the mark with your finger or mouse. You can draw more than one line.'
+      : 'Tap where the mark is.';
+    document.querySelectorAll('#bm-modal .bm-svg').forEach(svg => {
+      svg.style.touchAction = mode === 'draw' ? 'none' : 'manipulation'; // stop the page scrolling while drawing
+      svg.style.cursor = mode === 'draw' ? 'crosshair' : '';
+    });
+  }
+  function bmSvgPoint(svg, evt) {
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.max(0, Math.min(BM_W, p.x)), Math.max(0, Math.min(BM_H, p.y))];
+  }
+  function bmPenDown(evt, view) {
+    if (!bmCtx || bmCtx.mode !== 'draw') return;
+    evt.preventDefault();
+    const svg = evt.currentTarget;
+    try { svg.setPointerCapture(evt.pointerId); } catch (e) {}
+    if (!bmCtx.drawing || bmCtx.drawing.view !== view) bmCtx.drawing = { view, strokes: [] }; // drawing on the other side starts again
+    const stroke = [bmSvgPoint(svg, evt)];
+    bmCtx.drawing.strokes.push(stroke);
+    _bmPen = { svg, view, stroke };
+    bmRender();
+  }
+  function bmPenMove(evt) {
+    if (!_bmPen) return;
+    evt.preventDefault();
+    const p = bmSvgPoint(_bmPen.svg, evt);
+    const last = _bmPen.stroke[_bmPen.stroke.length - 1];
+    if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.5) return; // skip tiny jitter
+    _bmPen.stroke.push(p);
+    if (_bmPen.stroke.length > 400) return;
+    bmRender();
+  }
+  function bmPenUp() {
+    if (!_bmPen) return;
+    const { view } = _bmPen;
+    _bmPen = null;
+    const pts = bmCtx.drawing.strokes.flat();
+    if (!pts.length) return;
+    // Place the number at the middle of what was drawn, and name the body part from there
+    const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+    const cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    bmCtx.pending = { view, x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10 };
+    document.getElementById('bm-clear-draw').style.display = '';
+    bmOpenNewForm(view, cx, cy);
+  }
+  function bmClearDrawing() {
+    bmCtx.drawing = null;
+    bmCtx.pending = null;
+    document.getElementById('bm-clear-draw').style.display = 'none';
+    document.getElementById('bm-form').style.display = 'none';
+    bmRender();
   }
 
   async function bmSaveUpdate(markId) {
