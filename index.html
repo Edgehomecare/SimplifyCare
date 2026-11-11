@@ -3985,6 +3985,7 @@ const TRAINING_MODULES = [
 
       <!-- PERSONAL -->
       <div id="vr-personal" class="tab-panel active">
+        <div id="vr-current-medlist" style="margin-bottom:16px;"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           ${vrField('Full Name', (r.first_name || '') + ' ' + (r.last_name || ''))}
           ${vrField('Date of Birth', formatDate(r.date_of_birth) + (r.date_of_birth ? ' (' + age + ')' : ''))}
@@ -4939,6 +4940,7 @@ const TRAINING_MODULES = [
     if (!el) return;
     const { data, error } = await db.from('resident_medication_lists').select('*').eq('resident_id', residentId).order('is_current', { ascending: false }).order('uploaded_at', { ascending: false });
     if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    renderCurrentMedListBox(data || []);
     el.innerHTML = (data && data.length) ? data.map(l => `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border);font-size:13px;">
         <div>${l.is_current ? '<span class="badge badge-green">Current</span> ' : '<span class="badge badge-gray">Old</span> '}<strong>${emEsc(l.list_type)}</strong>${l.list_date ? ' · dated ' + formatDate(l.list_date) : ''}
@@ -4949,6 +4951,27 @@ const TRAINING_MODULES = [
           <button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;color:var(--red);" onclick="deleteMedicationList('${l.id}','${emEsc(l.file_path)}','${residentId}')">Remove</button>
         </div>
       </div>`).join('') : '<p style="color:var(--muted);font-size:13px;margin:0;">No lists uploaded yet.</p>';
+  }
+
+  // Main resident file (Personal tab): current list at a glance
+  function renderCurrentMedListBox(lists) {
+    const box = document.getElementById('vr-current-medlist');
+    if (!box) return;
+    const cur = lists.find(l => l.is_current);
+    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--teal-light);border-radius:10px;padding:10px 14px;">
+      <div style="font-size:13px;"><strong>📄 Medication list:</strong> ${cur
+        ? `${emEsc(cur.list_type)}${cur.list_date ? ', dated ' + formatDate(cur.list_date) : ''} <span style="color:var(--muted);">(uploaded ${formatDate(cur.uploaded_at)})</span>`
+        : '<span style="color:var(--muted);">none uploaded yet</span>'}</div>
+      <div style="display:flex;gap:6px;">
+        ${cur ? `<button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="openMedicationList('${emEsc(cur.file_path)}')">Open</button>` : ''}
+        <button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="goToMedListsTab()">${cur ? 'All lists / upload' : 'Upload a list'}</button>
+      </div>
+    </div>`;
+  }
+  function goToMedListsTab() {
+    const tab = [...document.querySelectorAll('#view-resident-modal .profile-tab')].find(t => t.getAttribute('onclick') && t.getAttribute('onclick').includes("'vr-medications'"));
+    if (tab) switchProfileTab(tab, 'vr-medications');
+    setTimeout(() => { const c = document.getElementById('vr-med-lists'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
   }
 
   async function uploadMedicationList() {
