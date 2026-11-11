@@ -4055,6 +4055,26 @@ const TRAINING_MODULES = [
           <button class="btn-add" style="white-space:nowrap;" onclick="openMedScheduleModal()">+ Add Medication</button>
         </div>
         <div id="vr-med-list"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+        <div class="card" style="margin-top:20px;padding:14px 16px;">
+          <div class="card-title" style="margin-bottom:6px;">📄 Medication & prescription lists</div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 10px;">Upload the pharmacy's Medipak list, a GP prescription list or a hospital discharge letter. Carers on this client's rota can open the current list from their visit.</p>
+          <div class="form-grid" style="margin-bottom:8px;">
+            <div class="form-group full"><label>File (PDF or photo, up to 10MB)</label><input type="file" id="ml-file" accept=".pdf,image/*" /></div>
+            <div class="form-group"><label>Type of list</label>
+              <select id="ml-type">
+                <option>Pharmacy Medipak list</option>
+                <option>GP prescription list</option>
+                <option>Hospital discharge medication</option>
+                <option>Pharmacy MAR sheet</option>
+                <option>Other</option>
+              </select></div>
+            <div class="form-group"><label>Date on the list</label><input type="date" id="ml-date" /></div>
+            <div class="form-group full"><label>Notes</label><input id="ml-notes" placeholder="e.g. New list after GP stopped amlodipine" /></div>
+            <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;"><input type="checkbox" id="ml-current" checked style="width:auto;" /> This is the current list (older lists are kept as history)</label></div>
+          </div>
+          <button class="btn btn-save" id="ml-upload-btn" style="padding:6px 14px;font-size:13px;" onclick="uploadMedicationList()">Upload list</button>
+          <div id="vr-med-lists" style="margin-top:12px;"><p style="color:var(--muted);font-size:13px;">Loading...</p></div>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:20px;margin-bottom:10px;">
           <div class="card-title" style="margin:0;">Monthly MAR chart</div>
           <div style="display:flex;gap:8px;align-items:center;">
@@ -4112,6 +4132,7 @@ const TRAINING_MODULES = [
     loadResidentMarHistory(currentViewResidentName);
     loadResidentBodyMapSummary(id);
     loadResidentReviews(id);
+    loadMedicationLists(id);
     renderFamilyPortalCard(r);
   }
 
@@ -4468,6 +4489,7 @@ const TRAINING_MODULES = [
   let _myRotaShifts = [];
   let _rotaMeds = [];
   let _rotaMarEntries = [];
+  let _rotaMedLists = {};
   let _marSignCtx = null;
 
   async function loadRotaMedications(shifts, dateStr, isToday) {
@@ -4480,6 +4502,7 @@ const TRAINING_MODULES = [
     if (medsRes.error) { console.error('Could not load medications', medsRes.error); return; }
     _rotaMeds = (medsRes.data || []).filter(m => emarActiveOn(m, dateStr));
     _rotaMarEntries = entriesRes.data || [];
+    _rotaMedLists = await fetchCurrentMedLists(_rotaMeds.map(m => m.resident_id));
     shifts.forEach(s => {
       const el = document.getElementById('rota-meds-' + s.id);
       if (el) el.innerHTML = renderRotaMedPanel(s, dateStr, isToday);
@@ -4538,6 +4561,7 @@ const TRAINING_MODULES = [
       ? '<div style="font-size:12px;color:#92400e;margin-bottom:6px;">Clock in to sign for medication.</div>' : '';
     return `<div style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:8px;">
       <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">💊 Medication</div>
+      ${medListLink(_rotaMedLists[meds[0].resident_id])}
       ${hint}${scheduledHtml}${prnHtml}
     </div>`;
   }
@@ -4905,6 +4929,95 @@ const TRAINING_MODULES = [
     const locFlag = locIn.includes('away') || locOut.includes('away');
     if (s.times_corrected) actual += ' <span class="badge badge-blue" title="Times changed by the office — see Correct times for the history">✎ Corrected</span>';
     return { s, state, badge: b, planned, actual, locIn, locOut, locFlag, resident, short };
+  }
+
+  // ══════════════════════════════════════════════
+  // ── MEDICATION / PRESCRIPTION LISTS (uploaded files) ──
+  // ══════════════════════════════════════════════
+  async function loadMedicationLists(residentId) {
+    const el = document.getElementById('vr-med-lists');
+    if (!el) return;
+    const { data, error } = await db.from('resident_medication_lists').select('*').eq('resident_id', residentId).order('is_current', { ascending: false }).order('uploaded_at', { ascending: false });
+    if (error) { el.innerHTML = `<p style="color:var(--red);font-size:13px;">${emEsc(error.message)}</p>`; return; }
+    el.innerHTML = (data && data.length) ? data.map(l => `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border);font-size:13px;">
+        <div>${l.is_current ? '<span class="badge badge-green">Current</span> ' : '<span class="badge badge-gray">Old</span> '}<strong>${emEsc(l.list_type)}</strong>${l.list_date ? ' · dated ' + formatDate(l.list_date) : ''}
+          <div style="font-size:12px;color:var(--muted);">${emEsc(l.file_name)} · uploaded ${formatDate(l.uploaded_at)} by ${emEsc(l.uploaded_by || '—')}${l.notes ? ' · ' + emEsc(l.notes) : ''}</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="openMedicationList('${emEsc(l.file_path)}')">Open</button>
+          ${l.is_current ? '' : `<button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="makeMedicationListCurrent('${l.id}','${residentId}')">Make current</button>`}
+          <button class="btn btn-cancel" style="padding:4px 10px;font-size:12px;color:var(--red);" onclick="deleteMedicationList('${l.id}','${emEsc(l.file_path)}','${residentId}')">Remove</button>
+        </div>
+      </div>`).join('') : '<p style="color:var(--muted);font-size:13px;margin:0;">No lists uploaded yet.</p>';
+  }
+
+  async function uploadMedicationList() {
+    const residentId = currentViewResidentId;
+    if (!residentId) return;
+    const file = document.getElementById('ml-file').files[0];
+    if (!file) { showToast('Choose a file first.', true); return; }
+    if (file.size > 10485760) { showToast('The file must be 10MB or smaller.', true); return; }
+    if (!/^(application\/pdf|image\/)/.test(file.type)) { showToast('Please upload a PDF or a photo.', true); return; }
+    if (!(await ensureSignedIn())) return;
+    const btn = document.getElementById('ml-upload-btn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `residents/${residentId}/medication-lists/${Date.now()}_${safeName}`;
+    const { error: upErr } = await db.storage.from('documents').upload(path, file, { upsert: false });
+    if (upErr) { btn.disabled = false; btn.textContent = 'Upload list'; showToast('Upload failed: ' + upErr.message, true); return; }
+    const { error } = await db.from('resident_medication_lists').insert([{
+      resident_id: residentId,
+      list_type: val('ml-type'),
+      list_date: val('ml-date') || null,
+      notes: val('ml-notes').trim() || null,
+      is_current: document.getElementById('ml-current').checked,
+      file_path: path,
+      file_name: file.name,
+      uploaded_by: currentStaffFullName || (currentUser && currentUser.email) || null,
+    }]);
+    btn.disabled = false; btn.textContent = 'Upload list';
+    if (error) { await db.storage.from('documents').remove([path]); showToast('Could not save: ' + error.message, true); return; }
+    document.getElementById('ml-file').value = '';
+    document.getElementById('ml-date').value = '';
+    document.getElementById('ml-notes').value = '';
+    document.getElementById('ml-current').checked = true;
+    showToast('Medication list uploaded');
+    loadMedicationLists(residentId);
+  }
+
+  async function openMedicationList(path) {
+    const w = window.open('', '_blank'); // open now so pop-up blockers allow it
+    const { data, error } = await db.storage.from('documents').createSignedUrl(path, 120);
+    if (error || !data) { if (w) w.close(); showToast('Could not open the file: ' + (error ? error.message : 'unknown error'), true); return; }
+    if (w) w.location = data.signedUrl; else window.location.href = data.signedUrl;
+  }
+
+  async function makeMedicationListCurrent(id, residentId) {
+    const { error } = await db.from('resident_medication_lists').update({ is_current: true }).eq('id', id);
+    if (error) { showToast('Could not update: ' + error.message, true); return; }
+    loadMedicationLists(residentId);
+  }
+
+  async function deleteMedicationList(id, path, residentId) {
+    if (!confirm('Remove this medication list? Only do this if it was uploaded by mistake — old lists are normally kept as history.')) return;
+    const { error } = await db.from('resident_medication_lists').delete().eq('id', id);
+    if (error) { showToast('Could not remove: ' + error.message, true); return; }
+    await db.storage.from('documents').remove([path]);
+    showToast('List removed');
+    loadMedicationLists(residentId);
+  }
+
+  // For carers' medication panels: current list per client
+  async function fetchCurrentMedLists(residentIds) {
+    const ids = [...new Set(residentIds.filter(Boolean))];
+    if (!ids.length) return {};
+    const { data } = await db.from('resident_medication_lists').select('resident_id, file_path, list_type, list_date').in('resident_id', ids).eq('is_current', true);
+    const map = {};
+    (data || []).forEach(l => { map[l.resident_id] = l; });
+    return map;
+  }
+  function medListLink(l) {
+    return l ? `<button type="button" class="btn btn-cancel" style="padding:3px 10px;font-size:12px;margin:2px 0 6px;" onclick="openMedicationList('${emEsc(l.file_path)}')">📄 View ${emEsc(l.list_type.toLowerCase())}${l.list_date ? ' (' + formatDate(l.list_date) + ')' : ''}</button>` : '';
   }
 
   // ══════════════════════════════════════════════
@@ -5418,6 +5531,7 @@ const TRAINING_MODULES = [
   let _noteMeds = [];
   let _noteMarEntries = [];
   let _noteShift = null;
+  let _noteMedList = null;
   let _noteMedLoadSeq = 0;
 
   async function loadNoteMedPanel() {
@@ -5436,6 +5550,8 @@ const TRAINING_MODULES = [
     if (seq !== _noteMedLoadSeq) return; // a newer resident/date was picked while loading
     _noteMeds = (medsRes.data || []).filter(m => emarActiveOn(m, dateStr));
     _noteMarEntries = entriesRes.data || [];
+    _noteMedList = _noteMeds.length ? (await fetchCurrentMedLists([_noteMeds[0].resident_id]))[_noteMeds[0].resident_id] : null;
+    if (seq !== _noteMedLoadSeq) return;
     // Pick the visit closest to now, if this carer has one with this resident today
     const shifts = (shiftRes && shiftRes.data) || [];
     const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
@@ -5486,6 +5602,7 @@ const TRAINING_MODULES = [
     return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
       <div style="font-weight:700;font-size:14px;color:var(--navy);">💊 Medication due ${isToday ? 'today' : 'on this day'}</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Sign each dose you deal with. This is the MAR record — ticking "Medication" below doesn't sign anything.</div>
+      ${medListLink(_noteMedList)}
       ${rowHtml}${prnHtml}</div>`;
   }
 
