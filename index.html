@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11301,6 +11301,31 @@ const TRAINING_MODULES = [
   try { checkSession(); } catch(e) { console.error('Init error:', e); }
   try { attachFormattingToolbars(); } catch(e) { console.warn('attachFormattingToolbars:', e); }
   }
+
+  // ── Spell check (British English) on everything people write in ──
+  // Uses the browser's / phone's own dictionary: misspelt words get a red underline,
+  // right-click (or tap) a word for suggestions. Names, emails, numbers etc. are left alone.
+  (function enableSpellcheck() {
+    const SKIP = /(name|email|phone|mobile|tel|postcode|password|pin|token|ref|opg|nhs|ni-|code|url|search|filter|time|date|dose|qty|amount|miles|rate)/i;
+    function apply(el) {
+      if (!el || el.dataset.spellDone) return;
+      el.dataset.spellDone = '1';
+      const isText = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && (!el.type || el.type === 'text'));
+      if (!isText || el.hasAttribute('list') || el.readOnly) return;
+      if (el.tagName === 'INPUT' && SKIP.test((el.id || '') + ' ' + (el.name || '') + ' ' + (el.placeholder || ''))) return;
+      el.setAttribute('spellcheck', 'true');
+      el.setAttribute('lang', 'en-GB');
+      el.setAttribute('autocorrect', 'on');          // iPhone / iPad keyboard corrections
+      el.setAttribute('autocapitalize', 'sentences'); // capital letter at the start of sentences on phones
+    }
+    const scan = root => root.querySelectorAll && root.querySelectorAll('textarea, input').forEach(apply);
+    scan(document);
+    new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      if (n.matches && n.matches('textarea, input')) apply(n);
+      scan(n);
+    }))).observe(document.body, { childList: true, subtree: true });
+  })();
 </script>
 </body>
 </html>
