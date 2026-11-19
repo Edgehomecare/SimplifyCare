@@ -5339,7 +5339,7 @@ const TRAINING_MODULES = [
           <div><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:${st.fill};color:#fff;text-align:center;font-size:11px;font-weight:700;margin-right:6px;">${n}</span>
             <strong>${emEsc(m.mark_type)}</strong> — ${emEsc(m.body_part || '')} <span style="color:var(--muted);">(${m.body_view})</span>
             ${!m.cause_known ? ' <span class="badge badge-red">Unexplained</span>' : ''}</div>
-          <span class="badge ${st.badge}">${st.label}</span>
+          <span style="display:flex;gap:6px;align-items:center;"><span class="badge ${st.badge}">${st.label}</span>${currentRole === 'admin' ? `<button class="btn btn-danger" style="padding:3px 8px;font-size:11px;" onclick="bmDeleteMark('${m.id}')">🗑 Delete</button>` : ''}</span>
         </div>
         <div style="color:var(--muted);font-size:12px;margin-top:4px;">First seen ${new Date(m.observed_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} by ${emEsc(m.staff_name || '—')}${m.size ? ' · Size: ' + emEsc(m.size) : ''}${m.colour ? ' · ' + emEsc(m.colour) : ''}</div>
         ${m.description ? `<div style="margin-top:4px;">${emEsc(m.description)}</div>` : ''}
@@ -5511,6 +5511,23 @@ const TRAINING_MODULES = [
     if (error) { showToast('Could not save: ' + error.message, true); return; }
     showToast('Check saved');
     if (bmCtx.onMarkSaved) bmCtx.onMarkSaved();
+    await bmLoad();
+  }
+
+  // Admin only: remove a mark added by mistake or for practice
+  async function bmDeleteMark(markId) {
+    if (currentRole !== 'admin') { showToast('Only admins can delete body map marks.', true); return; }
+    const m = bmCtx.marks.find(x => x.id === markId);
+    const label = m ? `${m.mark_type} — ${m.body_part || ''}` : 'this mark';
+    if (!confirm(`Delete ${label} and all its checks? Only do this for marks added by mistake or for practice. This cannot be undone.`)) return;
+    if (!(await ensureSignedIn())) return;
+    const { error: upErr } = await db.from('body_map_updates').delete().eq('mark_id', markId);
+    if (upErr) { showToast('Could not delete: ' + upErr.message, true); return; }
+    const { error } = await db.from('body_map_marks').delete().eq('id', markId);
+    if (error) { showToast('Could not delete: ' + error.message, true); return; }
+    showToast('Body map mark deleted');
+    if (bmCtx.onMarkSaved) bmCtx.onMarkSaved();
+    loadBodyMapReview();
     await bmLoad();
   }
 
